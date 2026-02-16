@@ -1,0 +1,118 @@
+/* CTA Section Styles */
+
+.CTA {
+  padding: var(--spacing-4xl) var(--spacing-lg);
+  background-color: var(--forest-green);
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: var(--transition);
+}
+
+.CTA.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Pattern overlay */
+.CTA::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 50%,
+    transparent 75%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.CTA__container {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.CTA__headline {
+  color: var(--white);
+  font-size: clamp(1.75rem, 5vw, 3rem);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.CTA__subheadline {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.1rem;
+  margin: 0;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+.CTA__button {
+  padding: 1rem 3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  background-color: var(--white);
+  color: var(--forest-green);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: capitalize;
+}
+
+.CTA__button:hover {
+  background-color: var(--white);
+  color: var(--charcoal);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  transform: translateY(-4px);
+}
+
+.CTA__button:focus-visible {
+  outline: 2px solid var(--white);
+  outline-offset: 2px;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .CTA {
+    padding: var(--spacing-2xl) var(--spacing-lg);
+  }
+
+  .CTA__headline {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+  }
+
+  .CTA__subheadline {
+    font-size: 1rem;
+  }
+
+  .CTA__button {
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .CTA__button {
+    padding: 1rem 2.5rem;
+  }
+}

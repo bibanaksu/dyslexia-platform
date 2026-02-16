@@ -1,0 +1,172 @@
+/* Step Card Component Styles */
+
+.StepCard {
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+  gap: var(--spacing-md);
+}
+
+.StepCard:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Number Badge */
+.StepCard__number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--forest-green) 0%, var(--charcoal) 100%);
+  box-shadow: var(--shadow-md);
+}
+
+.StepCard:nth-child(1) .StepCard__number {
+  background-color: #FF9500;
+  background: linear-gradient(135deg, #FF9500 0%, #E67E00 100%);
+}
+
+.StepCard:nth-child(2) .StepCard__number {
+  background-color: #8B5AA0;
+  background: linear-gradient(135deg, #E8E5F0 0%, #C9B1D7 100%);
+  color: var(--charcoal);
+}
+
+.StepCard:nth-child(3) .StepCard__number {
+  background-color: var(--forest-green);
+  background: linear-gradient(135deg, var(--forest-green) 0%, var(--charcoal) 100%);
+}
+
+.StepCard:nth-child(4) .StepCard__number {
+  background-color: #c0c0c0;
+  background: linear-gradient(135deg, #e0e0e0 0%, #a9a9a9 100%);
+  color: var(--charcoal);
+}
+
+/* Content */
+.StepCard__content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.StepCard__title {
+  color: var(--charcoal);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.StepCard__description {
+  color: var(--medium-gray);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Arrow */
+.StepCard__arrow {
+  position: absolute;
+  right: -28px;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  background-color: #d9d9d9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  transform: translateY(-50%);
+}
+
+.StepCard__arrow::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-light);
+  border-bottom: 2px solid var(--text-light);
+  transform: rotate(-45deg);
+}
+
+.StepCard:hover .StepCard__arrow {
+  background-color: var(--forest-green);
+  box-shadow: var(--glow-green);
+}
+
+.StepCard:hover .StepCard__arrow::after {
+  border-color: var(--white);
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .StepCard {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .StepCard__number {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
+
+  .StepCard__arrow {
+    display: none;
+  }
+
+  .StepCard__title {
+    font-size: 1rem;
+  }
+
+  .StepCard__description {
+    font-size: 0.85rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .StepCard__arrow {
+    right: auto;
+    bottom: -28px;
+    top: auto;
+    transform: translateX(0);
+  }
+
+  .StepCard__arrow::after {
+    transform: rotate(45deg);
+    border-right: none;
+    border-bottom: none;
+    border-left: 2px solid var(--text-light);
+    border-top: 2px solid var(--text-light);
+  }
+
+  .StepCard:hover .StepCard__arrow::after {
+    border-color: var(--white);
+  }
+}
+
+/* Desktop: horizontal arrows */
+@media (min-width: 1025px) {
+  .StepCard__arrow {
+    right: -28px;
+    top: 50%;
+  }
+
+  .StepCard__arrow::after {
+    transform: rotate(-45deg);
+  }
+}

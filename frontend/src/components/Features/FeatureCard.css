@@ -1,0 +1,69 @@
+/* Feature Card Component Styles */
+
+.FeatureCard {
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl) var(--spacing-xl);
+  text-align: center;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  height: 100%;
+}
+
+.FeatureCard:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Icon */
+.FeatureCard__icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 80px;
+  height: 80px;
+  background-color: var(--bg-light);
+  border-radius: var(--radius-lg);
+  margin: 0 auto;
+  transition: var(--transition);
+}
+
+.FeatureCard:hover .FeatureCard__icon {
+  background-color: var(--beige);
+  transform: scale(1.1);
+}
+
+/* Title */
+.FeatureCard__title {
+  color: var(--charcoal);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Description */
+.FeatureCard__description {
+  color: var(--medium-gray);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+  flex-grow: 1;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .FeatureCard {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  .FeatureCard__title {
+    font-size: 1rem;
+  }
+
+  .FeatureCard__description {
+    font-size: 0.875rem;
+  }
+}

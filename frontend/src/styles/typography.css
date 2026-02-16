@@ -1,0 +1,162 @@
+/* Typography Setup */
+
+/* Font sizes for responsive design */
+html {
+  /* Mobile first (0-640px) */
+  font-size: 16px;
+}
+
+@media (min-width: 641px) {
+  /* Tablet and up (641px+) */
+  html {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1025px) {
+  /* Desktop and up (1025px+) */
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Headings */
+h1 {
+  /* Mobile: 28px / Desktop: 56px */
+  font-size: clamp(1.75rem, 5vw, 3.5rem);
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--charcoal);
+  margin-bottom: var(--spacing-lg);
+}
+
+h2 {
+  /* Mobile: 24px / Desktop: 42px */
+  font-size: clamp(1.5rem, 4vw, 2.625rem);
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--charcoal);
+  margin-bottom: var(--spacing-lg);
+}
+
+h3 {
+  /* Mobile: 20px / Desktop: 28px */
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: var(--spacing-md);
+}
+
+h4 {
+  font-size: 1.25rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: var(--spacing-md);
+}
+
+h5 {
+  font-size: 1.125rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: var(--spacing-sm);
+}
+
+h6 {
+  font-size: 1rem;
+  line-height: 1.5;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Paragraphs and text */
+p {
+  line-height: 1.7;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+p:last-child {
+  margin-bottom: 0;
+}
+
+/* Larger text */
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75;
+}
+
+/* Small text */
+.text-sm {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.text-xs {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Text utilities */
+.text-muted {
+  color: var(--text-light);
+}
+
+.text-accent {
+  color: var(--forest-green);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-bold {
+  font-weight: 700;
+}
+
+/* Links */
+a {
+  color: var(--forest-green);
+  font-weight: 500;
+}
+
+a:hover {
+  color: var(--charcoal);
+}
+
+/* Lists */
+ul, ol {
+  padding-left: 0;
+}
+
+li {
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Code blocks */
+code, pre {
+  font-family: 'Monaco', 'Courier New', monospace;
+  background-color: var(--bg-light);
+  color: var(--charcoal);
+  border-radius: var(--radius-md);
+}
+
+code {
+  padding: 0.2em 0.4em;
+  font-size: 0.9em;
+}
+
+pre {
+  padding: var(--spacing-md);
+  overflow-x: auto;
+  line-height: 1.4;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  font-size: 1em;
+}

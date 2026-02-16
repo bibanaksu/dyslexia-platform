@@ -1,0 +1,63 @@
+/* Stat Card Component Styles */
+
+.StatCard {
+  background-color: var(--beige);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg) var(--spacing-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  transition: var(--transition);
+  min-height: 140px;
+  justify-content: center;
+}
+
+.StatCard:hover {
+  background-color: var(--bg-light);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Value */
+.StatCard__value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--forest-green);
+  line-height: 1;
+}
+
+/* Label */
+.StatCard__label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .StatCard {
+    padding: var(--spacing-md);
+    min-height: 120px;
+  }
+
+  .StatCard__value {
+    font-size: 1.75rem;
+  }
+
+  .StatCard__label {
+    font-size: 0.8rem;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .StatCard {
+    padding: var(--spacing-lg) var(--spacing-md);
+    min-height: 130px;
+  }
+
+  .StatCard__value {
+    font-size: 1.75rem;
+  }
+}

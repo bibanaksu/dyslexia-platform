@@ -12,15 +12,13 @@ DROP TABLE IF EXISTS Child;
 DROP TABLE IF EXISTS Parent;
 DROP TABLE IF EXISTS Therapist;
 
--- Therapist Table (one therapist)
+-- Therapist Table
 CREATE TABLE Therapist (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    full_name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    phone VARCHAR(20),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_email (email)
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Parent Table
@@ -30,6 +28,9 @@ CREATE TABLE Parent (
     email VARCHAR(255) NOT NULL UNIQUE,
     phone VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
+    assessment_completed BOOLEAN DEFAULT FALSE,
+    assessment_date DATETIME,
+    can_access_activities BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email)
@@ -107,8 +108,8 @@ CREATE TABLE ChildActivityProgress (
 );
 
 -- Insert sample data
-INSERT INTO Therapist (full_name, email, phone) VALUES 
-('Dr. Sarah Johnson', 'therapist@dyslexia-platform.com', '555-0100');
+INSERT INTO Therapist (username, password_hash, email) VALUES 
+('therapist', 'your_hashed_password_here', 'therapist@dyslexiaplatform.com');
 
 INSERT INTO Parent (full_name, email, phone, password_hash) VALUES 
 ('John Smith', 'john.smith@example.com', '555-0101', 'hashed_password_1'),

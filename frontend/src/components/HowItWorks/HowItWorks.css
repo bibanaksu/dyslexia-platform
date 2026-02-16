@@ -1,0 +1,226 @@
+/* How It Works Section Styles */
+
+.HowItWorks {
+  padding: var(--spacing-4xl) var(--spacing-lg);
+  background-color: var(--bg-beige);
+  opacity: 0;
+  transform: translateY(30px);
+  transition: var(--transition);
+}
+
+.HowItWorks.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.HowItWorks__container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.HowItWorks__title {
+  text-align: center;
+  margin-bottom: var(--spacing-3xl);
+  color: var(--charcoal);
+}
+
+/* Mobile Carousel */
+.HowItWorks__mobile {
+  display: none;
+}
+
+.HowItWorks__step-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+.HowItWorks__step-number {
+  width: 48px;
+  height: 48px;
+  background: var(--forest-green);
+  color: var(--white);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 auto var(--spacing-md);
+}
+
+.HowItWorks__step-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.HowItWorks__step-title {
+  font-size: 1.25rem;
+  margin-bottom: var(--spacing-sm);
+  color: var(--charcoal);
+}
+
+.HowItWorks__step-description {
+  color: var(--medium-gray);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Arrow Buttons */
+.HowItWorks__arrows {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.HowItWorks__arrow {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background-color: var(--light-gray);
+  border: none;
+  font-size: 1.5rem;
+  color: var(--charcoal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.HowItWorks__arrow:hover {
+  background-color: var(--forest-green);
+  color: var(--white);
+  transform: scale(1.1);
+  box-shadow: var(--glow-green);
+}
+
+.HowItWorks__arrow:active {
+  transform: scale(0.95);
+}
+
+/* Dots */
+.HowItWorks__dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.HowItWorks__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-full);
+  background-color: var(--light-gray);
+  border: 2px solid var(--forest-green);
+  padding: 0;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.HowItWorks__dot.active {
+  background-color: var(--forest-green);
+  transform: scale(1.2);
+}
+
+/* Desktop Grid */
+.HowItWorks__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-xl);
+  position: relative;
+}
+
+.HowItWorks__grid-step {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  transition: var(--transition);
+}
+
+.HowItWorks__grid-step:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg);
+}
+
+.HowItWorks__grid-number {
+  width: 40px;
+  height: 40px;
+  background: var(--forest-green);
+  color: var(--white);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin: 0 auto var(--spacing-md);
+}
+
+.HowItWorks__grid-icon {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.HowItWorks__grid-title {
+  font-size: 1.1rem;
+  margin-bottom: var(--spacing-sm);
+  color: var(--charcoal);
+}
+
+.HowItWorks__grid-description {
+  color: var(--medium-gray);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.HowItWorks__grid-arrow {
+  position: absolute;
+  right: -30px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.5rem;
+  color: var(--forest-green);
+  font-weight: 300;
+}
+
+/* Remove arrow from last step */
+.HowItWorks__grid-step:last-child .HowItWorks__grid-arrow {
+  display: none;
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .HowItWorks {
+    padding: var(--spacing-2xl) var(--spacing-lg);
+  }
+
+  .HowItWorks__grid {
+    display: none;
+  }
+
+  .HowItWorks__mobile {
+    display: block;
+  }
+
+  .HowItWorks__title {
+    margin-bottom: var(--spacing-xl);
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .HowItWorks__grid {
+    gap: var(--spacing-lg);
+  }
+
+  .HowItWorks__grid-arrow {
+    right: -20px;
+    font-size: 1.25rem;
+  }
+}
