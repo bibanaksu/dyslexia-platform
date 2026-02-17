@@ -31,12 +31,20 @@ export function Hero() {
       ref={heroRef}
       className="Hero"
     >
-      {/* Background Image with Parallax */}
+      {/* Background Image with Parallax - USING INLINE STYLE */}
       <div
         className="Hero__background"
         style={{ transform: `translateY(${parallaxOffset}px)` }}
       >
-        <div className="Hero__background-image"></div>
+        <div 
+          className="Hero__background-image"
+          style={{ 
+            backgroundImage: `url('/assets/heropic.png')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        ></div>
         {/* Gradient Overlay */}
         <div className="Hero__overlay"></div>
       </div>
