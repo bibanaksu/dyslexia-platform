@@ -14,6 +14,12 @@
   --orange: #E8A87C;  /* Warm orange accent */
   --light-gray: #F0F0F0;
 
+  /* FEATURE CARD ACCENT COLORS - Professional & Related */
+  --accent-blue: #5B8DB5;      /* Trust, Learning, Calm */
+  --accent-orange: #DB8860;    /* Energy, Growth, Warmth */
+  --accent-teal: #6FA399;      /* Healing, Balance, Wellness */
+  --accent-lavender: #B39DBD;  /* Creativity, Imagination */
+
   /* TEXT COLORS */
   --text-primary: #2C2C2C;
   --text-secondary: #6B6B6B;

@@ -17,32 +17,39 @@ export function About() {
       <div className="About__container">
         <div className="About__content">
           <h2>What is Dyslexia?</h2>
+
           <p>
-            Dyslexia is a specific learning difference that affects how the brain processes
-            information related to reading and writing. It's not related to intelligence - many
-            individuals with dyslexia are exceptionally bright and creative.
-          </p>
-          <p>
-            With the right support and strategies, children with dyslexia can thrive in
-            school and beyond. Early intervention and specialized instruction make a
-            tremendous difference.
+            Dyslexia is a neurodevelopmental learning disorder that affects reading accuracy, fluency, and spelling. It is not related to intelligence — many individuals with dyslexia demonstrate strong creativity, problem-solving skills, and verbal reasoning abilities.
           </p>
 
-          <h3>Common Signs</h3>
+          <p>
+            According to the American Psychiatric Association in the Diagnostic and Statistical Manual of Mental Disorders, dyslexia is classified as a Specific Learning Disorder with impairment in reading.
+          </p>
+
+          <p>
+            With early identification and structured intervention, children with dyslexia can significantly improve their literacy skills and academic confidence.
+          </p>
+
+          <h3>Common Signs of Dyslexia</h3>
           <ul className="About__signs">
-            <li>Difficulty with reading fluency and comprehension</li>
+            <li>Difficulty with reading fluency and word recognition</li>
             <li>Challenges with spelling and written expression</li>
             <li>Trouble remembering sequences (letters, numbers, words)</li>
-            <li>Difficulty distinguishing between similar letters (b, d, p, q)</li>
-            <li>Strong verbal skills but difficulty with written tasks</li>
+            <li>Confusion between similar letters (b, d, p, q)</li>
+            <li>Strong verbal skills but difficulty expressing ideas in writing</li>
           </ul>
+
+          <h3>Why Early Support Matters</h3>
+          <p>
+            Early screening and targeted, evidence-based intervention make a measurable difference. Structured assessment allows specialists to identify specific learning gaps and design personalized strategies that help children build strong, lasting reading skills.
+          </p>
 
           <div className="About__quote">
             <blockquote>
               "With the right support, dyslexia becomes a superpower. I've seen children
               transform their relationship with learning."
             </blockquote>
-            <p className="About__quote-author">- Sarah Mitchell, Dyslexia Specialist</p>
+            <p className="About__quote-author"></p>
           </div>
         </div>
 

@@ -1,49 +1,80 @@
 /* Stat Card Component Styles */
 
 .StatCard {
-  background-color: var(--beige);
+  background-color: var(--white);
   border-radius: var(--radius-lg);
-  padding: var(--spacing-lg) var(--spacing-md);
+  padding: var(--spacing-2xl) var(--spacing-lg);
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
   transition: var(--transition);
-  min-height: 140px;
+  min-height: 160px;
   justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: 2px solid color-mix(in srgb, var(--accent-lavender) 20%, white);
+  position: relative;
+  overflow: hidden;
+}
+
+.StatCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-orange), var(--accent-teal), var(--accent-lavender));
+}
+
+.StatCard:nth-child(1)::before {
+  background: var(--accent-blue);
+}
+
+.StatCard:nth-child(2)::before {
+  background: var(--accent-orange);
+}
+
+.StatCard:nth-child(3)::before {
+  background: var(--accent-teal);
+}
+
+.StatCard:nth-child(4)::before {
+  background: var(--accent-lavender);
 }
 
 .StatCard:hover {
-  background-color: var(--bg-light);
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  border-color: var(--accent-lavender);
 }
 
 /* Value */
 .StatCard__value {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 700;
   color: var(--forest-green);
   line-height: 1;
+  margin-bottom: var(--spacing-sm);
 }
 
 /* Label */
 .StatCard__label {
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: var(--medium-gray);
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 /* Mobile Styles */
 @media (max-width: 768px) {
   .StatCard {
-    padding: var(--spacing-md);
-    min-height: 120px;
+    padding: var(--spacing-xl) var(--spacing-md);
+    min-height: 140px;
   }
 
   .StatCard__value {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
 
   .StatCard__label {
@@ -53,11 +84,12 @@
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .StatCard {
-    padding: var(--spacing-lg) var(--spacing-md);
-    min-height: 130px;
+    padding: var(--spacing-xl) var(--spacing-md);
+    min-height: 150px;
   }
 
   .StatCard__value {
-    font-size: 1.75rem;
+    font-size: 2rem;
   }
 }
+

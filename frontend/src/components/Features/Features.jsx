@@ -9,23 +9,27 @@ import './Features.css';
 const features = [
   {
     icon: BrainIcon,
-    title: 'Specialist-Designed',
-    description: 'Activities created by experienced dyslexia therapists',
+    title: 'Evidence-Based Intervention Programs',
+    description: 'Structured reading and phonological exercises built on clinically validated dyslexia methodologies.',
+    accentColor: 'var(--accent-blue)',
   },
   {
     icon: ChartIcon,
-    title: 'Track Progress',
-    description: "Monitor your child's reading and comprehension growth",
+    title: 'Real-Time Progress Tracking',
+    description: 'Monitor reading fluency, comprehension, and phonemic awareness with clear dashboards and measurable growth indicators.',
+    accentColor: 'var(--accent-orange)',
   },
   {
     icon: CorrectIcon,
-    title: 'Learn Through Play',
-    description: 'Engaging games that build confidence and skills',
+    title: 'Adaptive Learning Engine',
+    description: 'Activities automatically adjust difficulty based on performance to ensure steady, personalized improvement.',
+    accentColor: 'var(--accent-teal)',
   },
   {
     icon: GrowthIcon,
-    title: 'Parent Dashboard',
-    description: 'See achievements and personalized recommendations',
+    title: 'Parent–Therapist Collaboration Hub',
+    description: 'Shared reports, coordinated intervention plans, and seamless communication between home and clinical support.',
+    accentColor: 'var(--accent-lavender)',
   },
 ];
 
@@ -36,9 +40,9 @@ export function Features() {
     <section className={`Features ${revealed}`} ref={ref} id="features">
       <div className="Features__container">
         <div className="Features__header">
-          <h2>Why Choose Our Platform</h2>
+          <h2>Comprehensive Dyslexia Support Solution</h2>
           <p className="Features__subtitle">
-            Evidence-based tools that make a real difference
+            A complete platform designed to bridge the gap between clinical expertise and home-based intervention
           </p>
         </div>
 
@@ -49,6 +53,7 @@ export function Features() {
                 icon={feature.icon}
                 title={feature.title}
                 description={feature.description}
+                accentColor={feature.accentColor}
               />
             </div>
           ))}

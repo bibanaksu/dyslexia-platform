@@ -353,3 +353,34 @@
     transform: none;
   }
 }
+/* Background with Parallax */
+.Hero__background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 120%;
+  z-index: 0;
+}
+
+.Hero__background-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/assets/heropic.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  filter: brightness(0.7) saturate(1.2);
+  animation: subtleZoom 25s ease infinite alternate; /* Much slower and less zoom */
+}
+
+@keyframes subtleZoom {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.03); /* Only 3% zoom instead of 10% */
+  }
+}
