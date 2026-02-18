@@ -37,7 +37,7 @@ export function About() {
               alt="Children learning together in a supportive environment" 
               className="About__image"
             />
-            <p className="About__image-caption">Children Learning Together</p>
+           
           </div>
         </div>
       </div>
