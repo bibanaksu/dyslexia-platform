@@ -1,46 +1,89 @@
-/* Footer Component Styles */
+/* Footer Component Styles - Compact Version */
 
 .Footer {
-  background-color: var(--lavender);
-  padding: var(--spacing-3xl) var(--spacing-lg) var(--spacing-lg);
-  border-top: 1px solid var(--bg-light);
+  background-color: #3D5A4C;
+  padding: var(--spacing-2xl) var(--spacing-lg) var(--spacing-lg); /* Reduced from 4xl to 2xl */
+  color: #EAE7DC;
+  position: relative;
 }
 
 .Footer__container {
   max-width: 1400px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: var(--spacing-2xl);
-  margin-bottom: var(--spacing-3xl);
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: var(--spacing-xl); /* Reduced from 3xl to xl */
+}
+
+/* Brand Section */
+.Footer__brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm); /* Reduced from md to sm */
+}
+
+.Footer__logo {
+  color: #EAE7DC;
+  font-size: 1.5rem; /* Reduced from 1.75rem */
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin: 0 0 var(--spacing-xs) 0; /* Reduced margin */
+}
+
+.Footer__tagline {
+  color: #F5F3ED;
+  font-size: 0.85rem; /* Reduced from 0.95rem */
+  line-height: 1.5; /* Tighter line height */
+  margin: 0 0 var(--spacing-sm) 0; /* Reduced margin */
+  max-width: 260px;
+}
+
+/* Contact Info */
+.Footer__contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem; /* Minimal gap between contact items */
+  margin-top: var(--spacing-xs);
+}
+
+.Footer__contact-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: #F5F3ED;
+  font-size: 0.85rem; /* Reduced from 0.95rem */
+}
+
+.Footer__contact-item svg {
+  width: 16px; /* Smaller icons */
+  height: 16px;
+  stroke: #F5F3ED;
+  opacity: 0.8;
+}
+
+.Footer__contact-item a {
+  color: #F5F3ED;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.Footer__contact-item a:hover {
+  color: #EAE7DC;
 }
 
 /* Section */
 .Footer__section {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm); /* Reduced from lg to sm */
 }
 
-.Footer__section h4,
-.Footer__section h5 {
-  color: var(--charcoal);
-  font-size: 1rem;
+.Footer__section-title {
+  color: #EAE7DC;
+  font-size: 1rem; /* Reduced from 1.1rem */
   font-weight: 600;
-  margin: 0;
-}
-
-.Footer__logo {
-  color: var(--forest-green);
-  font-size: 1.25rem;
-  font-weight: 700;
-}
-
-.Footer__description {
-  color: var(--medium-gray);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  margin: 0;
+  margin: 0 0 var(--spacing-xs) 0; /* Added bottom margin */
+  letter-spacing: 0.3px;
 }
 
 /* Links */
@@ -50,7 +93,7 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 0.25rem; /* Minimal gap between links */
 }
 
 .Footer__links li {
@@ -58,104 +101,107 @@
 }
 
 .Footer__links a {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
+  color: #F5F3ED;
+  font-size: 0.85rem; /* Reduced from 0.9rem */
   text-decoration: none;
-  transition: var(--transition-fast);
-  position: relative;
-}
-
-.Footer__links a::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background-color: var(--forest-green);
-  transition: width var(--transition-fast);
+  transition: all 0.2s ease;
+  display: inline-block;
+  line-height: 1.4; /* Tighter line height */
 }
 
 .Footer__links a:hover {
-  color: var(--forest-green);
-}
-
-.Footer__links a:hover::after {
-  width: 100%;
-}
-
-/* Contact Info */
-.Footer__contact-info {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin: 0;
-}
-
-.Footer__contact-info a {
-  color: var(--forest-green);
-  font-weight: 500;
-}
-
-.Footer__contact-info a:hover {
-  color: var(--charcoal);
+  color: #EAE7DC;
+  transform: translateX(4px);
 }
 
 /* Bottom Section */
 .Footer__bottom {
-  border-top: 1px solid var(--bg-light);
-  padding-top: var(--spacing-lg);
-  text-align: center;
+  max-width: 1400px;
+  margin: var(--spacing-xl) auto 0; /* Reduced from 3xl to xl */
+  padding-top: var(--spacing-md); /* Reduced from xl to md */
+  border-top: 1px solid rgba(234, 231, 220, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
 }
 
 .Footer__copyright {
-  color: var(--text-light);
-  font-size: 0.85rem;
+  color: #F5F3ED;
+  font-size: 0.8rem; /* Reduced from 0.9rem */
   margin: 0;
+  opacity: 0.8;
+}
+
+.Footer__credit {
+  color: #F5F3ED;
+  font-size: 0.8rem; /* Reduced from 0.9rem */
+  margin: 0;
+  display: flex;
+  gap: var(--spacing-sm); /* Reduced from md to sm */
+}
+
+.Footer__credit span {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.Footer__credit a {
+  color: #F5F3ED;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.Footer__credit a:hover {
+  color: #EAE7DC;
+}
+
+.Footer__credit-separator {
+  opacity: 0.3;
+  color: #F5F3ED;
 }
 
 /* Mobile Styles */
 @media (max-width: 768px) {
   .Footer {
-    padding: var(--spacing-2xl) var(--spacing-lg) var(--spacing-lg);
+    padding: var(--spacing-xl) var(--spacing-lg) var(--spacing-md); /* Even smaller on mobile */
   }
 
   .Footer__container {
     grid-template-columns: 1fr;
-    gap: var(--spacing-xl);
-    margin-bottom: var(--spacing-xl);
+    gap: var(--spacing-lg); /* Reduced gap */
   }
 
-  .Footer__section h4,
-  .Footer__section h5 {
-    font-size: 0.95rem;
+  .Footer__brand {
+    text-align: left;
   }
 
-  .Footer__logo {
-    font-size: 1.1rem;
+  .Footer__tagline {
+    max-width: 100%;
   }
 
-  .Footer__links {
-    gap: var(--spacing-sm);
+  .Footer__contact-item {
+    justify-content: flex-start;
   }
 
-  .Footer__links a {
-    font-size: 0.85rem;
+  .Footer__bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-lg);
   }
 
-  .Footer__contact-info {
-    font-size: 0.85rem;
+  .Footer__credit {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
   .Footer__container {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-2xl);
-  }
-}
-
-@media (min-width: 1025px) {
-  .Footer__container {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: var(--spacing-lg); /* Reduced gap */
   }
 }

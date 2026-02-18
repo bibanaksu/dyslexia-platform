@@ -85,8 +85,7 @@ export function Hero() {
             className={`Hero__description ${isLoaded ? 'loaded' : ''}`}
             style={{ transitionDelay: '0.4s' }}
           >
-            Specialist-designed activities that make learning fun and effective.
-            Give your child the tools to succeed.
+           Specialist-designed activities that make learning fun and effective. Give your child the tools to succeed.
           </p>
 
           {/* CTA Buttons */}

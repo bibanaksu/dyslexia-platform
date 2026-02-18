@@ -1,31 +1,61 @@
 import { useScrollReveal } from '../../hooks/useScrollReveal';
 import { FeatureCard } from './FeatureCard';
-import { BrainIcon } from '../common/icons/BrainIcon';
-import { ChartIcon } from '../common/icons/ChartIcon';
-import { CorrectIcon } from '../common/icons/CorrectIcon';
-import { GrowthIcon } from '../common/icons/GrowthIcon';
 import './Features.css';
+
+// Custom Icons - Professional and Clean
+const SpecialistIcon = () => (
+  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24 4L4 12V22C4 32 13 42 24 44C35 42 44 32 44 22V12L24 4Z" stroke="#3D5A4C" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+    <circle cx="24" cy="24" r="8" stroke="#3D5A4C" strokeWidth="2.5"/>
+    <path d="M24 16V24L28 28" stroke="#3D5A4C" strokeWidth="2.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const ProgressIcon = () => (
+  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 40V20M20 40V8M32 40V16M44 40H4" stroke="#B39DBD" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="14" cy="30" r="2" fill="#B39DBD"/>
+    <circle cx="26" cy="20" r="2" fill="#B39DBD"/>
+    <circle cx="38" cy="26" r="2" fill="#B39DBD"/>
+  </svg>
+);
+
+const PlayIcon = () => (
+  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="24" cy="24" r="16" stroke="#5FB9B0" strokeWidth="2.5"/>
+    <path d="M20 16L32 24L20 32V16Z" stroke="#5FB9B0" strokeWidth="2.5" strokeLinejoin="round"/>
+    <path d="M14 8L18 12M34 8L30 12M14 40L18 36M34 40L30 36" stroke="#5FB9B0" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+
+const DashboardIcon = () => (
+  <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="10" width="36" height="28" rx="3" stroke="#4A90E2" strokeWidth="2.5"/>
+    <path d="M14 18H22M14 24H34M14 30H28" stroke="#4A90E2" strokeWidth="2.5" strokeLinecap="round"/>
+    <circle cx="34" cy="30" r="2" fill="#4A90E2"/>
+  </svg>
+);
 
 const features = [
   {
-    icon: BrainIcon,
+    icon: SpecialistIcon,
     title: 'Specialist-Designed',
-    description: 'Activities created by experienced dyslexia therapists',
+    description: 'Activities created by experienced dyslexia therapists using evidence-based methodologies',
   },
   {
-    icon: ChartIcon,
+    icon: ProgressIcon,
     title: 'Track Progress',
-    description: "Monitor your child's reading and comprehension growth",
+    description: 'Monitor your child\'s reading fluency and comprehension with detailed analytics',
   },
   {
-    icon: CorrectIcon,
+    icon: PlayIcon,
     title: 'Learn Through Play',
-    description: 'Engaging games that build confidence and skills',
+    description: 'Engaging interactive games that build confidence while developing essential skills',
   },
   {
-    icon: GrowthIcon,
+    icon: DashboardIcon,
     title: 'Parent Dashboard',
-    description: 'See achievements and personalized recommendations',
+    description: 'Comprehensive insights and personalized recommendations for continued growth',
   },
 ];
 
@@ -38,7 +68,7 @@ export function Features() {
         <div className="Features__header">
           <h2>Why Choose Our Platform</h2>
           <p className="Features__subtitle">
-            Evidence-based tools that make a real difference
+            Evidence-based tools designed by specialists to make a real difference
           </p>
         </div>
 
