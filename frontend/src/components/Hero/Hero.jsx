@@ -25,13 +25,20 @@ export function Hero() {
   const parallaxOffset = scrollY * 0.3;
   const opacityFade = Math.max(0, 1 - scrollY / 600);
 
+  const scrollToQuiz = () => {
+    const quizSection = document.getElementById('parent-quiz');
+    if (quizSection) {
+      quizSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section
       id="home"
       ref={heroRef}
       className="Hero"
     >
-      {/* Background Image with Parallax - USING INLINE STYLE */}
+      {/* Background Image with Parallax */}
       <div
         className="Hero__background"
         style={{ transform: `translateY(${parallaxOffset}px)` }}
@@ -94,15 +101,18 @@ export function Hero() {
             style={{ transitionDelay: '0.6s' }}
           >
             <a href="#features" className="Hero__button Hero__button--primary">
-              <span>Start Your Journey</span>
+              <span>Start Free Assessment</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
             </a>
-            <a href="#features" className="Hero__button Hero__button--secondary">
-              Explore Features
-            </a>
+            <button 
+              onClick={scrollToQuiz}
+              className="Hero__button Hero__button--secondary"
+            >
+              Take Quick Quiz
+            </button>
           </div>
         </div>
 

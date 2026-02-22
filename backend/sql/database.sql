@@ -132,3 +132,22 @@ CREATE INDEX idx_parent_email ON Parent(email);
 CREATE INDEX idx_child_parent ON Child(parent_id);
 CREATE INDEX idx_assessment_child_date ON Assessment(child_id, assessment_date);
 CREATE INDEX idx_progress_child_activity ON ChildActivityProgress(child_id, activity_id);
+-- Add this to your existing database.sql file
+-- Parent Screening Quiz Table
+CREATE TABLE IF NOT EXISTS ParentScreening (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    parent_id INT,
+    question_1 BOOLEAN DEFAULT FALSE,
+    question_2 BOOLEAN DEFAULT FALSE,
+    question_3 BOOLEAN DEFAULT FALSE,
+    question_4 BOOLEAN DEFAULT FALSE,
+    question_5 BOOLEAN DEFAULT FALSE,
+    question_6 BOOLEAN DEFAULT FALSE,
+    question_7 BOOLEAN DEFAULT FALSE,
+    question_8 BOOLEAN DEFAULT FALSE,
+    total_yes_count INT DEFAULT 0,
+    completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE SET NULL,
+    INDEX idx_parent_id (parent_id),
+    INDEX idx_completed_at (completed_at)
+);

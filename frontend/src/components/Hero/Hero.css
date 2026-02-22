@@ -343,3 +343,50 @@
     transform: none;
   }
 }
+/* Primary Button - Yellow hover */
+.Hero__button--primary {
+  background-color: #3D5A4C;
+  color: white;
+  box-shadow: 0 10px 30px rgba(61, 90, 76, 0.3);
+}
+
+.Hero__button--primary:hover {
+  background: linear-gradient(135deg, #FFB84D 0%, #FFD700 100%); /* Yellow gradient */
+  color: #2C2C2C; /* Dark text for contrast */
+  box-shadow: 0 15px 40px rgba(255, 184, 77, 0.4);
+  transform: translateY(-4px) scale(1.05);
+}
+
+.Hero__button--primary:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.Hero__button--primary svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 300ms ease;
+}
+
+.Hero__button--primary:hover svg {
+  transform: translateX(4px);
+  stroke: #2C2C2C; /* Dark arrow on hover */
+}
+
+/* Secondary Button - Yellow hover with transparency */
+.Hero__button--secondary {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.Hero__button--secondary:hover {
+  background: linear-gradient(135deg, #FFB84D 0%, #FFD700 100%); /* Yellow gradient */
+  color: #2C2C2C; /* Dark text for contrast */
+  border-color: transparent;
+  transform: translateY(-4px) scale(1.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}

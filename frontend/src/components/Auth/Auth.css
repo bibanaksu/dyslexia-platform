@@ -3,13 +3,13 @@
 .Auth {
   min-height: 100vh;
   display: flex;
-  background: var(--bg-beige); /* Cream background using variable */
+  background: var(--bg-beige);
 }
 
 /* ─── Left Panel ─────────────────────────────────────────── */
 .Auth__left {
   width: 40%;
-  background: linear-gradient(160deg, #dde8e0 0%, #c8dace 50%, #d0e4d8 100%);
+  background: var(--bg-beige);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -105,7 +105,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #dde8e0 0%, #c8dace 50%, #d0e4d8 100%);
+  background: var(--bg-beige);
   aspect-ratio: 9/16;
 }
 
@@ -121,7 +121,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--spacing-2xl, 2rem) var(--spacing-xl, 1.5rem);
-  background: var(--bg-beige); /* Cream background using variable */
+  background: var(--bg-beige);
   overflow-y: auto;
 }
 

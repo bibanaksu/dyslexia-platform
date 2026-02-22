@@ -29,9 +29,6 @@ export function CTA() {
             Start Assessment Now
           </button>
           
-          <button className="CTA__button CTA__button--secondary">
-            Take Parent Quiz
-          </button>
         </div>
 
         

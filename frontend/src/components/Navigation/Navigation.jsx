@@ -51,9 +51,12 @@ export function Navigation({ scrollY = 0 }) {
         {/* Actions */}
         <div className="Navigation__actions">
           {/* SIGN IN BUTTON - REPLACED SEARCH ICON */}
-          <button className="Navigation__signin-btn">
-            Sign In
-          </button>
+         <button 
+  className="Navigation__signin-btn"
+  onClick={() => window.location.href = '/auth'}
+>
+  Sign In
+</button>
 
           <button
             className={`Navigation__hamburger ${isMenuOpen ? 'active' : ''}`}
