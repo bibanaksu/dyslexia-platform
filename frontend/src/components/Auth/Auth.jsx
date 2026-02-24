@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './Auth.css';
 
+// Icons - Define all icons here
 const BackArrowIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20">
     <line x1="19" y1="12" x2="5" y2="12"></line>
@@ -69,10 +70,54 @@ export function Auth() {
   const [isSignIn, setIsSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted', { isSignIn });
+    setError('');
+    setLoading(true);
+
+    try {
+      if (isSignIn) {
+        // SIGN IN
+        console.log('Attempting login with:', { email, password });
+        
+        // TEMPORARY: Hardcoded test login
+        if (email === 'therapist@dyslexiaplatform.com' && password === 'Therapist@123') {
+          localStorage.setItem('token', 'test-token');
+          localStorage.setItem('userRole', 'therapist');
+          localStorage.setItem('userId', '1');
+          localStorage.setItem('userName', 'Dr. Sarah Chen');
+          window.location.href = '/dashboard';
+          return;
+        } else {
+          throw new Error('Invalid email or password. Try: therapist@dyslexiaplatform.com / Therapist@123');
+        }
+      } else {
+        // SIGN UP
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        
+        alert('Sign up functionality will be added soon!');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  const fillTestCredentials = () => {
+    setEmail('therapist@dyslexiaplatform.com');
+    setPassword('Therapist@123');
   };
 
   return (
@@ -83,8 +128,6 @@ export function Auth() {
           <BackArrowIcon />
         </a>
 
-        
-
         <div className="Auth__illustration">
           <img
             src="assets/authnt.png"
@@ -92,7 +135,9 @@ export function Auth() {
             className="Auth__illustration-img"
             onError={(e) => {
               e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'flex';
+              if (e.target.nextSibling) {
+                e.target.nextSibling.style.display = 'flex';
+              }
             }}
           />
           <div className="Auth__illustration-fallback">
@@ -117,23 +162,71 @@ export function Auth() {
 
           {/* Toggle */}
           <div className="Auth__toggle">
-            <button className={`Auth__toggle-btn ${isSignIn ? 'active' : ''}`} onClick={() => setIsSignIn(true)}>
+            <button 
+              type="button"
+              className={`Auth__toggle-btn ${isSignIn ? 'active' : ''}`} 
+              onClick={() => setIsSignIn(true)}
+            >
               Sign In
             </button>
-            <button className={`Auth__toggle-btn ${!isSignIn ? 'active' : ''}`} onClick={() => setIsSignIn(false)}>
+            <button 
+              type="button"
+              className={`Auth__toggle-btn ${!isSignIn ? 'active' : ''}`} 
+              onClick={() => setIsSignIn(false)}
+            >
               Sign Up
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="Auth__form">
+          {/* Test credentials helper */}
+          {isSignIn && (
+            <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+              <button 
+                type="button"
+                onClick={fillTestCredentials}
+                style={{
+                  background: 'none',
+                  border: '1px dashed #3D5A4C',
+                  padding: '5px 10px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  color: '#3D5A4C',
+                  cursor: 'pointer'
+                }}
+              >
+                Use Test Therapist Account
+              </button>
+            </div>
+          )}
 
+          {error && (
+            <div style={{ 
+              background: '#ffebee', 
+              color: '#c62828', 
+              padding: '10px', 
+              borderRadius: '5px',
+              marginBottom: '15px',
+              fontSize: '14px'
+            }}>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="Auth__form">
             {/* Full Name — Sign Up only */}
             {!isSignIn && (
               <div className="Auth__field">
                 <label>Full Name</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><UserIcon /></span>
-                  <input type="text" className="Auth__input" placeholder="please enter your full name" required />
+                  <input 
+                    type="text" 
+                    className="Auth__input" 
+                    placeholder="John Doe" 
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required={!isSignIn}
+                  />
                 </div>
               </div>
             )}
@@ -143,7 +236,14 @@ export function Auth() {
               <label>Email Address</label>
               <div className="Auth__input-wrapper">
                 <span className="Auth__input-icon"><MailIcon /></span>
-                <input type="email" className="Auth__input" placeholder="name@example.com" required />
+                <input 
+                  type="email" 
+                  className="Auth__input" 
+                  placeholder="name@example.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
               </div>
             </div>
 
@@ -153,7 +253,13 @@ export function Auth() {
                 <label>Phone Number</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><PhoneIcon /></span>
-                  <input type="tel" className="Auth__input" placeholder="+213 000-0000" required />
+                  <input 
+                    type="tel" 
+                    className="Auth__input" 
+                    placeholder="+213 000-0000" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
                 </div>
               </div>
             )}
@@ -167,9 +273,15 @@ export function Auth() {
                   type={showPassword ? 'text' : 'password'}
                   className="Auth__input"
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
-                <button type="button" className="Auth__input-toggle" onClick={() => setShowPassword(!showPassword)}>
+                <button 
+                  type="button" 
+                  className="Auth__input-toggle" 
+                  onClick={() => setShowPassword(!showPassword)}
+                >
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
@@ -188,18 +300,28 @@ export function Auth() {
                     type={showConfirmPassword ? 'text' : 'password'}
                     className="Auth__input"
                     placeholder="••••••••"
-                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required={!isSignIn}
                   />
-                  <button type="button" className="Auth__input-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <button 
+                    type="button" 
+                    className="Auth__input-toggle" 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
                     {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </div>
             )}
 
-            <button type="submit" className="Auth__submit-btn">
-              <span>{isSignIn ? 'Sign In' : 'Create Account'}</span>
-              <ArrowIcon />
+            <button 
+              type="submit" 
+              className="Auth__submit-btn"
+              disabled={loading}
+            >
+              <span>{loading ? 'Please wait...' : (isSignIn ? 'Sign In' : 'Create Account')}</span>
+              {!loading && <ArrowIcon />}
             </button>
           </form>
 
@@ -208,7 +330,11 @@ export function Auth() {
           </div>
 
           <div className="Auth__social">
-            <button className="Auth__social-btn">
+            <button 
+              type="button"
+              className="Auth__social-btn"
+              onClick={() => alert('Google login coming soon!')}
+            >
               <GoogleIcon />
               <span>Google</span>
             </button>

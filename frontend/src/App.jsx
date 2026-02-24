@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/variables.css';
 import './styles/reset.css';
 import './styles/typography.css';
@@ -14,20 +14,18 @@ import { ScreeningQuiz } from './components/ScreeningQuiz/ScreeningQuiz';
 import { Auth } from './components/Auth/Auth';
 import { CTA } from './components/CTA/CTA';
 import { Footer } from './components/Footer/Footer';
+import Dashboard from './components/Dashboard/Dashboard';
 
-// Layout component to conditionally show Navigation and Footer
-function Layout({ children, showNavAndFooter = true, scrollY }) {
-  const location = useLocation();
-  // Hide nav and footer on auth page
-  const shouldShow = showNavAndFooter && location.pathname !== '/auth';
-
-  return (
-    <>
-      {shouldShow && <Navigation scrollY={scrollY} />}
-      {children}
-      {shouldShow && <Footer />}
-    </>
-  );
+// Protected Route Component
+function ProtectedRoute({ children }) {
+  const isAuthenticated = localStorage.getItem('token') && 
+                         localStorage.getItem('userRole') === 'therapist';
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return children;
 }
 
 function App() {
@@ -46,13 +44,10 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
-          <Route path="/auth" element={
-            <Layout showNavAndFooter={false} scrollY={scrollY}>
-              <Auth />
-            </Layout>
-          } />
+          {/* Home Page Route */}
           <Route path="/" element={
-            <Layout showNavAndFooter={true} scrollY={scrollY}>
+            <>
+              <Navigation scrollY={scrollY} />
               <Hero />
               <Features />
               <HowItWorks />
@@ -60,8 +55,22 @@ function App() {
               <StatsGrid />
               <ScreeningQuiz />
               <CTA />
-            </Layout>
+              <Footer />
+            </>
           } />
+          
+          {/* Auth Route */}
+          <Route path="/auth" element={<Auth />} />
+          
+          {/* Protected Dashboard Route */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          
+          {/* Catch all - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
