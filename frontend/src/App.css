@@ -143,3 +143,14 @@ html {
   }
 }
 
+/* Add to your App.css */
+.adventure-fullscreen {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Make sure the ReadingAdventure component takes full width */
+.adventure-fullscreen .reading-adventure {
+  min-height: 100vh;
+}

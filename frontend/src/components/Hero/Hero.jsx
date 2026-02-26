@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Hero.css';
 
 export function Hero() {
   const heroRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setIsLoaded(true);
@@ -30,6 +32,10 @@ export function Hero() {
     if (quizSection) {
       quizSection.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  const handleStartAssessment = () => {
+    navigate('/start-assessment'); // Changed from '/adventure' to '/start-assessment'
   };
 
   return (
@@ -100,13 +106,16 @@ export function Hero() {
             className={`Hero__buttons ${isLoaded ? 'loaded' : ''}`}
             style={{ transitionDelay: '0.6s' }}
           >
-            <a href="#features" className="Hero__button Hero__button--primary">
+            <button 
+              onClick={handleStartAssessment}
+              className="Hero__button Hero__button--primary"
+            >
               <span>Start Free Assessment</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="5" y1="12" x2="19" y2="12"></line>
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
-            </a>
+            </button>
             <button 
               onClick={scrollToQuiz}
               className="Hero__button Hero__button--secondary"

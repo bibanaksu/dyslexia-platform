@@ -1,0 +1,52 @@
+.parent-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: 'Nunito', sans-serif;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3rem;
+  background: linear-gradient(135deg, #6B8C5C, #4A7A5A);
+  padding: 2rem;
+  border-radius: 2rem;
+  color: white;
+}
+
+.dashboard-header h1 {
+  font-family: 'Baloo 2', cursive;
+  font-size: 2rem;
+  margin: 0;
+}
+
+.start-adventure-btn {
+  background: white;
+  color: #4A7A5A;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 3rem;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.start-adventure-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.dashboard-content {
+  background: white;
+  border-radius: 2rem;
+  padding: 3rem;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(74, 122, 90, 0.15);
+  font-size: 1.2rem;
+  color: #2C1810;
+}

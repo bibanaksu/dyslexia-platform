@@ -1,0 +1,522 @@
+/* Import kid-friendly fonts */
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Fredoka+One&display=swap');
+/* Reading Adventure - Full Screen Image Background with Centered Quests */
+
+.reading-adventure {
+  position: relative;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Full screen image background */
+.adventure-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.background-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+.background-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.2); /* Very subtle dark overlay */
+  pointer-events: none;
+}
+
+/* Quest Path Container - Centered on the image */
+.adventure-content {
+  position: relative;
+  z-index: 10;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== QUEST PATH ===== */
+.level-badge {
+  background: linear-gradient(135deg, #6B8C5C, #4A7A5A);
+  color: white;
+  border-radius: 2rem;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 20px rgba(74, 122, 90, 0.4);
+}
+
+.level-label {
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.level-name {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.3rem;
+  font-weight: 900;
+  margin-top: 0.2rem;
+}
+
+.quest-nodes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ===== QUEST NODE ===== */
+.quest-node {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.node-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.node-row.right {
+  flex-direction: row-reverse;
+}
+
+.node-bubble {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  border: 4px solid white;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.node-bubble:hover:not(.locked) {
+  transform: scale(1.1);
+}
+
+.node-bubble.completed {
+  background: linear-gradient(135deg, #4ECDC4, #45B7AA);
+  box-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+}
+
+.node-bubble.active {
+  background: linear-gradient(135deg, #FF9F4B, #FFB347);
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 6px rgba(255, 159, 75, 0.3), 0 10px 20px rgba(255, 159, 75, 0.4); }
+  50% { box-shadow: 0 0 0 12px rgba(255, 159, 75, 0.1), 0 10px 30px rgba(255, 159, 75, 0.6); }
+}
+
+.node-bubble.locked {
+  background: linear-gradient(135deg, #A8A8A8, #888888);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.node-bubble.locked:hover {
+  transform: none;
+}
+
+.check-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* ===== QUEST CARD ===== */
+.quest-card {
+  flex: 1;
+  background: white;
+  border-radius: 1.5rem;
+  border: 3px solid #FFD79C;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.quest-card:hover:not(.locked) {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(74, 122, 90, 0.2);
+  border-color: #FF9F4B;
+}
+
+.quest-card.completed {
+  border-color: #4ECDC4;
+}
+
+.quest-card.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #C0C0C0;
+}
+
+.quest-tag {
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+
+.tag-completed { color: #4ECDC4; }
+.tag-active { color: #FF9F4B; }
+.tag-locked { color: #888888; }
+
+.quest-title {
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #2C1810;
+  margin-bottom: 0.2rem;
+}
+
+.quest-card.locked .quest-title {
+  color: #888888;
+}
+
+.quest-description {
+  font-size: 0.8rem;
+  color: #8B6B4F;
+  font-weight: 700;
+}
+
+.quest-animal {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  opacity: 0.7;
+  font-size: 2rem;
+}
+
+.connector-line {
+  width: 4px;
+  height: 35px;
+  background: linear-gradient(180deg, #C4A27A, #E8D5B5);
+  border-radius: 2px;
+  margin: 0.2rem 0;
+}
+
+.connector-line.completed {
+  background: linear-gradient(180deg, #4ECDC4, #45B7AA);
+}
+
+/* ===== QUEST POPUP ===== */
+.quest-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.quest-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.quest-popup {
+  background: linear-gradient(135deg, #FFF9F0, #FFF2E0);
+  border-radius: 3rem 3rem 0 0;
+  border: 4px solid #FFD79C;
+  border-bottom: none;
+  padding: 2.5rem 2rem;
+  max-width: 500px;
+  width: 100%;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 -20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.quest-overlay.visible .quest-popup {
+  transform: translateY(0);
+}
+
+.popup-mascot {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 5rem;
+}
+
+.popup-title {
+  font-family: 'Baloo 2', cursive;
+  font-size: 2rem;
+  font-weight: 900;
+  color: #2C1810;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.popup-description {
+  font-size: 1.1rem;
+  color: #6B4F35;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.popup-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-start {
+  flex: 1;
+  background: linear-gradient(135deg, #FF9F4B, #FFB347);
+  color: white;
+  border: none;
+  border-radius: 2rem;
+  padding: 1.2rem;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.2rem;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(255, 159, 75, 0.4);
+}
+
+.btn-start:hover:not(:disabled) {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(255, 159, 75, 0.5);
+}
+
+.btn-start:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-later {
+  background: #FFF2E0;
+  color: #4A2E1A;
+  border: 3px solid #FFD79C;
+  border-radius: 2rem;
+  padding: 1.2rem 2rem;
+  font-family: 'Baloo 2', cursive;
+  font-size: 1.1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-later:hover {
+  background: #FFE4B5;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .adventure-content {
+    padding: 1rem;
+  }
+
+  .node-row, .node-row.right {
+    flex-direction: row;
+    gap: 0.8rem;
+  }
+
+  .node-bubble {
+    width: 60px;
+    height: 60px;
+  }
+
+  .quest-animal {
+    display: none;
+  }
+
+  .popup-buttons {
+    flex-direction: column;
+  }
+
+  .btn-later {
+    padding: 1rem;
+  }
+}
+/* ===== QUEST CARD ===== */
+.quest-card {
+  flex: 1;
+  background: white;
+  border-radius: 1.5rem;
+  border: 3px solid #FFD79C;
+  padding: 1rem 1.2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  font-family: 'Quicksand', sans-serif; /* Kid-friendly font */
+}
+
+.quest-card:hover:not(.locked) {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 30px rgba(74, 122, 90, 0.2);
+  border-color: #FF9F4B;
+}
+
+.quest-card.completed {
+  border-color: #4ECDC4;
+  background: #f0fff8; /* Light mint background */
+}
+
+.quest-card.active {
+  border-color: #FF9F4B;
+  background: #fff8f0; /* Light peach background */
+  border-width: 4px;
+}
+
+.quest-card.locked {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #C0C0C0;
+  background: #f5f5f5;
+}
+
+.quest-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+  font-family: 'Fredoka One', cursive; /* Fun, bold font for tags */
+  text-transform: uppercase;
+}
+
+.tag-completed { 
+  color: #2a9d8f; /* Teal green */
+}
+
+.tag-active { 
+  color: #e76f51; /* Warm orange */
+}
+
+.tag-locked { 
+  color: #888888;
+}
+
+.quest-title {
+  font-family: 'Fredoka One', cursive; /* Fun font for titles */
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #2C1810;
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.3px;
+}
+
+.quest-card.locked .quest-title {
+  color: #888888;
+}
+
+.quest-description {
+  font-size: 0.85rem;
+  color: #6B4F35;
+  font-weight: 600;
+  line-height: 1.4;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.quest-animal {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  opacity: 0.7;
+  font-size: 2rem;
+}
+
+/* Level badge update */
+.level-badge {
+  background: linear-gradient(135deg, #6B8C5C, #4A7A5A);
+  color: white;
+  border-radius: 2rem;
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 20px rgba(74, 122, 90, 0.4);
+}
+
+.level-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.level-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-top: 0.2rem;
+  letter-spacing: 0.5px;
+}
+/* DELETE THIS ENTIRE BLOCK */
+.level-badge {
+  background: linear-gradient(135deg, #6B8C5C, #4A7A5A);
+  color: white;
+  border-radius: 2rem;
+  padding: 1.2rem 1.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  box-shadow: 0 8px 20px rgba(74, 122, 90, 0.4);
+}
+
+.level-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.level-name {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem;
+  font-weight: 400;
+  margin-top: 0.2rem;
+  letter-spacing: 0.5px;
+}

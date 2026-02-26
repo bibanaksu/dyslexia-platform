@@ -13,11 +13,15 @@ export function Navigation({ scrollY = 0 }) {
 
   const isScrolled = scrollY > 50;
 
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
   return (
     <nav className={`Navigation ${isScrolled ? 'scrolled' : ''}`}>
       <div className="Navigation__container">
         {/* Logo */}
-        <a href="#home" className="Navigation__logo">
+        <a href="#home" className="Navigation__logo" onClick={closeMenu}>
           <div className="Navigation__logo-icon">
             <svg
               width="20"
@@ -41,6 +45,7 @@ export function Navigation({ scrollY = 0 }) {
               key={link.name}
               href={link.href}
               className="Navigation__link"
+              onClick={closeMenu}
             >
               {link.name}
               <span className="Navigation__link-underline"></span>
@@ -50,13 +55,13 @@ export function Navigation({ scrollY = 0 }) {
 
         {/* Actions */}
         <div className="Navigation__actions">
-          {/* SIGN IN BUTTON - REPLACED SEARCH ICON */}
-         <button 
-  className="Navigation__signin-btn"
-  onClick={() => window.location.href = '/auth'}
->
-  Sign In
-</button>
+          {/* SIGN IN BUTTON */}
+          <button 
+            className="Navigation__signin-btn"
+            onClick={() => window.location.href = '/auth'}
+          >
+            Sign In
+          </button>
 
           <button
             className={`Navigation__hamburger ${isMenuOpen ? 'active' : ''}`}
@@ -78,13 +83,19 @@ export function Navigation({ scrollY = 0 }) {
               key={link.name}
               href={link.href}
               className="Navigation__mobile-link"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={closeMenu}
             >
               {link.name}
             </a>
           ))}
-          {/* Mobile Sign In Button */}
-          <button className="Navigation__mobile-signin-btn">
+          {/* Mobile Sign In Button - UPDATED */}
+          <button 
+            className="Navigation__mobile-signin-btn"
+            onClick={() => {
+              window.location.href = '/auth';
+              closeMenu();
+            }}
+          >
             Sign In
           </button>
         </div>
