@@ -1,427 +1,1018 @@
-/* Word Assessment Styles - Kid-friendly Design - CENTERED */
+/* Word Assessment - Forest Adventure Theme */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@400;500;600;700&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Fredoka+One&display=swap');
+/* OpenDyslexic font for word displays */
+@font-face {
+  font-family: 'OpenDyslexic';
+  src: url('https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/woff/OpenDyslexic-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
 
-.assessment-container {
+.word-assessment {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f0e7 0%, #e8dfd1 100%);
   font-family: 'Quicksand', sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* Instructions Main Card - Center */
-.instructions-main-card {
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  background: white;
-  border-radius: 3rem;
-  padding: 3rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  border: 4px solid #FFD79C;
   position: relative;
-  box-sizing: border-box;
-}
-
-.back-btn {
-  position: absolute;
-  top: 2rem;
-  left: 2rem;
-  background: none;
-  border: none;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #4A7A5A;
-  cursor: pointer;
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
-  transition: all 0.3s ease;
-}
-
-.back-btn:hover {
-  background: #F5F0E7;
-}
-
-.main-title {
-  font-family: 'Fredoka One', cursive;
-  font-size: 2.5rem;
-  color: #2C1810;
-  text-align: center;
-  margin-bottom: 0.5rem;
-  width: 100%;
-}
-
-.main-subtitle {
-  font-size: 1.1rem;
-  color: #6B4F35;
-  text-align: center;
-  margin-bottom: 3rem;
-  font-weight: 600;
-  width: 100%;
-}
-
-/* Exercises Grid - Centered */
-.exercises-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  margin: 0 auto;
-  width: 100%;
-  justify-content: center;
-}
-
-.exercise-card {
-  background: #F5F0E7;
-  border-radius: 2rem;
-  padding: 2rem;
-  border: 3px solid #FFD79C;
-  transition: all 0.3s ease;
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-  width: 100%;
-  box-sizing: border-box;
-  margin: 0 auto;
-}
-
-.exercise-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 15px 30px rgba(74, 122, 90, 0.2);
-}
-
-.exercise-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.exercise-card-title {
-  font-family: 'Fredoka One', cursive;
-  font-size: 1.3rem;
-  color: #2C1810;
-  margin: 0;
-}
-
-.exercise-badge {
-  background: #4A7A5A;
-  color: white;
-  padding: 0.3rem 1rem;
-  border-radius: 2rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.exercise-card-description {
-  font-size: 0.95rem;
-  color: #6B4F35;
-  line-height: 1.5;
-  margin: 0;
-  text-align: left;
-}
-
-.instruction-bubble {
-  background: white;
-  border-radius: 1rem;
-  padding: 1rem;
-  border-left: 4px solid #4A7A5A;
-  display: flex;
-  gap: 0.8rem;
-  align-items: flex-start;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.quote-icon {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.instruction-text {
-  font-size: 0.9rem;
-  color: #2C1810;
-  font-weight: 600;
-  margin: 0;
-  text-align: left;
-}
-
-.note-bubble {
-  background: #fff0e8;
-  border-radius: 1rem;
-  padding: 1rem;
-  display: flex;
-  gap: 0.8rem;
-  align-items: flex-start;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.note-icon {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-.note-text {
-  font-size: 0.85rem;
-  color: #e76f51;
-  font-weight: 600;
-  margin: 0;
-  text-align: left;
-}
-
-.progress-section {
-  margin-top: 0.5rem;
-  width: 100%;
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-  width: 100%;
-}
-
-.progress-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #6B4F35;
-}
-
-.progress-percent {
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #4A7A5A;
-}
-
-.progress-bar-container {
-  width: 100%;
-  height: 8px;
-  background: #E8DFD1;
-  border-radius: 4px;
   overflow: hidden;
 }
 
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4A7A5A, #6B8C5C);
-  border-radius: 4px;
-  transition: width 0.3s ease;
+/* Navigation Back Button */
+.nav-back-btn {
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #2C5A3A;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.start-exercise-btn {
-  background: linear-gradient(135deg, #4A7A5A, #2C5A3A);
-  color: white;
-  border: none;
-  padding: 1rem;
-  font-size: 1rem;
-  font-weight: 700;
+.nav-back-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.nav-back-btn.stage-back {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================
+   FOREST MAP STYLES
+   ============================================ */
+.forest-map {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #87CEEB 0%, #98D9A8 50%, #4A7A5A 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.map-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.map-trees {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: 
+    radial-gradient(ellipse 80px 100px at 10% 100%, #2C5A3A 70%, transparent 70%),
+    radial-gradient(ellipse 60px 80px at 25% 100%, #3D6B4A 70%, transparent 70%),
+    radial-gradient(ellipse 90px 120px at 40% 100%, #2C5A3A 70%, transparent 70%),
+    radial-gradient(ellipse 70px 90px at 55% 100%, #3D6B4A 70%, transparent 70%),
+    radial-gradient(ellipse 85px 110px at 70% 100%, #2C5A3A 70%, transparent 70%),
+    radial-gradient(ellipse 65px 85px at 85% 100%, #3D6B4A 70%, transparent 70%),
+    radial-gradient(ellipse 75px 95px at 95% 100%, #2C5A3A 70%, transparent 70%);
+}
+
+.floating-leaf {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #8BC34A, #689F38);
+  border-radius: 0 50% 50% 50%;
+  opacity: 0.7;
+}
+
+.map-title {
   font-family: 'Fredoka One', cursive;
-  border-radius: 2rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  margin-top: 0.5rem;
-  width: 100%;
+  font-size: 3rem;
+  color: #fff;
+  text-shadow: 3px 3px 0 #2C5A3A, 6px 6px 10px rgba(0, 0, 0, 0.3);
+  margin-bottom: 0.5rem;
+  z-index: 10;
   text-align: center;
 }
 
-.start-exercise-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(74, 122, 90, 0.4);
+.map-subtitle {
+  font-size: 1.3rem;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  margin-bottom: 3rem;
+  z-index: 10;
+  font-weight: 600;
 }
 
-/* Individual exercise instructions page - Centered */
-.exercise-instructions-card {
-  max-width: 800px;
+.locations-container {
+  position: relative;
   width: 100%;
-  margin: 0 auto;
-  background: white;
+  max-width: 900px;
+  height: 400px;
+  z-index: 10;
+}
+
+.location-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.location-node.locked {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.location-glow {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  background: var(--location-color);
+  border-radius: 50%;
+  filter: blur(30px);
+  opacity: 0.5;
+  z-index: -1;
+}
+
+.location-icon {
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #fff, #f0f0f0);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  border: 4px solid var(--location-color);
+  transition: all 0.3s ease;
+}
+
+.location-node.unlocked:hover .location-icon {
+  transform: scale(1.1);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+}
+
+.location-name {
+  margin-top: 1rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  max-width: 150px;
+}
+
+.lock-icon {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 1.5rem;
+  background: #2C1810;
+  border-radius: 50%;
+  padding: 0.3rem;
+}
+
+.explorer-icon {
+  position: absolute;
+  bottom: -40px;
+  font-size: 2rem;
+}
+
+/* ============================================
+   STAGE 1 - SUNNY CLEARING
+   ============================================ */
+.stage {
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  padding-top: 5rem;
+}
+
+.stage-sunny {
+  background: linear-gradient(180deg, #87CEEB 0%, #B8E6B8 60%, #90C695 100%);
+}
+
+.sunny-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.sun {
+  position: absolute;
+  top: 30px;
+  right: 50px;
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #FFD700, #FFA500);
+  border-radius: 50%;
+  box-shadow: 0 0 60px #FFD700, 0 0 100px #FFA50080;
+}
+
+.cloud {
+  position: absolute;
+  top: 60px;
+  width: 100px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 40px;
+  box-shadow: 
+    30px -10px 0 rgba(255, 255, 255, 0.9),
+    60px 0 0 rgba(255, 255, 255, 0.9);
+}
+
+.flower {
+  position: absolute;
+  bottom: 20px;
+  width: 30px;
+  height: 30px;
+  background: radial-gradient(circle, #FFD700 30%, #FF6B6B 30%, #FF6B6B 60%, transparent 60%);
+  border-radius: 50%;
+}
+
+.flower::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  width: 4px;
+  height: 25px;
+  background: #4A7A5A;
+  transform: translateX(-50%);
+}
+
+.stage-header {
+  position: fixed;
+  top: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+}
+
+.stage-progress {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 0.75rem 2rem;
   border-radius: 3rem;
-  padding: 3rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  border: 4px solid #FFD79C;
-  box-sizing: border-box;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.2rem;
+  color: #2C5A3A;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Main Mushroom */
+.main-mushroom {
+  margin-top: 4rem;
+  margin-bottom: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mushroom-cap {
+  width: 200px;
+  height: 120px;
+  background: linear-gradient(180deg, #FF6B6B 0%, #E55B5B 100%);
+  border-radius: 100px 100px 20px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.mushroom-cap::before {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  top: 20px;
+  left: 30px;
+}
+
+.mushroom-cap::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  top: 50px;
+  right: 40px;
+}
+
+.word-display {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-size: 2.5rem;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.mushroom-stem {
+  width: 60px;
+  height: 50px;
+  background: linear-gradient(180deg, #F5E6D3 0%, #E8D5C0 100%);
+  border-radius: 0 0 20px 20px;
+  margin-top: -5px;
+}
+
+/* Answer Mushrooms */
+.answer-mushrooms {
+  display: flex;
+  gap: 3rem;
+  margin-top: 2rem;
+}
+
+.answer-mushroom {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.3s ease;
+}
+
+.answer-mushroom.wobble {
+  animation: wobble 0.5s ease;
+}
+
+@keyframes wobble {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+.small-mushroom-cap {
+  width: 140px;
+  height: 85px;
+  background: linear-gradient(180deg, #8B5CF6 0%, #7C3AED 100%);
+  border-radius: 70px 70px 15px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.answer-mushroom:hover .small-mushroom-cap {
+  background: linear-gradient(180deg, #A78BFA 0%, #8B5CF6 100%);
+  box-shadow: 0 12px 30px rgba(139, 92, 246, 0.4);
+}
+
+.option-word {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-size: 1.8rem;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.small-mushroom-stem {
+  width: 40px;
+  height: 35px;
+  background: linear-gradient(180deg, #F5E6D3 0%, #E8D5C0 100%);
+  border-radius: 0 0 15px 15px;
+  margin-top: -3px;
+}
+
+/* Running Animal */
+.running-animal {
+  position: fixed;
+  bottom: 50px;
+  font-size: 3rem;
+  z-index: 100;
+}
+
+/* ============================================
+   STAGE 2 - MISTY WOODS
+   ============================================ */
+.stage-misty {
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+.misty-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mist-layer {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 300px 100px at 20% 80%, rgba(255, 255, 255, 0.1), transparent),
+    radial-gradient(ellipse 400px 150px at 70% 70%, rgba(255, 255, 255, 0.08), transparent),
+    radial-gradient(ellipse 250px 80px at 50% 90%, rgba(255, 255, 255, 0.1), transparent);
+}
+
+.firefly {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #FFFF00;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #FFFF00, 0 0 20px #FFFF00;
+}
+
+.misty-header .stage-progress {
+  background: rgba(30, 30, 60, 0.9);
+  color: #A78BFA;
+  border: 2px solid #A78BFA;
+}
+
+/* Firefly Word Formation */
+.firefly-word-container {
+  margin-top: 5rem;
+  margin-bottom: 3rem;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.firefly-word {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.firefly-letter {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-size: 3rem;
+  color: transparent;
+  text-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.firefly-letter.revealed {
+  color: #FFFF00;
+  text-shadow: 0 0 20px #FFFF00, 0 0 40px #FFD700;
+}
+
+/* Falling Leaves */
+.falling-leaves {
+  display: flex;
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.leaf-option {
+  background: linear-gradient(135deg, #4A7A5A 0%, #2C5A3A 100%);
+  border: none;
+  padding: 1.5rem 2.5rem;
+  border-radius: 50% 0 50% 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  min-width: 150px;
+}
+
+.leaf-option:hover {
+  background: linear-gradient(135deg, #5A8A6A 0%, #3D6B4A 100%);
+}
+
+.leaf-option.shake {
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}
+
+.leaf-word {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-size: 1.5rem;
+  color: #fff;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Light Burst Effect */
+.light-burst {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, #FFFF00, transparent);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* ============================================
+   STAGE 3 - ANCIENT TREE
+   ============================================ */
+.stage-ancient {
+  background: linear-gradient(180deg, #0a0a1a 0%, #1a1a2e 50%, #0d1b2a 100%);
+}
+
+.ancient-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.golden-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #DAA520;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #DAA520;
+}
+
+.ancient-header .stage-progress {
+  background: rgba(20, 20, 40, 0.9);
+  color: #DAA520;
+  border: 2px solid #DAA520;
+}
+
+/* Owl Introduction */
+.owl-intro {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 2rem;
+}
+
+.owl-character {
+  font-size: 6rem;
+  margin-bottom: 1rem;
+}
+
+.owl-speech {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2rem;
+  border-radius: 2rem;
+  max-width: 500px;
+  text-align: center;
+}
+
+.owl-speech p {
+  font-family: 'Quicksand', sans-serif;
+  font-size: 1.2rem;
+  color: #2C1810;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.owl-dismiss {
+  background: linear-gradient(135deg, #DAA520, #B8860B);
+  color: #fff;
+  border: none;
+  padding: 1rem 2rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.2rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.owl-dismiss:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(218, 165, 32, 0.4);
+}
+
+/* Ancient Tree */
+.ancient-tree {
+  margin-top: 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   position: relative;
 }
 
-.back-btn-small {
-  background: none;
+.tree-trunk {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: 300px;
+  margin-bottom: 2rem;
+}
+
+.tree-branch {
+  width: 25px;
+  height: 25px;
+  background: #4A3520;
+  border-radius: 50%;
+  transition: all 0.5s ease;
+}
+
+.tree-branch.lit {
+  background: #DAA520;
+  box-shadow: 0 0 15px #DAA520;
+}
+
+/* Rune Display */
+.rune-display {
+  background: linear-gradient(135deg, rgba(139, 90, 43, 0.8), rgba(101, 67, 33, 0.9));
+  padding: 2rem 4rem;
+  border-radius: 1rem;
+  border: 3px solid #DAA520;
+  box-shadow: 0 0 30px rgba(218, 165, 32, 0.3);
+  margin-bottom: 3rem;
+}
+
+.rune-word {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-size: 2.5rem;
+  color: transparent;
+  transition: all 0.8s ease;
+}
+
+.rune-word.revealed {
+  color: #DAA520;
+  text-shadow: 0 0 20px #DAA520, 0 0 40px #B8860B;
+}
+
+/* Spell Scrolls */
+.spell-scrolls {
+  display: flex;
+  gap: 2rem;
+}
+
+.spell-scroll {
+  background: linear-gradient(180deg, #F5E6D3 0%, #E8D5C0 50%, #D4C4A8 100%);
   border: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #4A7A5A;
+  padding: 1.5rem 2.5rem;
+  border-radius: 0.5rem;
   cursor: pointer;
-  margin-bottom: 1.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+  position: relative;
+  min-width: 140px;
+}
+
+.spell-scroll::before,
+.spell-scroll::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 110%;
+  height: 15px;
+  background: linear-gradient(180deg, #8B4513, #654321);
+  border-radius: 3px;
+}
+
+.spell-scroll::before {
+  top: -8px;
+}
+
+.spell-scroll::after {
+  bottom: -8px;
+}
+
+.spell-scroll:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(218, 165, 32, 0.3);
+}
+
+.spell-scroll.shake {
+  animation: shake 0.5s ease;
+}
+
+.scroll-word {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-size: 1.5rem;
+  color: #2C1810;
+}
+
+/* ============================================
+   CELEBRATION SCREEN
+   ============================================ */
+.celebration-screen {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #4A7A5A 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.confetti-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.celebration-content {
+  text-align: center;
+  z-index: 10;
+  padding: 3rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 3rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+}
+
+.trophy {
+  font-size: 6rem;
   display: inline-block;
 }
 
-.back-btn-small:hover {
-  background: #F5F0E7;
+.celebration-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.5rem;
+  color: #2C5A3A;
+  margin: 1rem 0;
 }
 
-.exercise-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.celebration-subtitle {
+  font-size: 1.5rem;
+  color: #4A7A5A;
+  margin-bottom: 1.5rem;
+  font-weight: 600;
+}
+
+.celebration-stars {
+  font-size: 2rem;
   margin-bottom: 2rem;
-  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-.exercise-title {
+.view-results-btn {
+  background: linear-gradient(135deg, #4A7A5A, #2C5A3A);
+  color: #fff;
+  border: none;
+  padding: 1rem 2.5rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.2rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.view-results-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(74, 122, 90, 0.4);
+}
+
+/* ============================================
+   ASSESSMENT SUMMARY
+   ============================================ */
+.summary-screen {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f0e7 0%, #e8dfd1 100%);
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-card {
+  background: #fff;
+  border-radius: 2rem;
+  padding: 2.5rem;
+  max-width: 900px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+}
+
+.summary-title {
   font-family: 'Fredoka One', cursive;
   font-size: 2rem;
   color: #2C1810;
-  margin: 0;
-}
-
-.word-count {
-  background: #4A7A5A;
-  color: white;
-  padding: 0.5rem 1.2rem;
-  border-radius: 2rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.instruction-box {
-  background: linear-gradient(135deg, #F5F0E7, #E8DFD1);
-  border-radius: 2rem;
-  padding: 2rem;
   text-align: center;
-  margin-bottom: 1.5rem;
-  width: 100%;
-  box-sizing: border-box;
+  margin-bottom: 2rem;
 }
 
-.main-instruction {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2C1810;
-  margin-bottom: 1rem;
-  font-family: 'Fredoka One', cursive;
-  text-align: center;
+.stats-overview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-.timing-info {
-  font-size: 1rem;
-  color: #4A7A5A;
-  font-weight: 600;
-  text-align: center;
-}
-
-.warning-box {
-  background: #fff0e8;
-  border-radius: 1rem;
+.stat-box {
+  background: linear-gradient(135deg, #4A7A5A, #2C5A3A);
   padding: 1.5rem;
-  margin-bottom: 2rem;
-  border-left: 4px solid #e76f51;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.warning-text {
-  color: #e76f51;
-  font-weight: 600;
-  font-size: 0.95rem;
-  margin: 0;
-  line-height: 1.5;
-  text-align: left;
-}
-
-.words-preview-section {
-  margin-bottom: 2rem;
-  width: 100%;
-}
-
-.preview-title {
-  font-size: 1rem;
-  color: #2C1810;
-  margin-bottom: 1rem;
-  font-weight: 700;
-  text-align: left;
-}
-
-.words-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: center;
-  background: #F5F0E7;
   border-radius: 1.5rem;
-  padding: 1.5rem;
-  width: 100%;
-  box-sizing: border-box;
+  text-align: center;
+  color: #fff;
 }
 
-.word-chip {
-  background: white;
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #4A7A5A;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-}
-
-.begin-button {
-  background: linear-gradient(135deg, #e76f51, #f4a261);
-  color: white;
-  border: none;
-  padding: 1.2rem;
-  font-size: 1.3rem;
-  font-weight: 700;
+.stat-value {
+  display: block;
   font-family: 'Fredoka One', cursive;
-  border-radius: 3rem;
+  font-size: 2rem;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.results-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border-radius: 1rem;
+  border: 2px solid #e8dfd1;
+  margin-bottom: 2rem;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.results-table th {
+  background: #4A7A5A;
+  color: #fff;
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+}
+
+.results-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e8dfd1;
+}
+
+.results-table .word-cell {
+  font-family: 'OpenDyslexic', sans-serif;
+  font-weight: 600;
+}
+
+.results-table .correct-row {
+  background: rgba(74, 122, 90, 0.1);
+}
+
+.results-table .incorrect-row {
+  background: rgba(231, 111, 81, 0.1);
+}
+
+.summary-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.export-btn {
+  background: linear-gradient(135deg, #e76f51, #f4a261);
+  color: #fff;
+  border: none;
+  padding: 1rem 2rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  border-radius: 2rem;
   cursor: pointer;
   transition: all 0.3s ease;
-  width: 100%;
-  box-shadow: 0 8px 20px rgba(231, 111, 81, 0.3);
-  text-align: center;
 }
 
-.begin-button:hover {
+.export-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 15px 30px rgba(231, 111, 81, 0.4);
+  box-shadow: 0 10px 25px rgba(231, 111, 81, 0.3);
 }
 
-/* Responsive */
+.back-btn-summary {
+  background: linear-gradient(135deg, #4A7A5A, #2C5A3A);
+  color: #fff;
+  border: none;
+  padding: 1rem 2rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn-summary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(74, 122, 90, 0.3);
+}
+
+/* ============================================
+   ENCOURAGEMENT POPUP
+   ============================================ */
+.encouragement-popup {
+  position: fixed;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #2C1810;
+  padding: 1rem 2.5rem;
+  border-radius: 3rem;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem;
+  z-index: 1000;
+  box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+}
+
+/* ============================================
+   RESPONSIVE STYLES
+   ============================================ */
 @media (max-width: 768px) {
-  .assessment-container {
-    padding: 1rem;
-  }
-  
-  .instructions-main-card,
-  .exercise-instructions-card {
-    padding: 1.5rem;
-  }
-  
-  .main-title {
+  .map-title {
     font-size: 2rem;
   }
-  
-  .exercises-grid {
-    grid-template-columns: 1fr;
+
+  .locations-container {
+    height: 500px;
   }
-  
-  .exercise-header {
+
+  .location-node {
+    position: relative !important;
+    transform: none !important;
+    left: auto !important;
+    top: auto !important;
+  }
+
+  .locations-container {
+    display: flex;
     flex-direction: column;
-    gap: 1rem;
-    align-items: flex-start;
+    align-items: center;
+    gap: 2rem;
+    height: auto;
   }
-  
-  .exercise-title {
+
+  .mushroom-cap {
+    width: 160px;
+    height: 100px;
+  }
+
+  .word-display {
+    font-size: 2rem;
+  }
+
+  .answer-mushrooms {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .small-mushroom-cap {
+    width: 120px;
+    height: 70px;
+  }
+
+  .option-word {
     font-size: 1.5rem;
   }
-  
-  .main-instruction {
-    font-size: 1.2rem;
+
+  .falling-leaves {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .spell-scrolls {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .stats-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .celebration-title {
+    font-size: 1.8rem;
+  }
+
+  .summary-actions {
+    flex-direction: column;
+  }
+
+  .export-btn,
+  .back-btn-summary {
+    width: 100%;
   }
 }
