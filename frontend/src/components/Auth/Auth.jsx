@@ -181,21 +181,7 @@ export function Auth() {
           {/* Test credentials helper */}
           {isSignIn && (
             <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-              <button 
-                type="button"
-                onClick={fillTestCredentials}
-                style={{
-                  background: 'none',
-                  border: '1px dashed #3D5A4C',
-                  padding: '5px 10px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  color: '#3D5A4C',
-                  cursor: 'pointer'
-                }}
-              >
-                Use Test Therapist Account
-              </button>
+              
             </div>
           )}
 

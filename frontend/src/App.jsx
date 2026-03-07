@@ -17,7 +17,8 @@ import { Footer } from './components/Footer/Footer';
 import Dashboard from './components/Dashboard/Dashboard';
 import ReadingAdventure from './components/ReadingAdventure/ReadingAdventure';
 import ParentDashboard from './components/ParentDashboard/ParentDashboard';
-import StartAssessment from './components/StartAssessment/StartAssessment'; // FIXED: Capitalization matches folder
+import StartAssessment from './components/StartAssessment/StartAssessment'; 
+import WordAssessment from './components/tasks/WordAssessment';
 
 // Protected Route Component with role support
 function ProtectedRoute({ children, requiredRole = 'therapist' }) {
@@ -82,7 +83,7 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
-          
+          <Route path="/tasks/word-assessment" element={<WordAssessment />} />
           {/* Parent Dashboard - Protected */}
           <Route path="/parent-dashboard" element={
             <ProtectedRoute requiredRole="parent">

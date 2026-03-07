@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const QuestPopup = ({ quest, isVisible, onClose, onStart }) => {
+  const navigate = useNavigate();
+
   if (!quest) return null;
 
   const getMascot = (animal) => {
@@ -12,6 +15,18 @@ const QuestPopup = ({ quest, isVisible, onClose, onStart }) => {
       dragon: '🐉'
     };
     return mascots[animal] || '🦊';
+  };
+
+  const handleStartClick = () => {
+    if (quest.status === 'locked') return;
+    
+    // Close the popup first
+    onClose();
+    
+    // Navigate to the word assessment instructions page
+    setTimeout(() => {
+      navigate('/tasks/word-assessment');
+    }, 300);
   };
 
   return (
@@ -28,7 +43,7 @@ const QuestPopup = ({ quest, isVisible, onClose, onStart }) => {
         <div className="popup-buttons">
           <button 
             className="btn-start"
-            onClick={onStart}
+            onClick={handleStartClick}
             disabled={quest.status === 'locked'}
           >
             {quest.status === 'locked' ? '🔒 Still Locked' : '✨ Start Quest!'}

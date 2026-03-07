@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import QuestPath from './QuestPath';
-import QuestPopup from './QuestPopup';
 import './ReadingAdventure.css';
 
 const ReadingAdventure = () => {
+  const navigate = useNavigate();
   const [selectedQuest, setSelectedQuest] = useState(null);
-  const [showPopup, setShowPopup] = useState(false);
 
   const quests = [
     {
@@ -74,19 +74,9 @@ const ReadingAdventure = () => {
   ];
 
   const handleQuestClick = (quest) => {
-    setSelectedQuest(quest);
-    setShowPopup(true);
-  };
-
-  const handleClosePopup = () => {
-    setShowPopup(false);
-    setTimeout(() => setSelectedQuest(null), 300);
-  };
-
-  const handleStartQuest = () => {
-    if (selectedQuest?.status === 'locked') return;
-    handleClosePopup();
-    console.log(`Starting quest: ${selectedQuest?.title}`);
+    if (quest.status === 'locked') return;
+    // Navigate directly to instructions page
+    navigate('/tasks/word-assessment');
   };
 
   return (
@@ -108,14 +98,6 @@ const ReadingAdventure = () => {
           onQuestClick={handleQuestClick}
         />
       </div>
-
-      {/* Quest Popup */}
-      <QuestPopup
-        quest={selectedQuest}
-        isVisible={showPopup}
-        onClose={handleClosePopup}
-        onStart={handleStartQuest}
-      />
     </div>
   );
 };
