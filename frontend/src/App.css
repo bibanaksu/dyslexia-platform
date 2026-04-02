@@ -154,3 +154,32 @@ html {
 .adventure-fullscreen .reading-adventure {
   min-height: 100vh;
 }
+/* Force proper scrolling */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto !important;
+  height: auto !important;
+  min-height: 100vh;
+}
+
+body {
+  overflow-y: auto !important;
+  position: relative;
+}
+
+.app {
+  min-height: 200vh; /* Temporary to ensure there's scrolling content */
+  position: relative;
+}
+/* Add to your App.css */
+/* Prevent body scroll from affecting route transitions */
+body {
+  background: var(--bg-beige, #fefae0);
+}
+
+/* Ensure each route has proper background */
+.app > div {
+  min-height: 100vh;
+}

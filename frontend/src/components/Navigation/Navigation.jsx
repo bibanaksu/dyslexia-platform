@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './Navigation.css';
 
 export function Navigation({ scrollY = 0 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   const navLinks = [
     { name: 'Home', href: '#home' },
@@ -13,7 +15,15 @@ export function Navigation({ scrollY = 0 }) {
 
   const isScrolled = scrollY > 50;
 
-  const closeMenu = () => {
+  const handleSignIn = () => {
+    navigate('/auth');
+  };
+
+  const handleScrollToSection = (href) => {
+    const element = document.querySelector(href);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
     setIsMenuOpen(false);
   };
 
@@ -21,7 +31,10 @@ export function Navigation({ scrollY = 0 }) {
     <nav className={`Navigation ${isScrolled ? 'scrolled' : ''}`}>
       <div className="Navigation__container">
         {/* Logo */}
-        <a href="#home" className="Navigation__logo" onClick={closeMenu}>
+        <a href="#home" className="Navigation__logo" onClick={(e) => {
+          e.preventDefault();
+          handleScrollToSection('#home');
+        }}>
           <div className="Navigation__logo-icon">
             <svg
               width="20"
@@ -45,7 +58,10 @@ export function Navigation({ scrollY = 0 }) {
               key={link.name}
               href={link.href}
               className="Navigation__link"
-              onClick={closeMenu}
+              onClick={(e) => {
+                e.preventDefault();
+                handleScrollToSection(link.href);
+              }}
             >
               {link.name}
               <span className="Navigation__link-underline"></span>
@@ -55,10 +71,9 @@ export function Navigation({ scrollY = 0 }) {
 
         {/* Actions */}
         <div className="Navigation__actions">
-          {/* SIGN IN BUTTON */}
           <button 
             className="Navigation__signin-btn"
-            onClick={() => window.location.href = '/auth'}
+            onClick={handleSignIn}
           >
             Sign In
           </button>
@@ -83,18 +98,17 @@ export function Navigation({ scrollY = 0 }) {
               key={link.name}
               href={link.href}
               className="Navigation__mobile-link"
-              onClick={closeMenu}
+              onClick={(e) => {
+                e.preventDefault();
+                handleScrollToSection(link.href);
+              }}
             >
               {link.name}
             </a>
           ))}
-          {/* Mobile Sign In Button - UPDATED */}
           <button 
             className="Navigation__mobile-signin-btn"
-            onClick={() => {
-              window.location.href = '/auth';
-              closeMenu();
-            }}
+            onClick={handleSignIn}
           >
             Sign In
           </button>

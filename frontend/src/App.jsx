@@ -36,22 +36,21 @@ function ProtectedRoute({ children, requiredRole = 'therapist' }) {
   return children;
 }
 
-// Public Route Component - NO REDIRECT for auth page
-// This allows logged-in users to still access the auth page
-function PublicRoute({ children }) {
-  // Don't redirect from auth page even if logged in
-  return children;
-}
-
 function App() {
   const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
+      console.log('Scrolling! Window.scrollY:', window.scrollY); // Debug log
       setScrollY(window.scrollY);
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('scroll', handleScroll);
+    
+    // Log initial state
+    console.log('Scroll listener attached');
+    console.log('Initial scrollY:', window.scrollY);
+    
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 

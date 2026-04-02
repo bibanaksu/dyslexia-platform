@@ -3,13 +3,22 @@
 .Auth {
   min-height: 100vh;
   display: flex;
-  background: var(--bg-beige);
+  background: var(--bg-beige, #fefae0);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 1000;
 }
 
-/* ─── Left Panel ─────────────────────────────────────────── */
+/* Left Panel */
 .Auth__left {
   width: 40%;
-  background: var(--bg-beige);
+  background: var(--bg-beige, #fefae0);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -105,7 +114,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  background: var(--bg-beige);
+  background: var(--bg-beige, #fefae0);
   aspect-ratio: 9/16;
 }
 
@@ -114,14 +123,14 @@
   display: none;
 }
 
-/* ─── Right Panel ────────────────────────────────────────── */
+/* Right Panel */
 .Auth__right {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--spacing-2xl, 2rem) var(--spacing-xl, 1.5rem);
-  background: var(--bg-beige);
+  background: var(--bg-beige, #fefae0);
   overflow-y: auto;
 }
 
@@ -377,10 +386,13 @@
   text-decoration: underline;
 }
 
-/* ─── Responsive ─────────────────────────────────────────── */
+/* Responsive */
 @media (max-width: 900px) {
   .Auth {
     flex-direction: column;
+    position: relative;
+    height: auto;
+    min-height: 100vh;
   }
 
   .Auth__left {

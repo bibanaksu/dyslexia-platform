@@ -115,11 +115,6 @@ export function Auth() {
     }
   };
 
-  const fillTestCredentials = () => {
-    setEmail('therapist@dyslexiaplatform.com');
-    setPassword('Therapist@123');
-  };
-
   return (
     <div className="Auth">
       {/* Left Panel - 9:16 Image */}
@@ -177,13 +172,6 @@ export function Auth() {
               Sign Up
             </button>
           </div>
-
-          {/* Test credentials helper */}
-          {isSignIn && (
-            <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-              
-            </div>
-          )}
 
           {error && (
             <div style={{ 
