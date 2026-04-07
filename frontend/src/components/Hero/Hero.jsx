@@ -27,15 +27,12 @@ export function Hero() {
   const parallaxOffset = scrollY * 0.3;
   const opacityFade = Math.max(0, 1 - scrollY / 600);
 
-  const scrollToQuiz = () => {
-    const quizSection = document.getElementById('parent-quiz');
-    if (quizSection) {
-      quizSection.scrollIntoView({ behavior: 'smooth' });
-    }
+  const handleStartAssessment = () => {
+    navigate('/start-assessment');
   };
 
-  const handleStartAssessment = () => {
-    navigate('/start-assessment'); // Changed from '/adventure' to '/start-assessment'
+  const handleTakeQuiz = () => {
+    navigate('/quiz');
   };
 
   return (
@@ -117,7 +114,7 @@ export function Hero() {
               </svg>
             </button>
             <button 
-              onClick={scrollToQuiz}
+              onClick={handleTakeQuiz}
               className="Hero__button Hero__button--secondary"
             >
               Take Quick Quiz

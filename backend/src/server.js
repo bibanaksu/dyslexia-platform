@@ -70,4 +70,3 @@ app.listen(PORT, () => {
   console.log(`- Activities: GET/POST/PUT /api/activities`);
   console.log(`========================================`);
 });
-

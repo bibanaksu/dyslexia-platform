@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+// frontend/src/components/tasks/TaskOne.jsx
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import "./WordAssessment.css";
+import "./TaskOne.css";
 
 /* ─── DATA ─────────────────────────────────────────────── */
 const EXERCISES = [
@@ -12,7 +13,7 @@ const EXERCISES = [
     icon: "👯",
     accent: "#3D5A4C",
     accentDark: "#2C4A3A",
-    words: ["bat", "pat", "pin", "bin", "cap", "cup", "bed", "bad", "fan", "van", "ship", "sheep", "log", "bog", "map", "mop", "fit", "sit", "coat", "goat"],
+    words: ["cat", "bat", "hat", "mat", "cap", "cup", "map", "mop", "pin", "pen", "sit", "set", "bad", "bed", "big", "pig", "fan", "van", "tap", "top"],
     timeLimit: 120
   },
   {
@@ -23,7 +24,7 @@ const EXERCISES = [
     icon: "🏡",
     accent: "#E8A87C",
     accentDark: "#C45D2C",
-    words: ["tree", "house", "sun", "water", "book", "car", "apple", "school", "dog", "chair", "bread", "road", "clock", "mountain", "river", "pencil", "window", "flower", "table", "sky"],
+    words: ["house", "tree", "school", "water", "mother", "father", "child", "book", "table", "chair", "apple", "bread", "car", "road", "sun", "moon", "dog", "cat", "friend", "teacher"],
     timeLimit: 150
   },
   {
@@ -34,12 +35,15 @@ const EXERCISES = [
     icon: "🤪",
     accent: "#E8A87C",
     accentDark: "#C45D2C",
-    words: ["mip", "lat", "zog", "fep", "nusk", "belm", "tark", "siv", "lom", "praf", "dek", "mun", "vop", "gled", "rin", "sok", "tave", "blim", "zant", "kesh"],
+    words: ["mip", "lat", "nob", "kep", "sud", "fik", "zan", "pel", "mot", "rib", "dak", "vun", "sep", "gol", "tim", "paf", "lod", "kes", "bim", "ran"],
     timeLimit: 180
   },
 ];
 
-/* ─── Simple beep sounds ─────────────────────────────── */
+// Storage key for saving progress
+const STORAGE_KEY = 'task_one_progress';
+
+/* ─── Simple sound effects ─────────────────────────────── */
 const playSwipeSound = () => {
   try {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -59,7 +63,7 @@ const playSwipeSound = () => {
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.15);
   } catch (e) {
-    console.log("Audio not supported");
+    // Audio not supported
   }
 };
 
@@ -82,14 +86,14 @@ const playSuccessSound = () => {
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.2);
   } catch (e) {
-    console.log("Audio not supported");
+    // Audio not supported
   }
 };
 
 /* ─── Main Component ─────────────────────────────────── */
-export default function WordReadingTest() {
+export default function TaskOne() {
   const navigate = useNavigate();
-  const [currentScreen, setCurrentScreen] = useState('categories'); // categories, description, assessment, finalResults
+  const [currentScreen, setCurrentScreen] = useState('categories');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [categoryProgress, setCategoryProgress] = useState({
     similarWords: { completed: 0, correct: 0, timeSpent: 0 },
@@ -103,7 +107,28 @@ export default function WordReadingTest() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [feedbackBorder, setFeedbackBorder] = useState(null); // 'correct' or 'incorrect'
   const timerRef = useRef(null);
+  const feedbackTimeoutRef = useRef(null);
+
+  // Load saved progress on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const progress = JSON.parse(saved);
+      setCategoryProgress(progress.categoryProgress);
+    }
+  }, []);
+
+  // Save progress to localStorage
+  useEffect(() => {
+    if (currentScreen !== 'assessment') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        categoryProgress,
+        lastUpdated: Date.now()
+      }));
+    }
+  }, [categoryProgress, currentScreen]);
 
   // Timer effect
   useEffect(() => {
@@ -122,60 +147,77 @@ export default function WordReadingTest() {
     return () => clearInterval(timerRef.current);
   }, [timerRunning, timeRemaining, isPaused]);
 
-  // Start a category
+  // Cleanup feedback timeout
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Start a category (directly to assessment)
   const startCategory = (categoryKey) => {
     const category = EXERCISES.find(ex => ex.key === categoryKey);
     setSelectedCategory(category);
-    setCurrentScreen('description');
-  };
-
-  // Start the actual assessment
-  const startAssessment = () => {
     setCurrentWordIndex(0);
     setAnsweredWords([]);
-    setTimeRemaining(selectedCategory.timeLimit);
+    setTimeRemaining(category.timeLimit);
     setTimerRunning(true);
     setIsPaused(false);
     setCurrentScreen('assessment');
   };
 
-  // Handle word answer
+  // Handle word answer with border color feedback only
   const handleAnswer = (isCorrect) => {
+    if (feedbackBorder) return;
+    
     if (isCorrect) {
       playSuccessSound();
+      setFeedbackBorder('correct');
     } else {
       playSwipeSound();
+      setFeedbackBorder('incorrect');
     }
-
-    const currentWord = selectedCategory.words[currentWordIndex];
     
-    setAnsweredWords(prev => [...prev, {
-      word: currentWord,
-      correct: isCorrect,
-      time: new Date().toLocaleTimeString()
-    }]);
+    // Remove border color after 300ms and move to next word
+    feedbackTimeoutRef.current = setTimeout(() => {
+      setFeedbackBorder(null);
+      
+      const currentWord = selectedCategory.words[currentWordIndex];
+      
+      setAnsweredWords(prev => [...prev, {
+        word: currentWord,
+        correct: isCorrect,
+        time: new Date().toLocaleTimeString()
+      }]);
 
-    // Update progress
-    setCategoryProgress(prev => ({
-      ...prev,
-      [selectedCategory.key]: {
-        ...prev[selectedCategory.key],
-        completed: prev[selectedCategory.key].completed + 1,
-        correct: prev[selectedCategory.key].correct + (isCorrect ? 1 : 0)
-      }
-    }));
+      // Update progress
+      setCategoryProgress(prev => ({
+        ...prev,
+        [selectedCategory.key]: {
+          ...prev[selectedCategory.key],
+          completed: prev[selectedCategory.key].completed + 1,
+          correct: prev[selectedCategory.key].correct + (isCorrect ? 1 : 0)
+        }
+      }));
 
-    // Move to next word or finish
-    if (currentWordIndex < selectedCategory.words.length - 1) {
-      setTimeout(() => {
+      // Move to next word or finish
+      if (currentWordIndex < selectedCategory.words.length - 1) {
         setCurrentWordIndex(prev => prev + 1);
-      }, 400);
-    } else {
-      setTimerRunning(false);
-      setTimeout(() => {
-        // Check if all categories are done
-        const allDone = Object.values(categoryProgress).every(
-          cat => cat.completed + (selectedCategory ? 1 : 0) >= 20
+      } else {
+        setTimerRunning(false);
+        const newProgress = {
+          ...categoryProgress,
+          [selectedCategory.key]: {
+            ...categoryProgress[selectedCategory.key],
+            completed: categoryProgress[selectedCategory.key].completed + 1,
+            correct: categoryProgress[selectedCategory.key].correct + (isCorrect ? 1 : 0)
+          }
+        };
+        
+        const allDone = Object.values(newProgress).every(
+          cat => cat.completed >= 20
         );
         
         if (allDone) {
@@ -183,8 +225,8 @@ export default function WordReadingTest() {
         } else {
           setCurrentScreen('categories');
         }
-      }, 1000);
-    }
+      }
+    }, 300);
   };
 
   // Calculate overall progress
@@ -196,31 +238,24 @@ export default function WordReadingTest() {
     return Math.round((completedWords / totalWords) * 100);
   };
 
+  // Format time
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   // Categories Screen
   if (currentScreen === 'categories') {
     const totalProgress = calculateTotalProgress();
     
     return (
-      <div className="new-assessment-container categories-screen">
-        <div className="full-hd-bg"></div>
+      <div className="task-one-container categories-screen">
+        <div className="task-bg"></div>
         <div className="dark-overlay"></div>
         
-        <div className="assessment-header">
-          <h1 className="child-font">🎮 Word Adventure Time!</h1>
-          <p>Complete all 3 challenges to become a Reading Champion! 🏆</p>
-          
-          <div className="overall-progress">
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill" 
-                style={{ width: `${totalProgress}%` }}
-              ></div>
-            </div>
-            <div className="progress-text">
-              {totalProgress}% Complete • {60 - Object.values(categoryProgress).reduce((sum, cat) => sum + cat.completed, 0)} words left
-            </div>
-          </div>
-        </div>
+        
+       
 
         <div className="categories-grid">
           {EXERCISES.map((category) => {
@@ -266,7 +301,6 @@ export default function WordReadingTest() {
           })}
         </div>
 
-        {/* Celebration animation when all done */}
         {totalProgress === 100 && (
           <div className="celebration">
             <div className="confetti">🎉</div>
@@ -283,80 +317,6 @@ export default function WordReadingTest() {
     );
   }
 
-  // Category Description Screen
-  if (currentScreen === 'description') {
-    const category = selectedCategory;
-    
-    return (
-      <div className="new-assessment-container description-screen">
-        <div className="full-hd-bg"></div>
-        <div className="dark-overlay"></div>
-        
-        <div className="description-header">
-          <button 
-            className="back-button"
-            onClick={() => setCurrentScreen('categories')}
-          >
-            ← Back to Challenges
-          </button>
-          <h1 className="child-font">{category.title}</h1>
-        </div>
-
-        <div className="description-content">
-          <div className="description-card">
-            <div className="description-icon">
-              {category.icon}
-            </div>
-            
-            <h2>How to Play:</h2>
-            <ul className="instructions-list">
-              <li>📖 Read each word out loud</li>
-              <li>⏱️ You have {Math.floor(category.timeLimit/60)} minutes for 20 words</li>
-              <li>✅ Click "Got It!" if you read it correctly</li>
-              <li>➡️ Click "Next" if unsure (no penalty!)</li>
-              <li>⏸️ You can pause anytime</li>
-            </ul>
-
-            <div className="example-words">
-              <h3>Example Words:</h3>
-              <div className="words-grid">
-                {category.words.slice(0, 6).map((word, index) => (
-                  <span key={index} className="example-word">
-                    {word}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <div className="time-info">
-              <div className="time-icon">⏰</div>
-              <div className="time-details">
-                <h4>Time Challenge</h4>
-                <p>{category.timeLimit} seconds total</p>
-                <p>≈ {Math.round(category.timeLimit/20)} seconds per word</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="action-buttons">
-            <button 
-              className="btn-start-challenge"
-              onClick={startAssessment}
-            >
-              🚀 Start Challenge!
-            </button>
-            <button 
-              className="btn-back"
-              onClick={() => setCurrentScreen('categories')}
-            >
-              Choose Different Challenge
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Assessment Screen
   if (currentScreen === 'assessment') {
     const category = selectedCategory;
@@ -364,12 +324,11 @@ export default function WordReadingTest() {
     const progress = ((currentWordIndex + 1) / 20) * 100;
     
     return (
-      <div className="new-assessment-container assessment-screen">
-        <div className="full-hd-bg"></div>
+      <div className="task-one-container assessment-screen">
+        <div className="task-bg"></div>
         <div className="dark-overlay"></div>
         
-        {/* Header with progress and timer */}
-        <div className="assessment-header">
+        <div className="assessment-header-bar">
           <div className="header-left">
             <button 
               className="btn-pause"
@@ -388,27 +347,28 @@ export default function WordReadingTest() {
           
           <div className="header-right">
             <div className="timer">
-              ⏰ {timeRemaining}s
+              ⏰ {formatTime(timeRemaining)}
             </div>
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div className="assessment-progress">
+        <div className="assessment-progress-bar">
           <div 
-            className="progress-fill" 
+            className="assessment-progress-fill" 
             style={{ width: `${progress}%` }}
           ></div>
         </div>
 
-        {/* Word display */}
-        <div className="word-display">
-          <div className="word-card">
-            <div className="word-text">
+        {/* Word display - Bigger card with border feedback */}
+        <div className="word-display-area">
+          <div 
+            className={`word-card-big ${feedbackBorder === 'correct' ? 'feedback-correct-border' : ''} ${feedbackBorder === 'incorrect' ? 'feedback-incorrect-border' : ''}`}
+          >
+            <div className="word-text-big">
               {currentWord.split('').map((letter, index) => (
                 <span 
                   key={index} 
-                  className="letter"
+                  className="letter-animated"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   {letter}
@@ -424,49 +384,49 @@ export default function WordReadingTest() {
           </div>
 
           {/* Character animation */}
-          <div className="character-container">
-            <div className="character character-thinking">
-              🐵
+          <div className="character-area">
+            <div className="character-thinking">
+              🦁
             </div>
             <div className="speech-bubble">
-              Can you read this {category.key === 'nonWords' ? 'funny word' : 'word'}?
+              Can you read this word?
             </div>
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="assessment-actions">
+        <div className="assessment-action-buttons">
           <button 
-            className="btn-next"
+            className="btn-next-word"
             onClick={() => handleAnswer(false)}
+            disabled={feedbackBorder !== null}
           >
             ➡️ Next Word
             <span className="sub-text">I'll try this later</span>
           </button>
           
           <button 
-            className="btn-correct"
+            className="btn-got-it"
             onClick={() => handleAnswer(true)}
+            disabled={feedbackBorder !== null}
           >
             ✅ Got It!
             <span className="sub-text">I read it correctly</span>
           </button>
         </div>
 
-        {/* Pause overlay */}
         {isPaused && (
-          <div className="pause-overlay">
-            <div className="pause-content">
+          <div className="pause-overlay-full">
+            <div className="pause-content-card">
               <h2>⏸️ Game Paused</h2>
               <p>Take your time! Ready to continue?</p>
               <button 
-                className="btn-resume"
+                className="btn-resume-game"
                 onClick={() => setIsPaused(false)}
               >
                 ▶️ Resume Challenge
               </button>
               <button 
-                className="btn-quit"
+                className="btn-quit-game"
                 onClick={() => setCurrentScreen('categories')}
               >
                 🏠 Back to Challenges
@@ -486,57 +446,73 @@ export default function WordReadingTest() {
     const totalWords = 60;
     const percentage = Math.round((totalCorrect / totalWords) * 100);
     
+    const results = {
+      date: new Date().toISOString(),
+      totalCorrect,
+      totalWords,
+      percentage,
+      categoryProgress,
+    };
+    localStorage.setItem('task_one_results', JSON.stringify(results));
+    
     return (
-      <div className="new-assessment-container results-screen">
-        <div className="full-hd-bg"></div>
+      <div className="task-one-container results-screen">
+        <div className="task-bg"></div>
         <div className="dark-overlay"></div>
         
-        <div className="results-header">
+        <div className="task-nav">
+          <button className="nav-back-btn" onClick={() => navigate('/adventure')}>
+            ← Back to Adventure
+          </button>
+          <div className="nav-title">🏆 Results</div>
+          <div className="nav-spacer"></div>
+        </div>
+
+        <div className="results-header-area">
           <div className="trophy-icon">🏆</div>
           <h1 className="child-font">Reading Champion!</h1>
           <p>You completed all 3 challenges! Amazing work! 🎉</p>
         </div>
 
-        <div className="final-score">
-          <div className="score-circle">
-            <span className="score-number">{totalCorrect}/60</span>
-            <span className="score-label">Words Correct</span>
+        <div className="final-score-area">
+          <div className="score-circle-big">
+            <span className="score-number-big">{totalCorrect}/60</span>
+            <span className="score-label-small">Words Correct</span>
           </div>
-          <div className="score-grade">
-            <div className="grade-circle" style={{ 
+          <div className="score-grade-area">
+            <div className="grade-circle-big" style={{ 
               background: percentage >= 80 ? '#7fb685' : 
                          percentage >= 60 ? '#ff9a76' : '#a8d0db'
             }}>
               {percentage}%
             </div>
-            <p className="grade-label">
+            <p className="grade-label-text">
               {percentage >= 80 ? '🌟 Excellent!' : 
                percentage >= 60 ? '👍 Good Job!' : '💪 Keep Practicing!'}
             </p>
           </div>
         </div>
 
-        {/* Category breakdown */}
-        <div className="category-breakdown">
+        <div className="category-breakdown-area">
           <h2>📊 Your Results by Challenge</h2>
-          <div className="breakdown-grid">
+          <div className="breakdown-grid-area">
             {EXERCISES.map((category) => {
               const progress = categoryProgress[category.key];
               const catPercentage = Math.round((progress.correct / 20) * 100);
               
               return (
-                <div key={category.key} className="breakdown-card">
-                  <div className="breakdown-icon">
+                <div key={category.key} className="breakdown-card-item">
+                  <div className="breakdown-icon-item">
                     {category.icon}
                   </div>
                   <h3>{category.title}</h3>
-                  <div className="breakdown-score">
-                    <span className="score">{progress.correct}/20</span>
-                    <span className="percentage">({catPercentage}%)</span>
+                  <div className="breakdown-score-item">
+                    <span className="score-number-item">{progress.correct}/20</span>
+                    <span className="percentage-item">({catPercentage}%)</span>
                   </div>
-                  <div className="breakdown-bar">
+                  <div className="breakdown-bar-item">
                     <div 
-                      className="bar-fill" 
+                      className="bar-fill-item" 
                       style={{ width: `${catPercentage}%` }}
                     ></div>
                   </div>
@@ -546,30 +522,28 @@ export default function WordReadingTest() {
           </div>
         </div>
 
-        {/* Recommendations */}
-        <div className="recommendations">
+        <div className="recommendations-area">
           <h2>💡 Reading Tips</h2>
-          <div className="tips-grid">
-            <div className="tip-card">
-              <div className="tip-icon">🔤</div>
+          <div className="tips-grid-area">
+            <div className="tip-card-item">
+              <div className="tip-icon-item">🔤</div>
               <h4>For Twins Words</h4>
               <p>Practice letter sounds: b/p, f/v, sh/ch</p>
             </div>
-            <div className="tip-card">
-              <div className="tip-icon">📚</div>
+            <div className="tip-card-item">
+              <div className="tip-icon-item">📚</div>
               <h4>For Everyday Words</h4>
               <p>Read books about things you love!</p>
             </div>
-            <div className="tip-card">
-              <div className="tip-icon">🎮</div>
+            <div className="tip-card-item">
+              <div className="tip-icon-item">🎮</div>
               <h4>For Funny Words</h4>
               <p>Play sound games - you're great at decoding!</p>
             </div>
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="results-actions">
+        <div className="results-action-buttons">
           <button 
             className="btn-play-again"
             onClick={() => {
@@ -584,15 +558,14 @@ export default function WordReadingTest() {
             🔄 Play Again
           </button>
           <button 
-            className="btn-home"
+            className="btn-home-page"
             onClick={() => navigate('/adventure')}
           >
             🏠 Back to Home
           </button>
         </div>
 
-        {/* Certificate */}
-        <div className="certificate">
+        <div className="certificate-area">
           <p>🎓 <strong>Certificate of Reading</strong></p>
           <p>Presented to: <em>Our Amazing Reader</em></p>
           <p>For completing the Dyslexia Word Adventure!</p>

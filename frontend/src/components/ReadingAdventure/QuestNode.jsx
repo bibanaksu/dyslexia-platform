@@ -12,12 +12,17 @@ const QuestNode = ({ quest, position, onClick }) => {
     return icons[animal] || '🦊';
   };
 
+  const handleClick = () => {
+    console.log('QuestNode clicked - calling onClick for:', quest.title);
+    onClick();
+  };
+
   return (
     <div className="quest-node">
       <div className={`node-row ${position === 'right' ? 'right' : ''}`}>
         <div 
           className={`node-bubble ${quest.status}`}
-          onClick={() => onClick(quest)}
+          onClick={handleClick}
         >
           {quest.status === 'completed' && (
             <svg width="40" height="40" viewBox="0 0 40 40">
@@ -44,16 +49,15 @@ const QuestNode = ({ quest, position, onClick }) => {
 
         <div 
           className={`quest-card ${quest.status}`}
-          onClick={() => onClick(quest)}
+          onClick={handleClick}
         >
-          {/* ===== THESE ARE THE TEXT ELEMENTS YOU WANT TO CHANGE ===== */}
           <div className={`quest-tag tag-${quest.status}`}>
-            {quest.status === 'completed' && '✦ Completed'}      {/* ← CHANGE THIS */}
-            {quest.status === 'active' && '⚡ Start Here!'}       {/* ← CHANGE THIS */}
-            {quest.status === 'locked' && '🔒 Locked'}            {/* ← CHANGE THIS */}
+            {quest.status === 'completed' && '✦ Completed'}
+            {quest.status === 'active' && '⚡ Start Here!'}
+            {quest.status === 'locked' && '🔒 Locked'}
           </div>
-          <div className="quest-title">{quest.title}</div>        {/* ← QUEST TITLE */}
-          <div className="quest-description">{quest.description}</div> {/* ← DESCRIPTION */}
+          <div className="quest-title">{quest.title}</div>
+          <div className="quest-description">{quest.description}</div>
           <div className="quest-animal">
             {getAnimalIcon(quest.animal)}
           </div>

@@ -1,33 +1,50 @@
 const jwt = require('jsonwebtoken');
 
-// Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
+const JWT_SECRET = process.env.JWT_SECRET || 'dyslexia_jwt_secret_change_in_production';
+const JWT_EXPIRES = process.env.JWT_EXPIRES || '24h';
 
-    if (!token) {
+function generateToken(payload) {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+}
+
+function verifyToken(req, res, next) {
+  try {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'No token provided' });
     }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dyslexia_secret_key');
+    const token = header.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    res.status(401).json({ error: 'Invalid or expired token' });
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    return res.status(401).json({ error: 'Invalid token' });
   }
-};
+}
 
-// Generate JWT token
-const generateToken = (parentId) => {
-  return jwt.sign(
-    { parentId },
-    process.env.JWT_SECRET || 'dyslexia_secret_key',
-    { expiresIn: '24h' }
-  );
-};
+function requireTherapist(req, res, next) {
+  verifyToken(req, res, () => {
+    if (req.user.role !== 'therapist') {
+      return res.status(403).json({ error: 'Therapist access required' });
+    }
+    next();
+  });
+}
 
-module.exports = {
-  verifyToken,
-  generateToken
-};
+function requireParent(req, res, next) {
+  verifyToken(req, res, () => {
+    if (req.user.role !== 'parent') {
+      return res.status(403).json({ error: 'Parent access required' });
+    }
+    next();
+  });
+}
+
+function requireAuth(req, res, next) {
+  verifyToken(req, res, next);
+}
+
+module.exports = { generateToken, verifyToken, requireTherapist, requireParent, requireAuth };

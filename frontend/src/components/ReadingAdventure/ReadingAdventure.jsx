@@ -1,3 +1,4 @@
+// frontend/src/components/ReadingAdventure/ReadingAdventure.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuestPath from './QuestPath';
@@ -74,9 +75,16 @@ const ReadingAdventure = () => {
   ];
 
   const handleQuestClick = (quest) => {
-    if (quest.status === 'locked') return;
-    // Navigate directly to instructions page
-    navigate('/tasks/word-assessment');
+    console.log('Quest clicked:', quest);
+    
+    if (quest.status === 'locked') {
+      console.log('Quest is locked, cannot start');
+      return;
+    }
+    
+    // Navigate to Task One page
+    console.log('Navigating to /tasks/task-one');
+    navigate('/tasks/task-one');
   };
 
   return (
