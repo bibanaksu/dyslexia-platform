@@ -19,7 +19,7 @@ import ParentDashboard from './components/ParentDashboard/ParentDashboard';
 import StartAssessment from './components/StartAssessment/StartAssessment';
 import QuizPage from './components/QuizPage/QuizPage';
 import TaskOne from './components/tasks/TaskOne';
-
+import EnhancedVoiceReading from './components/tasks/EnhancedVoiceReading';
 // Protected Route Component with role support
 function ProtectedRoute({ children, requiredRole = 'therapist' }) {
   const isAuthenticated = localStorage.getItem('token');
@@ -79,9 +79,11 @@ function App() {
               <Dashboard />
             </ProtectedRoute>
           } />
-          
-          {/* Task One - Word Reading Assessment */}
+        <Route path="/tasks/enhanced-voice" element={<EnhancedVoiceReading />} />
+          {/* Task One - Word Reading Assessment (3 exercises: Twins, Everyday, Funny Words) */}
           <Route path="/tasks/task-one" element={<TaskOne />} />
+          
+         
           
           {/* Parent Dashboard - Protected */}
           <Route path="/parent-dashboard" element={

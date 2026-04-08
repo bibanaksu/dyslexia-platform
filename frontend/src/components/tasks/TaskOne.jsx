@@ -107,7 +107,7 @@ export default function TaskOne() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [timerRunning, setTimerRunning] = useState(false);
-  const [feedbackBorder, setFeedbackBorder] = useState(null); // 'correct' or 'incorrect'
+  const [feedbackBorder, setFeedbackBorder] = useState(null);
   const timerRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
 
@@ -117,18 +117,40 @@ export default function TaskOne() {
     if (saved) {
       const progress = JSON.parse(saved);
       setCategoryProgress(progress.categoryProgress);
+      // If there was an active assessment, restore it
+      if (progress.currentCategory && progress.currentWordIndex !== undefined && progress.timeRemaining !== undefined) {
+        const category = EXERCISES.find(ex => ex.key === progress.currentCategory);
+        if (category) {
+          setSelectedCategory(category);
+          setCurrentWordIndex(progress.currentWordIndex);
+          setTimeRemaining(progress.timeRemaining);
+          setAnsweredWords(progress.answeredWords || []);
+          setCurrentScreen('assessment');
+          setTimerRunning(false);
+          setIsPaused(true);
+        }
+      }
     }
   }, []);
 
   // Save progress to localStorage
   useEffect(() => {
-    if (currentScreen !== 'assessment') {
+    if (currentScreen === 'assessment' && selectedCategory) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        categoryProgress,
+        currentCategory: selectedCategory.key,
+        currentWordIndex,
+        timeRemaining,
+        answeredWords,
+        lastUpdated: Date.now()
+      }));
+    } else if (currentScreen !== 'assessment') {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         categoryProgress,
         lastUpdated: Date.now()
       }));
     }
-  }, [categoryProgress, currentScreen]);
+  }, [categoryProgress, currentScreen, selectedCategory, currentWordIndex, timeRemaining, answeredWords]);
 
   // Timer effect
   useEffect(() => {
@@ -156,7 +178,7 @@ export default function TaskOne() {
     };
   }, []);
 
-  // Start a category (directly to assessment)
+  // Start a category
   const startCategory = (categoryKey) => {
     const category = EXERCISES.find(ex => ex.key === categoryKey);
     setSelectedCategory(category);
@@ -168,7 +190,13 @@ export default function TaskOne() {
     setCurrentScreen('assessment');
   };
 
-  // Handle word answer with border color feedback only
+  // Resume from pause
+  const handleResume = () => {
+    setIsPaused(false);
+    setTimerRunning(true);
+  };
+
+  // Handle word answer
   const handleAnswer = (isCorrect) => {
     if (feedbackBorder) return;
     
@@ -180,7 +208,6 @@ export default function TaskOne() {
       setFeedbackBorder('incorrect');
     }
     
-    // Remove border color after 300ms and move to next word
     feedbackTimeoutRef.current = setTimeout(() => {
       setFeedbackBorder(null);
       
@@ -192,7 +219,6 @@ export default function TaskOne() {
         time: new Date().toLocaleTimeString()
       }]);
 
-      // Update progress
       setCategoryProgress(prev => ({
         ...prev,
         [selectedCategory.key]: {
@@ -202,7 +228,6 @@ export default function TaskOne() {
         }
       }));
 
-      // Move to next word or finish
       if (currentWordIndex < selectedCategory.words.length - 1) {
         setCurrentWordIndex(prev => prev + 1);
       } else {
@@ -238,11 +263,16 @@ export default function TaskOne() {
     return Math.round((completedWords / totalWords) * 100);
   };
 
-  // Format time
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Get score percentage for a category
+  const getScorePercentage = (progress) => {
+    if (progress.completed === 0) return 0;
+    return Math.round((progress.correct / progress.completed) * 100);
   };
 
   // Categories Screen
@@ -254,13 +284,15 @@ export default function TaskOne() {
         <div className="task-bg"></div>
         <div className="dark-overlay"></div>
         
-        
        
+        
+        
 
         <div className="categories-grid">
           {EXERCISES.map((category) => {
             const progress = categoryProgress[category.key];
             const percentage = Math.round((progress.completed / 20) * 100);
+            const scorePercentage = getScorePercentage(progress);
             
             return (
               <div 
@@ -279,10 +311,7 @@ export default function TaskOne() {
                     <span className="stat-label">Words:</span>
                     <span className="stat-value">{progress.completed}/20</span>
                   </div>
-                  <div className="stat">
-                    <span className="stat-label">Score:</span>
-                    <span className="stat-value">{progress.correct}/{progress.completed || 1}</span>
-                  </div>
+                  
                 </div>
                 
                 <div className="progress-indicator">
@@ -332,7 +361,7 @@ export default function TaskOne() {
           <div className="header-left">
             <button 
               className="btn-pause"
-              onClick={() => setIsPaused(!isPaused)}
+              onClick={() => setIsPaused(true)}
             >
               {isPaused ? '▶️ Resume' : '⏸️ Pause'}
             </button>
@@ -359,7 +388,6 @@ export default function TaskOne() {
           ></div>
         </div>
 
-        {/* Word display - Bigger card with border feedback */}
         <div className="word-display-area">
           <div 
             className={`word-card-big ${feedbackBorder === 'correct' ? 'feedback-correct-border' : ''} ${feedbackBorder === 'incorrect' ? 'feedback-incorrect-border' : ''}`}
@@ -383,10 +411,9 @@ export default function TaskOne() {
             </div>
           </div>
 
-          {/* Character animation */}
           <div className="character-area">
             <div className="character-thinking">
-              🦁
+              🐵
             </div>
             <div className="speech-bubble">
               Can you read this word?
@@ -418,10 +445,10 @@ export default function TaskOne() {
           <div className="pause-overlay-full">
             <div className="pause-content-card">
               <h2>⏸️ Game Paused</h2>
-              <p>Take your time! Ready to continue?</p>
+              <p>Your progress has been saved!</p>
               <button 
                 className="btn-resume-game"
-                onClick={() => setIsPaused(false)}
+                onClick={handleResume}
               >
                 ▶️ Resume Challenge
               </button>
@@ -454,6 +481,7 @@ export default function TaskOne() {
       categoryProgress,
     };
     localStorage.setItem('task_one_results', JSON.stringify(results));
+    localStorage.removeItem(STORAGE_KEY);
     
     return (
       <div className="task-one-container results-screen">

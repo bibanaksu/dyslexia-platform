@@ -74,19 +74,17 @@ const ReadingAdventure = () => {
     }
   ];
 
-  const handleQuestClick = (quest) => {
-    console.log('Quest clicked:', quest);
-    
-    if (quest.status === 'locked') {
-      console.log('Quest is locked, cannot start');
-      return;
-    }
-    
-    // Navigate to Task One page
-    console.log('Navigating to /tasks/task-one');
+const handleQuestClick = (quest) => {
+  if (quest.status === 'locked') return;
+  
+  if (quest.id === 1) {
     navigate('/tasks/task-one');
-  };
-
+  } else if (quest.id === 2) {
+    navigate('/tasks/enhanced-voice');
+  } else {
+    navigate('/tasks/task-one');
+  }
+};
   return (
     <div className="reading-adventure">
       {/* Full screen image background */}
