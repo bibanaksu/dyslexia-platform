@@ -36,7 +36,6 @@ const isDyslexiaSwap = (spoken, expected) => {
   if (swaps[cleanSpoken] === cleanExpected) return true;
   if (swaps[cleanExpected] === cleanSpoken) return true;
   
-  // Check for b/d within short words
   if (cleanSpoken.length === cleanExpected.length && cleanSpoken.length <= 5) {
     let diffCount = 0;
     for (let i = 0; i < cleanSpoken.length; i++) {
@@ -55,7 +54,7 @@ const isDyslexiaSwap = (spoken, expected) => {
   return false;
 };
 
-// Calculate similarity between spoken and expected word
+// Calculate similarity
 const calculateSimilarity = (spoken, expected) => {
   const cleanSpoken = cleanText(spoken);
   const cleanExpected = cleanText(expected);
@@ -73,57 +72,6 @@ const calculateSimilarity = (spoken, expected) => {
   return matches / Math.max(cleanSpoken.length, cleanExpected.length);
 };
 
-// Match spoken phrase to the passage and update progress
-const matchSpokenToPassage = (spokenText, currentProgress, words) => {
-  const cleanSpoken = cleanText(spokenText);
-  const spokenWords = cleanSpoken.split(/\s+/);
-  
-  let matchedIndices = [];
-  let startIndex = currentProgress;
-  
-  for (let i = 0; i < spokenWords.length && startIndex + i < words.length; i++) {
-    const similarity = calculateSimilarity(spokenWords[i], words[startIndex + i]);
-    if (similarity >= 0.6) {
-      matchedIndices.push({
-        index: startIndex + i,
-        word: words[startIndex + i],
-        spoken: spokenWords[i],
-        correct: true,
-        similarity: similarity
-      });
-    } else {
-      matchedIndices.push({
-        index: startIndex + i,
-        word: words[startIndex + i],
-        spoken: spokenWords[i],
-        correct: false,
-        similarity: similarity
-      });
-      // Stop matching on first error (can't skip ahead)
-      break;
-    }
-  }
-  
-  return matchedIndices;
-};
-
-// Generate encouraging feedback
-const generateFeedback = (accuracy, expectedWord, spokenWord) => {
-  if (accuracy >= 90) {
-    return { feedback: `🎉 Excellent! "${expectedWord}" was perfect!`, tip: "You're a reading star!", stars: 3 };
-  } else if (accuracy >= 80) {
-    return { feedback: `🌟 Great job on "${expectedWord}"! So close!`, tip: "Keep up the great work!", stars: 3 };
-  } else if (accuracy >= 70) {
-    return { feedback: `🌻 Nice try! "${expectedWord}" is getting there!`, tip: "Say it slowly: " + expectedWord.toLowerCase().split('').join(' • '), stars: 2 };
-  } else if (accuracy >= 60) {
-    return { feedback: `💪 Good effort! "${expectedWord}" was almost right!`, tip: "Let's try that sound again", stars: 2 };
-  } else if (accuracy >= 40) {
-    return { feedback: `🌱 I love how you're trying! Keep practicing "${expectedWord}".`, tip: "Look at the word shape", stars: 1 };
-  } else {
-    return { feedback: `✨ You're brave for trying! Let's learn "${expectedWord}" together.`, tip: "I know you can do it!", stars: 1 };
-  }
-};
-
 export default function EnhancedVoiceReading() {
   const navigate = useNavigate();
   
@@ -136,12 +84,14 @@ export default function EnhancedVoiceReading() {
   const [finalTranscript, setFinalTranscript] = useState("");
   const [micAllowed, setMicAllowed] = useState(true);
   const [recognitionSupported, setRecognitionSupported] = useState(true);
-  const [feedback, setFeedback] = useState(null);
   const [lastProcessedLength, setLastProcessedLength] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(180);
+  const [showTimeWarning, setShowTimeWarning] = useState(false);
   
   const recognitionRef = useRef(null);
   const currentWordRef = useRef(null);
-  const timeoutRef = useRef(null);
+  const timerIntervalRef = useRef(null);
+  const isPausedRef = useRef(false);
   
   // Check browser support
   useEffect(() => {
@@ -151,13 +101,40 @@ export default function EnhancedVoiceReading() {
     }
   }, []);
   
-  // Clear feedback after delay
+  // Timer for 3 minutes
   useEffect(() => {
-    if (feedback) {
-      const timer = setTimeout(() => setFeedback(null), 2000);
-      return () => clearTimeout(timer);
+    if (isListening && !isComplete && timeRemaining > 0) {
+      timerIntervalRef.current = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            clearInterval(timerIntervalRef.current);
+            if (recognitionRef.current) {
+              recognitionRef.current.stop();
+            }
+            finishAssessment();
+            return 0;
+          }
+          if (prev <= 31 && prev > 30) {
+            setShowTimeWarning(true);
+          }
+          return prev - 1;
+        });
+      }, 1000);
     }
-  }, [feedback]);
+    
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [isListening, isComplete]);
+  
+  // Format time as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
   
   // Scroll current word into view
   useEffect(() => {
@@ -168,14 +145,12 @@ export default function EnhancedVoiceReading() {
   
   // Process continuous speech
   const processContinuousSpeech = useCallback((newTranscript) => {
-    if (isComplete) return;
+    if (isComplete || isPausedRef.current) return;
     
-    // Get the full accumulated transcript
     const fullText = finalTranscript + " " + newTranscript;
     const cleanFull = cleanText(fullText);
     const spokenWords = cleanFull.split(/\s+/);
     
-    // Don't reprocess if no new words
     if (spokenWords.length <= lastProcessedLength) return;
     
     const newWords = spokenWords.slice(lastProcessedLength);
@@ -206,7 +181,6 @@ export default function EnhancedVoiceReading() {
     }
     
     if (newMatches.length > 0) {
-      // Update state with new matches
       setWordResults(prev => {
         const updated = { ...prev };
         const newErrors = [];
@@ -228,17 +202,12 @@ export default function EnhancedVoiceReading() {
               similarity: match.accuracy
             });
           }
-          
-          // Show feedback for each word
-          const { feedback: fbText, tip, stars } = generateFeedback(match.accuracy, match.expected, match.spoken);
-          setFeedback({ feedback: fbText, tip, stars, accuracy: match.accuracy });
         }
         
         setErrorWords(prevErrors => [...prevErrors, ...newErrors]);
         return updated;
       });
       
-      // Update current word index to the next unprocessed word
       let nextIndex = currentWordIndex;
       while (nextIndex < allWords.length && wordResults[nextIndex]) {
         nextIndex++;
@@ -253,20 +222,19 @@ export default function EnhancedVoiceReading() {
     
     setLastProcessedLength(spokenWords.length);
     
-    // Check if complete
     if (currentPos >= allWords.length || 
         (currentWordIndex >= allWords.length - 1 && newMatches.some(m => m.index === allWords.length - 1))) {
       finishAssessment();
     }
   }, [currentWordIndex, finalTranscript, lastProcessedLength, wordResults, isComplete]);
   
-  // Initialize speech recognition with continuous mode
+  // Initialize speech recognition
   const initRecognition = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return null;
     
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;  // Keep listening continuously
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
     
@@ -275,19 +243,17 @@ export default function EnhancedVoiceReading() {
     recognition.onstart = () => {
       console.log("🎙️ Continuous listening started");
       setIsListening(true);
+      isPausedRef.current = false;
       setTranscript("");
-      setFinalTranscript("");
-      setLastProcessedLength(0);
     };
     
     recognition.onend = () => {
       console.log("🎙️ Listening ended");
       setIsListening(false);
       
-      // Auto-restart if not finished
-      if (currentWordIndex < allWords.length && !isComplete) {
-        timeoutRef.current = setTimeout(() => {
-          if (!isListening && !isComplete) {
+      if (!isPausedRef.current && currentWordIndex < allWords.length && !isComplete && timeRemaining > 0) {
+        setTimeout(() => {
+          if (!isListening && !isComplete && !isPausedRef.current) {
             try {
               recognition.start();
             } catch (e) {
@@ -307,6 +273,8 @@ export default function EnhancedVoiceReading() {
     };
     
     recognition.onresult = (event) => {
+      if (isPausedRef.current) return;
+      
       let interimTranscript = "";
       let finalTranscriptSegment = "";
       
@@ -329,9 +297,18 @@ export default function EnhancedVoiceReading() {
     };
     
     return recognition;
-  }, [currentWordIndex, isComplete, processContinuousSpeech]);
+  }, [currentWordIndex, isComplete, processContinuousSpeech, timeRemaining]);
   
   const startListening = async () => {
+    if (currentWordIndex === 0 && Object.keys(wordResults).length === 0) {
+      setTimeRemaining(180);
+      setShowTimeWarning(false);
+      setFinalTranscript("");
+      setLastProcessedLength(0);
+      setWordResults({});
+      setErrorWords([]);
+    }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop());
@@ -341,11 +318,7 @@ export default function EnhancedVoiceReading() {
         recognitionRef.current = recognition;
         recognition.start();
         setMicAllowed(true);
-        setFeedback({ 
-          feedback: "🎤 I'm listening! Read the passage aloud. Take your time!", 
-          tip: "Read naturally, I'll follow along",
-          stars: 3
-        });
+        isPausedRef.current = false;
       }
     } catch (error) {
       console.error("Microphone error:", error);
@@ -353,18 +326,33 @@ export default function EnhancedVoiceReading() {
     }
   };
   
-  const stopListening = () => {
+  const pauseListening = () => {
+    isPausedRef.current = true;
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
     }
     setIsListening(false);
   };
   
+  const resumeListening = () => {
+    if (isComplete) return;
+    isPausedRef.current = false;
+    startListening();
+  };
+  
   const finishAssessment = () => {
-    stopListening();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setIsListening(false);
     
     const correctCount = Object.values(wordResults).filter(r => r && r.correct === true).length;
     const percentage = Math.round((correctCount / allWords.length) * 100);
@@ -414,8 +402,35 @@ export default function EnhancedVoiceReading() {
     setTranscript("");
     setFinalTranscript("");
     setLastProcessedLength(0);
-    setFeedback(null);
-    startListening();
+    setTimeRemaining(180);
+    setShowTimeWarning(false);
+    isPausedRef.current = false;
+    
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+    
+    setTimeout(() => {
+      startListening();
+    }, 100);
+  };
+  
+  const handleBack = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    setIsListening(false);
+    navigate('/adventure');
   };
   
   // Results Screen
@@ -428,8 +443,8 @@ export default function EnhancedVoiceReading() {
         <div className="enhanced-overlay"></div>
         
         <div className="enhanced-nav">
-          <button className="enhanced-back-btn" onClick={() => navigate('/adventure')}>
-            ← Back
+          <button className="enhanced-back-btn" onClick={handleBack}>
+            ←
           </button>
           <div className="enhanced-title">🎙️ Reading Results</div>
         </div>
@@ -480,7 +495,7 @@ export default function EnhancedVoiceReading() {
             <button className="btn-try-again" onClick={resetAssessment}>
               🔄 Read Again
             </button>
-            <button className="btn-home" onClick={() => navigate('/adventure')}>
+            <button className="btn-home" onClick={handleBack}>
               🏠 Back to Adventure
             </button>
           </div>
@@ -489,72 +504,9 @@ export default function EnhancedVoiceReading() {
     );
   }
   
-  // Start Screen
-  if (!isListening && currentWordIndex === 0 && Object.keys(wordResults).length === 0 && !isComplete) {
-    return (
-      <div className="enhanced-voice-container">
-        <div className="enhanced-bg"></div>
-        <div className="enhanced-overlay"></div>
-        
-        <div className="enhanced-nav">
-          <button className="enhanced-back-btn" onClick={() => navigate('/adventure')}>
-            ← Back
-          </button>
-          <div className="enhanced-title">🎙️ Voice Reading</div>
-        </div>
-        
-        <div className="enhanced-start-screen" style={{ overflowY: 'auto', flex: 1 }}>
-          {!recognitionSupported ? (
-            <div className="error-box">
-              <div className="error-icon">⚠️</div>
-              <h2>Browser Not Supported</h2>
-              <p>Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> for voice reading.</p>
-              <button className="btn-back" onClick={() => navigate('/adventure')}>Go Back</button>
-            </div>
-          ) : !micAllowed ? (
-            <div className="error-box">
-              <div className="error-icon">🎙️</div>
-              <h2>Microphone Access Needed</h2>
-              <p>Please allow microphone access. I can't wait to hear you read!</p>
-              <button className="btn-retry" onClick={() => window.location.reload()}>
-                🔄 Try Again
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="passage-preview">
-                <h2>{READING_PASSAGE.title}</h2>
-                <div className="passage-text-preview">
-                  {READING_PASSAGE.text}
-                </div>
-              </div>
-              
-              <div className="instructions">
-                <h3>✨ How it works:</h3>
-                <ul>
-                  <li>🎙️ Click "Start Reading" and allow microphone access</li>
-                  <li>📖 Read the <strong>whole passage</strong> aloud at your own pace</li>
-                  <li>🎯 I will follow along and highlight words as you read them</li>
-                  <li>✅ Words you read correctly turn <span style={{color: '#4CAF50', fontWeight: 'bold'}}>GREEN</span></li>
-                  <li>🟠 Words to practice turn <span style={{color: '#E65100', fontWeight: 'bold'}}>ORANGE</span></li>
-                  <li>💡 You can pause anytime or click "Finish" when done</li>
-                  <li>🌟 Just read naturally - I'm here to cheer you on!</li>
-                </ul>
-              </div>
-              
-              <button className="start-voice-btn" onClick={startListening}>
-                🎙️ Start Reading
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
   
+ 
   // Reading Screen
-  const stars = feedback?.stars || 0;
-  
   return (
     <div className="enhanced-voice-container reading-active">
       <div className="enhanced-bg"></div>
@@ -562,10 +514,13 @@ export default function EnhancedVoiceReading() {
       
       {/* Fixed Header */}
       <div className="enhanced-nav reading-nav">
-        <button className="enhanced-back-btn" onClick={stopListening}>
-          ← Back
+        <button className="enhanced-back-btn" onClick={handleBack}>
+          ←
         </button>
         <div className="enhanced-title">🎙️ Reading Time</div>
+        <div className={`timer-badge ${showTimeWarning && timeRemaining <= 30 ? 'warning' : ''}`}>
+          ⏱️ {formatTime(timeRemaining)}
+        </div>
         <div className="progress-badge">
           {Object.keys(wordResults).filter(i => wordResults[i]?.correct).length} / {allWords.length}
         </div>
@@ -573,6 +528,19 @@ export default function EnhancedVoiceReading() {
       
       {/* Main Content - Scrollable */}
       <div className="enhanced-reading-content" style={{ overflowY: 'auto', flex: 1 }}>
+        {/* Current Word Card with Controls */}
+        <div className="current-word-section">
+          <div className="enhanced-word-card">
+            <div className="enhanced-word-text">{allWords[currentWordIndex]}</div>
+            {!wordResults[currentWordIndex] && (
+              <div className="word-timer">
+                ⏰ {timeRemaining}s
+              </div>
+            )}
+          </div>
+          
+         
+        
         {/* Microphone Status */}
         <div className="mic-status-section">
           <div className={`mic-indicator ${isListening ? 'listening' : ''}`}>
@@ -596,19 +564,6 @@ export default function EnhancedVoiceReading() {
             </div>
           )}
         </div>
-        
-        {/* Feedback Panel */}
-        {feedback && (
-          <div className={`feedback-panel mb-4 p-4 rounded-xl text-center ${
-            stars === 3 ? 'bg-green-100' : stars === 2 ? 'bg-amber-100' : 'bg-orange-100'
-          }`}>
-            <div className="text-xl mb-1">
-              {"★".repeat(stars)}{"☆".repeat(3 - stars)}
-            </div>
-            <p className="font-bold text-md">{feedback.feedback}</p>
-            {feedback.tip && <p className="text-sm mt-1">💡 {feedback.tip}</p>}
-          </div>
-        )}
         
         {/* Full Passage with Colors */}
         <div className="full-passage">
@@ -638,22 +593,22 @@ export default function EnhancedVoiceReading() {
             })}
           </div>
         </div>
-      </div>
-      
-      {/* Fixed Footer Controls */}
-      <div className="enhanced-controls">
-        {!isListening ? (
-          <button className="ctrl-btn resume" onClick={startListening}>
-            ▶️ Resume Reading
-          </button>
-        ) : (
-          <button className="ctrl-btn pause" onClick={stopListening}>
-            ⏸️ Pause
-          </button>
-        )}
-        <button className="ctrl-btn finish" onClick={finishAssessment}>
-          🏁 Finish Reading
-        </button>
+        {/* Controls under the word card - no footer */}
+          <div className="word-controls">
+            {!isListening ? (
+              <button className="word-ctrl-btn resume-word" onClick={resumeListening}>
+                ▶️ Resume
+              </button>
+            ) : (
+              <button className="word-ctrl-btn pause-word" onClick={pauseListening}>
+                ⏸️ Pause
+              </button>
+            )}
+            <button className="word-ctrl-btn finish-word" onClick={finishAssessment}>
+              🏁 Finish
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

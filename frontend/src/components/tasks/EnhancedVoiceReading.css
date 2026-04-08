@@ -56,9 +56,13 @@
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 2rem;
-  font-size: 1rem;
+  font-size: 1.2rem;
   cursor: pointer;
   font-weight: 600;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .enhanced-title {
@@ -74,6 +78,23 @@
   border-radius: 2rem;
   font-weight: 700;
   font-size: 0.9rem;
+}
+
+/* Timer Badge */
+.timer-badge {
+  background: #3D5A4C;
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+.timer-badge.warning {
+  background: #FF9800;
+  animation: pulse 1s infinite;
 }
 
 /* Reading Content - Scrollable */
@@ -103,6 +124,8 @@
 /* Current Word Section */
 .current-word-section {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
   margin-bottom: 1.5rem;
 }
@@ -115,6 +138,7 @@
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   min-width: 280px;
   text-align: center;
+  margin-bottom: 1rem;
 }
 
 .enhanced-word-text {
@@ -129,6 +153,43 @@
   font-size: 1rem;
   color: #FF9800;
   font-weight: 700;
+}
+
+/* Controls under the word card */
+.word-controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.word-ctrl-btn {
+  padding: 0.6rem 1.5rem;
+  border: none;
+  border-radius: 2rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.word-ctrl-btn.pause-word {
+  background: #FF9800;
+  color: white;
+}
+
+.word-ctrl-btn.finish-word {
+  background: #f44336;
+  color: white;
+}
+
+.word-ctrl-btn.resume-word {
+  background: #4CAF50;
+  color: white;
+}
+
+.word-ctrl-btn:hover {
+  transform: translateY(-2px);
 }
 
 /* Microphone Status */
@@ -220,60 +281,12 @@
   font-weight: 500;
 }
 
-/* Wrong words - Soft Orange (positive, not scary) */
+/* Wrong words - Soft Orange */
 .passage-word.done-wrong {
   background: #FFE0B2;
   color: #E65100;
   text-decoration: underline;
   text-decoration-style: dotted;
-}
-
-/* Fixed Controls */
-.enhanced-controls {
-  position: relative;
-  z-index: 15;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  padding: 1rem 2rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(61, 90, 76, 0.2);
-  flex-shrink: 0;
-}
-
-.ctrl-btn {
-  padding: 0.7rem 1.5rem;
-  border: none;
-  border-radius: 2rem;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.ctrl-btn.resume {
-  background: #4CAF50;
-  color: white;
-}
-
-.ctrl-btn.pause {
-  background: #FF9800;
-  color: white;
-}
-
-.ctrl-btn.skip {
-  background: #9E9E9E;
-  color: white;
-}
-
-.ctrl-btn.finish {
-  background: #f44336;
-  color: white;
-}
-
-.ctrl-btn:hover {
-  transform: translateY(-2px);
 }
 
 /* Start Screen */
@@ -478,23 +491,6 @@
   color: #3D5A4C;
 }
 
-/* Feedback Panel */
-.feedback-panel {
-  transition: all 0.3s ease;
-  animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Responsive */
 @media (max-width: 700px) {
   .enhanced-word-text {
@@ -505,7 +501,7 @@
     padding: 1.5rem 2rem;
   }
   
-  .ctrl-btn {
+  .word-ctrl-btn {
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
   }
