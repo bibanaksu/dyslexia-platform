@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { loginParent, registerParent, loginTherapist, saveUserSession } from '../../services/api';
 import './Auth.css';
 
@@ -69,6 +69,7 @@ const EyeOffIcon = () => (
 
 export function Auth() {
   const [isSignIn, setIsSignIn] = useState(true);
+  const [role, setRole] = useState('parent'); // 'parent' or 'therapist'
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -88,27 +89,19 @@ export function Auth() {
     try {
       let data;
       if (isSignIn) {
-        // Try therapist login first, then parent login
-        try {
+        if (role === 'therapist') {
           data = await loginTherapist(email, password);
-        } catch (therapistError) {
-          // If therapist login fails, try parent login
+        } else {
           data = await loginParent(email, password);
         }
-        
         saveUserSession(data);
-        
-        // Redirect based on role returned from backend
         if (data.role === 'therapist') {
           window.location.href = '/dashboard';
         } else {
           window.location.href = '/parent-dashboard';
         }
       } else {
-        // Sign up - always parent
-        if (password !== confirmPassword) {
-          throw new Error('Passwords do not match');
-        }
+        if (password !== confirmPassword) throw new Error('Passwords do not match');
         data = await registerParent(fullName, email, phone, password);
         saveUserSession(data);
         window.location.href = '/parent-dashboard';
@@ -177,6 +170,57 @@ export function Auth() {
               Sign Up
             </button>
           </div>
+
+          {/* Role Selector - Only for Sign In */}
+          {isSignIn && (
+            <div style={{ 
+              display: 'flex', 
+              gap: '10px', 
+              marginBottom: '20px',
+              background: 'rgba(61, 90, 76, 0.06)',
+              padding: '4px',
+              borderRadius: '50px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setRole('parent')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: 'none',
+                  borderRadius: '50px',
+                  fontSize: '0.95rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: role === 'parent' ? 'var(--forest-green, #3d5a4c)' : 'transparent',
+                  color: role === 'parent' ? 'white' : 'var(--medium-gray, #888)',
+                  boxShadow: role === 'parent' ? '0 4px 12px rgba(61, 90, 76, 0.25)' : 'none'
+                }}
+              >
+                Parent
+              </button>
+              <button
+                type="button"
+                onClick={() => setRole('therapist')}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  border: 'none',
+                  borderRadius: '50px',
+                  fontSize: '0.95rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: role === 'therapist' ? 'var(--forest-green, #3d5a4c)' : 'transparent',
+                  color: role === 'therapist' ? 'white' : 'var(--medium-gray, #888)',
+                  boxShadow: role === 'therapist' ? '0 4px 12px rgba(61, 90, 76, 0.25)' : 'none'
+                }}
+              >
+                Therapist
+              </button>
+            </div>
+          )}
 
           {error && (
             <div style={{ 

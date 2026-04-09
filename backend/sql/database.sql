@@ -107,32 +107,6 @@ CREATE TABLE ChildActivityProgress (
     INDEX idx_completed (completed)
 );
 
--- Insert sample data
-INSERT INTO Therapist (username, password_hash, email) VALUES 
-('therapist', 'your_hashed_password_here', 'therapist@dyslexiaplatform.com');
-
-INSERT INTO Parent (full_name, email, phone, password_hash) VALUES 
-('John Smith', 'john.smith@example.com', '555-0101', 'hashed_password_1'),
-('Mary Johnson', 'mary.johnson@example.com', '555-0102', 'hashed_password_2');
-
-INSERT INTO Child (full_name, grade, parent_id) VALUES 
-('Emma Smith', 3, 1),
-('Liam Smith', 5, 1),
-('Sophie Johnson', 2, 2);
-
-INSERT INTO Activity (name, description, difficulty_level) VALUES 
-('Letter Recognition Basics', 'Learn to recognize basic alphabet letters', 1),
-('Word Building', 'Build simple words from letter blocks', 2),
-('Reading Comprehension', 'Read passages and answer questions', 3),
-('Phonics Practice', 'Practice phonetic sounds and patterns', 2),
-('Speed Reading Exercise', 'Improve reading speed with timed exercises', 3);
-
--- Create indexes for better query performance
-CREATE INDEX idx_parent_email ON Parent(email);
-CREATE INDEX idx_child_parent ON Child(parent_id);
-CREATE INDEX idx_assessment_child_date ON Assessment(child_id, assessment_date);
-CREATE INDEX idx_progress_child_activity ON ChildActivityProgress(child_id, activity_id);
--- Add this to your existing database.sql file
 -- Parent Screening Quiz Table
 CREATE TABLE IF NOT EXISTS ParentScreening (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -151,3 +125,31 @@ CREATE TABLE IF NOT EXISTS ParentScreening (
     INDEX idx_parent_id (parent_id),
     INDEX idx_completed_at (completed_at)
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEED DATA
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Seed therapist
+-- Password: Therapist@123  (bcrypt hash, saltRounds=12)
+INSERT INTO Therapist (username, password_hash, email) VALUES 
+('therapist', '$2b$12$LGfosp5NB9.2yBGlLXQse.WGrk7EtLnWTBkCZvDInb3bnLjQw9vQy', 'therapist@dyslexiaplatform.com');
+
+-- Sample parents (passwords should be hashed in production — these are placeholders)
+INSERT INTO Parent (full_name, email, phone, password_hash) VALUES 
+('John Smith', 'john.smith@example.com', '555-0101', 'hashed_password_1'),
+('Mary Johnson', 'mary.johnson@example.com', '555-0102', 'hashed_password_2');
+
+-- Sample children
+INSERT INTO Child (full_name, grade, parent_id) VALUES 
+('Emma Smith', 3, 1),
+('Liam Smith', 5, 1),
+('Sophie Johnson', 2, 2);
+
+-- Sample activities
+INSERT INTO Activity (name, description, difficulty_level) VALUES 
+('Letter Recognition Basics', 'Learn to recognize basic alphabet letters', 1),
+('Word Building', 'Build simple words from letter blocks', 2),
+('Reading Comprehension', 'Read passages and answer questions', 3),
+('Phonics Practice', 'Practice phonetic sounds and patterns', 2),
+('Speed Reading Exercise', 'Improve reading speed with timed exercises', 3);
