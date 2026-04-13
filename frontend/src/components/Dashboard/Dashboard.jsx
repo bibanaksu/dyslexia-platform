@@ -141,6 +141,7 @@ const NAV = [
   { id: "activities", label: "Activity Library", icon: "📋" },
   { id: "reports", label: "Reports", icon: "📊" },
   { id: "settings", label: "Settings", icon: "⚙" },
+  { id: "audit", label: "Security Log", icon: "🔐" },  // ← ADDED AUDIT LOG
 ];
 
 export default function Dashboard() {
@@ -178,6 +179,15 @@ export default function Dashboard() {
       // fall back to mock data — backend may not be running yet
     }
   }
+
+  // Handle navigation clicks
+  const handleNavigation = (id) => {
+    if (id === "audit") {
+      window.location.href = "/audit-log";
+    } else {
+      setActivePage(id);
+    }
+  };
 
   const filtered = students.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
@@ -296,7 +306,7 @@ export default function Dashboard() {
           {NAV.map((n) => (
             <button
               key={n.id}
-              onClick={() => setActivePage(n.id)}
+              onClick={() => handleNavigation(n.id)}
               className={`dashboard__nav-item ${activePage === n.id ? 'dashboard__nav-item--active' : ''}`}
             >
               <span className="dashboard__nav-icon">{n.icon}</span>

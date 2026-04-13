@@ -255,6 +255,15 @@ export function Auth() {
               </div>
             )}
 
+            {/* FORGOT PASSWORD LINK - ADDED HERE */}
+            {isSignIn && (
+              <div style={{ textAlign: 'right', marginTop: '-8px', marginBottom: '8px' }}>
+                <a href="/forgot-password" style={{ fontSize: '13px', color: '#16a34a', textDecoration: 'none' }}>
+                  Forgot password?
+                </a>
+              </div>
+            )}
+
             <button type="submit" className="Auth__submit-btn" disabled={loading}>
               <span>{loading ? 'Please wait…' : isSignIn ? 'Sign In' : 'Create Account'}</span>
               {!loading && <ArrowIcon />}

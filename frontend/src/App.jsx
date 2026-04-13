@@ -20,21 +20,10 @@ import StartAssessment from './components/StartAssessment/StartAssessment';
 import QuizPage from './components/QuizPage/QuizPage';
 import TaskOne from './components/tasks/TaskOne';
 import EnhancedVoiceReading from './components/tasks/EnhancedVoiceReading';
-// Protected Route Component with role support
-function ProtectedRoute({ children, requiredRole = 'therapist' }) {
-  const isAuthenticated = localStorage.getItem('token');
-  const userRole = localStorage.getItem('userRole');
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/auth" replace />;
-  }
-  
-  if (requiredRole && userRole !== requiredRole) {
-    return <Navigate to="/" replace />;
-  }
-  
-  return children;
-}
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import AuditLog from './pages/AuditLog';
+import { PrivateRoute, RoleRoute, PublicRoute } from './components/RouteGuards';
 
 function App() {
   const [scrollY, setScrollY] = useState(0);
@@ -70,35 +59,71 @@ function App() {
           {/* Quiz Page Route - Public */}
           <Route path="/quiz" element={<QuizPage />} />
           
-          {/* Auth Route - Always accessible, even when logged in */}
-          <Route path="/auth" element={<Auth />} />
+          {/* Reading Adventure - Public route (no login required) */}
+          <Route path="/adventure" element={<ReadingAdventure />} />
+          
+          {/* Auth Route - Redirects to dashboard if already logged in */}
+          <Route path="/auth" element={
+            <PublicRoute>
+              <Auth />
+            </PublicRoute>
+          } />
+          
+          {/* Forgot Password - Public */}
+          <Route path="/forgot-password" element={
+            <PublicRoute>
+              <ForgotPassword />
+            </PublicRoute>
+          } />
+          
+          {/* Reset Password - Public (with token) */}
+          <Route path="/reset-password/:token" element={
+            <PublicRoute>
+              <ResetPassword />
+            </PublicRoute>
+          } />
           
           {/* Therapist Dashboard - Protected */}
           <Route path="/dashboard" element={
-            <ProtectedRoute requiredRole="therapist">
+            <RoleRoute allowedRole="therapist">
               <Dashboard />
-            </ProtectedRoute>
+            </RoleRoute>
           } />
-        <Route path="/tasks/enhanced-voice" element={<EnhancedVoiceReading />} />
-          {/* Task One - Word Reading Assessment (3 exercises: Twins, Everyday, Funny Words) */}
-          <Route path="/tasks/task-one" element={<TaskOne />} />
           
-         
+          {/* Audit Log - Therapist Only */}
+          <Route path="/audit-log" element={
+            <RoleRoute allowedRole="therapist">
+              <AuditLog />
+            </RoleRoute>
+          } />
+          
+          {/* Tasks - Therapist Only */}
+          <Route path="/tasks/enhanced-voice" element={
+            <RoleRoute allowedRole="therapist">
+              <EnhancedVoiceReading />
+            </RoleRoute>
+          } />
+          
+          {/* Task One - Word Reading Assessment - Therapist Only */}
+          <Route path="/tasks/task-one" element={
+            <RoleRoute allowedRole="therapist">
+              <TaskOne />
+            </RoleRoute>
+          } />
           
           {/* Parent Dashboard - Protected */}
           <Route path="/parent-dashboard" element={
-            <ProtectedRoute requiredRole="parent">
+            <RoleRoute allowedRole="parent">
               <ParentDashboard />
-            </ProtectedRoute>
+            </RoleRoute>
           } />
           
-          {/* Reading Adventure - Public route (no login required) */}
-          <Route path="/adventure" element={
-            <ReadingAdventure />
+          {/* Start Assessment Page - Parent only */}
+          <Route path="/start-assessment" element={
+            <RoleRoute allowedRole="parent">
+              <StartAssessment />
+            </RoleRoute>
           } />
-          
-          {/* Start Assessment Page */}
-          <Route path="/start-assessment" element={<StartAssessment />} />
           
           {/* Catch all - redirect to home */}
           <Route path="*" element={<Navigate to="/" replace />} />
