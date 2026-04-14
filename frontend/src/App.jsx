@@ -16,7 +16,7 @@ import { Footer } from './components/Footer/Footer';
 import Dashboard from './components/Dashboard/Dashboard';
 import ReadingAdventure from './components/ReadingAdventure/ReadingAdventure';
 import ParentDashboard from './components/ParentDashboard/ParentDashboard';
-import StartAssessment from './components/StartAssessment/StartAssessment';
+import StartAssessment from './components/Startassessment/Startassessment';
 import QuizPage from './components/QuizPage/QuizPage';
 import TaskOne from './components/tasks/TaskOne';
 import EnhancedVoiceReading from './components/tasks/EnhancedVoiceReading';
@@ -62,6 +62,15 @@ function App() {
           {/* Reading Adventure - Public route (no login required) */}
           <Route path="/adventure" element={<ReadingAdventure />} />
           
+          {/* Start Assessment Page - PUBLIC (no login required) */}
+          <Route path="/start-assessment" element={<StartAssessment />} />
+          
+          {/* Task One - Word Reading Assessment - PUBLIC (no login required) */}
+          <Route path="/tasks/task-one" element={<TaskOne />} />
+          
+          {/* Task Two - Voice Reading Assessment - PUBLIC (no login required) */}
+          <Route path="/tasks/enhanced-voice" element={<EnhancedVoiceReading />} />
+          
           {/* Auth Route - Redirects to dashboard if already logged in */}
           <Route path="/auth" element={
             <PublicRoute>
@@ -97,31 +106,10 @@ function App() {
             </RoleRoute>
           } />
           
-          {/* Tasks - Therapist Only */}
-          <Route path="/tasks/enhanced-voice" element={
-            <RoleRoute allowedRole="therapist">
-              <EnhancedVoiceReading />
-            </RoleRoute>
-          } />
-          
-          {/* Task One - Word Reading Assessment - Therapist Only */}
-          <Route path="/tasks/task-one" element={
-            <RoleRoute allowedRole="therapist">
-              <TaskOne />
-            </RoleRoute>
-          } />
-          
           {/* Parent Dashboard - Protected */}
           <Route path="/parent-dashboard" element={
             <RoleRoute allowedRole="parent">
               <ParentDashboard />
-            </RoleRoute>
-          } />
-          
-          {/* Start Assessment Page - Parent only */}
-          <Route path="/start-assessment" element={
-            <RoleRoute allowedRole="parent">
-              <StartAssessment />
             </RoleRoute>
           } />
           
