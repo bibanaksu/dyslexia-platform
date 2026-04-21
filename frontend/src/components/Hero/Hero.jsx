@@ -1,3 +1,4 @@
+// frontend/src/components/Hero/Hero.jsx
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Hero.css';
@@ -27,8 +28,9 @@ export function Hero() {
   const parallaxOffset = scrollY * 0.3;
   const opacityFade = Math.max(0, 1 - scrollY / 600);
 
+  // Updated: Navigate to child info page first
   const handleStartAssessment = () => {
-    navigate('/start-assessment');
+    navigate('/child-info');
   };
 
   const handleTakeQuiz = () => {

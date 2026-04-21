@@ -902,29 +902,7 @@ html, body {
   text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
 }
 
-/* Category Breakdown */
-.category-breakdown-area {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 2rem;
-  border-radius: 2rem;
-  margin: 2rem 0;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  position: relative;
-  z-index: 10;
-}
 
-.category-breakdown-area h2 {
-  color: #3D5A4C;
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
-  font-family: 'Comic Neue', cursive;
-}
-
-.breakdown-grid-area {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
 
 @media (max-width: 800px) {
   .breakdown-grid-area {
@@ -2768,6 +2746,107 @@ html, body {
   opacity: 0.8;
 }
 
+
+
+/* Category Breakdown - Make it one row */
+.category-breakdown-area {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+}
+
+.category-breakdown-area h2 {
+  color: #3D5A4C;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  font-family: 'Comic Neue', cursive;
+  text-align: center;
+}
+
+/* ONE ROW - horizontal layout */
+.breakdown-grid-area {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: stretch;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Make each card take equal width but not too wide */
+.breakdown-card-item {
+  flex: 1;
+  min-width: 150px;
+  max-width: 200px;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #f9f9f9;
+  border: 2px solid #eee;
+  transition: all 0.3s ease;
+}
+
+/* For smaller screens - stack vertically if needed */
+@media (max-width: 600px) {
+  .breakdown-grid-area {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .breakdown-card-item {
+    min-width: 200px;
+    max-width: 300px;
+    width: 100%;
+  }
+}
+
+.breakdown-card-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-color: #FFE9AD;
+}
+
+.breakdown-icon-item {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-card-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #3D5A4C;
+}
+
+.breakdown-score-item {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #3D5A4C;
+  margin: 0.5rem 0;
+}
+
+.percentage-item {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.breakdown-bar-item {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.bar-fill-item {
+  height: 100%;
+  background: linear-gradient(90deg, #FFB84D, #FFD700);
+  border-radius: 4px;
+  transition: width 0.8s ease;
+}
 /* =============================================
    RESPONSIVE ADJUSTMENTS
    ============================================= */
@@ -2825,5 +2904,204 @@ html, body {
   .letter-animated {
     animation: none;
     opacity: 1;
+  }
+}
+
+/* Saving overlay */
+.saving-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 30px;
+  z-index: 1001;
+  font-weight: bold;
+  animation: fadeInOut 2s ease;
+}
+
+.saving-spinner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(20px); }
+  20% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+/* Update these specific styles in your TaskOne.css */
+
+/* Make sure the header-right pushes content to the right */
+.header-right {
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Timer styling - positioned on the right */
+.timer {
+  background: #FFB84D;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  font-weight: 800;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'Nunito', monospace;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Ensure the header bar has proper spacing */
+.assessment-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 2rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+/* Left section - contains pause button and category name */
+.header-left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Center section - progress text */
+.header-center {
+  flex: 1;
+  text-align: center;
+}
+
+/* Right section - timer ONLY */
+.header-right {
+  flex: 1;
+  text-align: right;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Optional: Add a subtle icon to the timer */
+.timer::before {
+  content: "⏱️";
+  margin-right: 0.3rem;
+  font-size: 0.9rem;
+}
+/* =============================================
+   CATEGORY BREAKDOWN - ONE ROW (FIXED)
+   ============================================= */
+
+/* Container for the breakdown area */
+.category-breakdown-area {
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+  width: 100%;
+}
+
+.category-breakdown-area h2 {
+  color: #3D5A4C;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  font-family: 'Comic Neue', cursive;
+  text-align: center;
+}
+
+/* ONE ROW - horizontal layout (FLEXBOX) */
+.breakdown-grid-area {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  align-items: stretch !important;
+  gap: 1.5rem !important;
+  flex-wrap: wrap !important;
+}
+
+/* Each card in the row */
+.breakdown-card-item {
+  flex: 1;
+  min-width: 180px;
+  max-width: 220px;
+  text-align: center;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: #f9f9f9;
+  border: 2px solid #eee;
+  transition: all 0.3s ease;
+}
+
+.breakdown-card-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border-color: #FFE9AD;
+}
+
+.breakdown-icon-item {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-card-item h3 {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: #3D5A4C;
+}
+
+.breakdown-score-item {
+  font-size: 1.2rem;
+  font-weight: 900;
+  color: #3D5A4C;
+  margin: 0.5rem 0;
+}
+
+.percentage-item {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+.breakdown-bar-item {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.bar-fill-item {
+  height: 100%;
+  background: linear-gradient(90deg, #FFB84D, #FFD700);
+  border-radius: 4px;
+  transition: width 0.8s ease;
+}
+
+/* Mobile: Stack vertically on small screens */
+@media (max-width: 700px) {
+  .breakdown-grid-area {
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  
+  .breakdown-card-item {
+    min-width: 250px;
+    max-width: 100%;
+    width: 100%;
   }
 }

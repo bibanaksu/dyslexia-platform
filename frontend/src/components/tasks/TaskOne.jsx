@@ -1,288 +1,396 @@
 // frontend/src/components/tasks/TaskOne.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import "./TaskOne.css";
+import { getChildInfo, getSessionUUID, getUserInfo, getGuestId } from "../../utils/childSession";
 
 /* ─── DATA ─────────────────────────────────────────────── */
 const EXERCISES = [
   {
-    id: 1,
-    key: "similarWords",
-    title: "Twins Words 👯",
-    description: "Words that look or sound similar",
-    icon: "👯",
-    accent: "#3D5A4C",
-    accentDark: "#2C4A3A",
-    words: ["cat","bat","hat","mat","cap","cup","map","mop","pin","pen","sit","set","bad","bed","big","pig","fan","van","tap","top"],
+    id: 1, key: "similarWords", title: "Twins Words 👯",
+    description: "Words that look or sound similar", icon: "👯",
+    accent: "#3D5A4C", accentDark: "#2C4A3A",
+    words: ["cat","bat","hat","mat","cap","cup","map","mop","pin","pen",
+            "sit","set","bad","bed","big","pig","fan","van","tap","top"],
     timeLimit: 120,
   },
   {
-    id: 2,
-    key: "nonSimilarWords",
-    title: "Everyday Words 🏡",
-    description: "Words you know from daily life",
-    icon: "🏡",
-    accent: "#E8A87C",
-    accentDark: "#C45D2C",
-    words: ["house","tree","school","water","mother","father","child","book","table","chair","apple","bread","car","road","sun","moon","dog","cat","friend","teacher"],
+    id: 2, key: "nonSimilarWords", title: "Everyday Words 🏡",
+    description: "Words you know from daily life", icon: "🏡",
+    accent: "#E8A87C", accentDark: "#C45D2C",
+    words: ["house","tree","school","water","mother","father","child","book",
+            "table","chair","apple","bread","car","road","sun","moon","dog",
+            "cat","friend","teacher"],
     timeLimit: 150,
   },
   {
-    id: 3,
-    key: "nonWords",
-    title: "Funny Words 🤪",
-    description: "Made-up words - sound them out!",
-    icon: "🤪",
-    accent: "#E8A87C",
-    accentDark: "#C45D2C",
-    words: ["mip","lat","nob","kep","sud","fik","zan","pel","mot","rib","dak","vun","sep","gol","tim","paf","lod","kes","bim","ran"],
+    id: 3, key: "nonWords", title: "Funny Words 🤪",
+    description: "Made-up words - sound them out!", icon: "🤪",
+    accent: "#E8A87C", accentDark: "#C45D2C",
+    words: ["mip","lat","nob","kep","sud","fik","zan","pel","mot","rib",
+            "dak","vun","sep","gol","tim","paf","lod","kes","bim","ran"],
     timeLimit: 180,
   },
 ];
 
-const API         = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const STORAGE_KEY = 'task_one_progress';
+// ── KEY FIX: store the DB row ID so we PATCH instead of INSERT twice ──
+const SAVED_ID_KEY = 'task_one_saved_db_id';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-/* ─── Sound helpers ─────────────────────────────────────── */
-const playTone = (freq1, freq2, duration) => {
+/* ─── Sound effects ─────────────────────────────────────── */
+const playSwipeSound = () => {
   try {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq1, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(freq2, ctx.currentTime + duration);
-    gain.gain.setValueAtTime(0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration + 0.05);
-    osc.start();
-    osc.stop(ctx.currentTime + duration + 0.05);
-  } catch {}
+    osc.frequency.setValueAtTime(400, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
+    g.gain.setValueAtTime(0.1, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+    osc.start(); osc.stop(ctx.currentTime + 0.15);
+  } catch (e) {}
 };
 
-const playSuccessSound = () => playTone(600, 800, 0.15);
-const playSwipeSound   = () => playTone(400, 200, 0.1);
+const playSuccessSound = () => {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.15);
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    osc.start(); osc.stop(ctx.currentTime + 0.2);
+  } catch (e) {}
+};
 
-/* ─── Main Component ─────────────────────────────────────── */
+const markQuestCompleted = () => {
+  const currentQuest = JSON.parse(localStorage.getItem('current_quest') || '{}');
+  if (currentQuest.id) {
+    const saved = localStorage.getItem('reading_adventure_progress');
+    const completed = saved ? JSON.parse(saved) : [];
+    if (!completed.includes(currentQuest.id)) {
+      localStorage.setItem('reading_adventure_progress', JSON.stringify([...completed, currentQuest.id]));
+    }
+  }
+};
+
+/* ─── Main Component ─────────────────────────────────── */
 export default function TaskOne() {
   const navigate = useNavigate();
-  const [currentScreen, setCurrentScreen]     = useState('categories');
+  const [currentScreen, setCurrentScreen] = useState('categories');
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [categoryProgress, setCategoryProgress] = useState({
-    similarWords:    { completed: 0, correct: 0, timeSpent: 0 },
-    nonSimilarWords: { completed: 0, correct: 0, timeSpent: 0 },
-    nonWords:        { completed: 0, correct: 0, timeSpent: 0 },
-  });
-
-  // Assessment state
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
-  const [answeredWords, setAnsweredWords]       = useState([]);
-  const [timeRemaining, setTimeRemaining]       = useState(0);
   const [categoryStartTime, setCategoryStartTime] = useState(null);
-  const [isPaused, setIsPaused]                 = useState(false);
-  const [timerRunning, setTimerRunning]         = useState(false);
-  const [feedbackBorder, setFeedbackBorder]     = useState(null);
+  const [categoryProgress, setCategoryProgress] = useState({
+    similarWords:    { completed: 0, correct: 0, timeSpent: 0, errors: [] },
+    nonSimilarWords: { completed: 0, correct: 0, timeSpent: 0, errors: [] },
+    nonWords:        { completed: 0, correct: 0, timeSpent: 0, errors: [] },
+  });
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [answeredWords, setAnsweredWords] = useState([]);
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [feedbackBorder, setFeedbackBorder] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Save state
-  const [saving, setSaving]     = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [savedId, setSavedId]   = useState(null);
-
-  const timerRef          = useRef(null);
+  const timerRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
+  const categoryTimerRef = useRef(null);
+  // ── FIX: single ref holds the DB row id (persisted in localStorage too) ──
+  const savedIdRef = useRef(localStorage.getItem(SAVED_ID_KEY) || null);
 
-  /* ── Restore progress ─────────────────────────────────── */
+  // ── Load saved progress on mount ──────────────────────────
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return;
-    try {
-      const p = JSON.parse(saved);
-      setCategoryProgress(p.categoryProgress);
-      if (p.currentCategory && p.currentWordIndex !== undefined) {
-        const cat = EXERCISES.find(ex => ex.key === p.currentCategory);
-        if (cat) {
-          setSelectedCategory(cat);
-          setCurrentWordIndex(p.currentWordIndex);
-          setTimeRemaining(p.timeRemaining);
-          setAnsweredWords(p.answeredWords || []);
+    if (saved) {
+      const progress = JSON.parse(saved);
+      setCategoryProgress(progress.categoryProgress);
+      if (progress.currentCategory && progress.currentWordIndex !== undefined) {
+        const category = EXERCISES.find(ex => ex.key === progress.currentCategory);
+        if (category) {
+          setSelectedCategory(category);
+          setCurrentWordIndex(progress.currentWordIndex);
+          setTimeElapsed(progress.timeElapsed || 0);
+          setAnsweredWords(progress.answeredWords || []);
           setCurrentScreen('assessment');
           setTimerRunning(false);
           setIsPaused(true);
         }
       }
-    } catch {}
+    }
+    getGuestId();
   }, []);
 
-  /* ── Persist progress ─────────────────────────────────── */
+  // ── Persist progress to localStorage ──────────────────────
   useEffect(() => {
-    const data = currentScreen === 'assessment' && selectedCategory
-      ? { categoryProgress, currentCategory: selectedCategory.key, currentWordIndex, timeRemaining, answeredWords, lastUpdated: Date.now() }
-      : { categoryProgress, lastUpdated: Date.now() };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }, [categoryProgress, currentScreen, selectedCategory, currentWordIndex, timeRemaining, answeredWords]);
+    if (currentScreen === 'assessment' && selectedCategory) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        categoryProgress, currentCategory: selectedCategory.key,
+        currentWordIndex, timeElapsed, answeredWords, lastUpdated: Date.now(),
+      }));
+    } else if (currentScreen !== 'assessment') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ categoryProgress, lastUpdated: Date.now() }));
+    }
+  }, [categoryProgress, currentScreen, selectedCategory, currentWordIndex, timeElapsed, answeredWords]);
 
-  /* ── Timer ────────────────────────────────────────────── */
+  // ── Timer ──────────────────────────────────────────────────
   useEffect(() => {
-    if (timerRunning && timeRemaining > 0 && !isPaused) {
-      timerRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) { clearInterval(timerRef.current); setTimerRunning(false); return 0; }
-          return prev - 1;
-        });
+    if (timerRunning && !isPaused) {
+      timerRef.current = setInterval(() => setTimeElapsed(p => p + 1), 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [timerRunning, isPaused]);
+
+  // ── Category time tracking ─────────────────────────────────
+  useEffect(() => {
+    if (currentScreen === 'assessment' && !isPaused && categoryStartTime) {
+      if (categoryTimerRef.current) clearInterval(categoryTimerRef.current);
+      categoryTimerRef.current = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - categoryStartTime) / 1000);
+        if (selectedCategory) {
+          setCategoryProgress(prev => ({
+            ...prev,
+            [selectedCategory.key]: { ...prev[selectedCategory.key], timeSpent: elapsed },
+          }));
+        }
       }, 1000);
     }
-    return () => clearInterval(timerRef.current);
-  }, [timerRunning, timeRemaining, isPaused]);
+    return () => { if (categoryTimerRef.current) clearInterval(categoryTimerRef.current); };
+  }, [currentScreen, isPaused, categoryStartTime, selectedCategory]);
 
-  useEffect(() => () => { if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current); }, []);
+  useEffect(() => {
+    return () => { if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current); };
+  }, []);
 
-  /* ── Save results to DB ───────────────────────────────── */
-  const saveResultsToDB = async (finalProgress) => {
-    setSaving(true);
-    setSaveError('');
+  useEffect(() => {
+    const totalCompleted = Object.values(categoryProgress).reduce((s, c) => s + c.completed, 0);
+    if (totalCompleted === 60 && currentScreen === 'finalResults') markQuestCompleted();
+  }, [categoryProgress, currentScreen]);
+
+  // ── FIXED: save results — POST first time, PATCH afterwards ──
+  const saveResultsToBackend = async (isPartial = false, latestProgress = null) => {
+    const user = getUserInfo();
+    const childInfo = getChildInfo();
+    const sessionUUID = getSessionUUID();
+    const guestId = getGuestId();
     const token = localStorage.getItem('token');
+
+    const prog = latestProgress || categoryProgress;
+
+    const totalCorrect   = Object.values(prog).reduce((s, c) => s + c.correct, 0);
+    const totalCompleted = Object.values(prog).reduce((s, c) => s + c.completed, 0);
+    const percentage     = totalCompleted > 0 ? Math.round((totalCorrect / totalCompleted) * 100) : 0;
+
+    let performanceLevel = 'Needs Improvement';
+    if (percentage >= 90) performanceLevel = 'Excellent';
+    else if (percentage >= 75) performanceLevel = 'Good';
+    else if (percentage >= 60) performanceLevel = 'Satisfactory';
+
+    const totalTimeSeconds = prog.similarWords.timeSpent + prog.nonSimilarWords.timeSpent + prog.nonWords.timeSpent;
+    const avgTimePerWord   = totalCompleted > 0 ? Math.round(totalTimeSeconds / totalCompleted) : 0;
+    const allErrors        = [...prog.similarWords.errors, ...prog.nonSimilarWords.errors, ...prog.nonWords.errors];
+
+    const payload = {
+      session_uuid:           sessionUUID,
+      child_id:               user?.childId || null,
+      parent_id:              user?.role === 'parent' ? user.id : null,
+      // ── FIX: use childFullName ──
+      child_name:             childInfo?.childFullName || childInfo?.childName || user?.name || 'Guest User',
+      child_grade:            childInfo?.childGrade    || user?.childGrade     || 'Not Specified',
+      guest_id:               guestId,
+      similar_words_score:    prog.similarWords.correct,
+      non_similar_words_score: prog.nonSimilarWords.correct,
+      pseudo_words_score:     prog.nonWords.correct,
+      total_score:            totalCorrect,
+      total_words:            60,
+      percentage,
+      performance_level:      performanceLevel,
+      total_time_seconds:     totalTimeSeconds,
+      avg_time_per_word:      avgTimePerWord,
+      error_patterns:         allErrors.length > 0 ? JSON.stringify(allErrors) : null,
+      is_partial:             isPartial ? 1 : 0,
+    };
+
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    setIsSaving(true);
     try {
-      const res  = await fetch(`${API}/api/assessments/task1/submit`, {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ categoryProgress: finalProgress }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSavedId(data.sessionId);
-        console.log('✅ Task 1 saved, session:', data.sessionId);
+      let res;
+      if (savedIdRef.current) {
+        // ── PATCH — update existing row, never create a duplicate ──
+        res = await axios.patch(`${API_URL}/api/task1/submit/${savedIdRef.current}`, payload, { headers });
       } else {
-        setSaveError(data.error || 'Could not save to server.');
+        // ── POST — first time only ──
+        res = await axios.post(`${API_URL}/api/task1/submit`, payload, { headers });
+        if (res.data?.resultId) {
+          savedIdRef.current = String(res.data.resultId);
+          localStorage.setItem(SAVED_ID_KEY, savedIdRef.current);
+        }
       }
-    } catch {
-      setSaveError('Network error — results shown locally only.');
+      return true;
+    } catch (error) {
+      console.error('Error saving task1:', error.response?.data || error.message);
+      return false;
     } finally {
-      setSaving(false);
+      setTimeout(() => setIsSaving(false), 800);
     }
   };
 
-  /* ── Actions ──────────────────────────────────────────── */
+  // ── Start a category ───────────────────────────────────────
   const startCategory = (categoryKey) => {
     const category = EXERCISES.find(ex => ex.key === categoryKey);
+    const existingProgress = categoryProgress[categoryKey];
     setSelectedCategory(category);
-    setCurrentWordIndex(0);
+    setCurrentWordIndex(existingProgress.completed);
     setAnsweredWords([]);
-    setTimeRemaining(category.timeLimit);
-    setCategoryStartTime(Date.now());
+    setTimeElapsed(0);
     setTimerRunning(true);
     setIsPaused(false);
+    setCategoryStartTime(Date.now());
     setCurrentScreen('assessment');
   };
 
-  const handleResume = () => { setIsPaused(false); setTimerRunning(true); };
+  const handlePause = async () => {
+    setIsPaused(true); setTimerRunning(false);
+    if (categoryTimerRef.current) clearInterval(categoryTimerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
+    await saveResultsToBackend(true);
+  };
 
-  const handleAnswer = (isCorrect) => {
+  const handleResume = () => {
+    setIsPaused(false); setTimerRunning(true);
+    const savedTime = categoryProgress[selectedCategory?.key]?.timeSpent || 0;
+    setCategoryStartTime(Date.now() - savedTime * 1000);
+  };
+
+  const handleQuit = async () => {
+    await saveResultsToBackend(true);
+    localStorage.removeItem(STORAGE_KEY);
+    setCurrentScreen('categories');
+  };
+
+  const handleAnswer = async (isCorrect) => {
     if (feedbackBorder) return;
     isCorrect ? playSuccessSound() : playSwipeSound();
     setFeedbackBorder(isCorrect ? 'correct' : 'incorrect');
 
-    feedbackTimeoutRef.current = setTimeout(() => {
-      setFeedbackBorder(null);
-      const currentWord  = selectedCategory.words[currentWordIndex];
-      const elapsed      = categoryStartTime ? Math.round((Date.now() - categoryStartTime) / 1000) : 0;
-
-      setAnsweredWords(prev => [
+    if (!isCorrect) {
+      const w = selectedCategory.words[currentWordIndex];
+      setCategoryProgress(prev => ({
         ...prev,
-        { word: currentWord, correct: isCorrect, time: new Date().toLocaleTimeString() },
-      ]);
+        [selectedCategory.key]: {
+          ...prev[selectedCategory.key],
+          errors: [...prev[selectedCategory.key].errors, w],
+        },
+      }));
+    }
 
-      setCategoryProgress(prev => {
-        const updated = {
-          ...prev,
-          [selectedCategory.key]: {
-            ...prev[selectedCategory.key],
-            completed: prev[selectedCategory.key].completed + 1,
-            correct:   prev[selectedCategory.key].correct + (isCorrect ? 1 : 0),
-            timeSpent: elapsed,
-          },
-        };
+    feedbackTimeoutRef.current = setTimeout(async () => {
+      setFeedbackBorder(null);
+      const w = selectedCategory.words[currentWordIndex];
+      setAnsweredWords(prev => [...prev, { word: w, correct: isCorrect }]);
 
-        const lastWord = currentWordIndex >= selectedCategory.words.length - 1;
-        const allDone  = Object.values(updated).every(cat => cat.completed >= 20);
+      // Build updated progress inline so we have it immediately
+      const updatedProgress = {
+        ...categoryProgress,
+        [selectedCategory.key]: {
+          ...categoryProgress[selectedCategory.key],
+          completed: categoryProgress[selectedCategory.key].completed + 1,
+          correct:   categoryProgress[selectedCategory.key].correct   + (isCorrect ? 1 : 0),
+          errors: isCorrect
+            ? categoryProgress[selectedCategory.key].errors
+            : [...categoryProgress[selectedCategory.key].errors, w],
+        },
+      };
 
-        if (lastWord) {
-          setTimerRunning(false);
-          if (allDone) {
-            // All 3 categories done — save and show results
-            saveResultsToDB(updated);
-            setCurrentScreen('finalResults');
-          } else {
-            setCurrentScreen('categories');
-          }
+      setCategoryProgress(updatedProgress);
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        categoryProgress: updatedProgress,
+        currentCategory:  selectedCategory.key,
+        currentWordIndex: currentWordIndex + 1,
+        timeElapsed,
+        answeredWords: [...answeredWords, { word: w, correct: isCorrect }],
+        lastUpdated: Date.now(),
+      }));
+
+      if (currentWordIndex < selectedCategory.words.length - 1) {
+        setCurrentWordIndex(prev => prev + 1);
+      } else {
+        // Category finished
+        setTimerRunning(false);
+        if (categoryTimerRef.current) clearInterval(categoryTimerRef.current);
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        const allDone = Object.values(updatedProgress).every(c => c.completed >= 20);
+        if (allDone) {
+          await saveResultsToBackend(false, updatedProgress);
+          // Clear the saved ID so a new session next time starts fresh
+          localStorage.removeItem(SAVED_ID_KEY);
+          savedIdRef.current = null;
+          setCurrentScreen('finalResults');
+          localStorage.removeItem(STORAGE_KEY);
         } else {
-          setCurrentWordIndex(i => i + 1);
+          await saveResultsToBackend(true, updatedProgress);
+          setCurrentScreen('categories');
         }
-
-        return updated;
-      });
+      }
     }, 300);
   };
 
-  /* ── Helpers ──────────────────────────────────────────── */
   const calculateTotalProgress = () => {
     const completed = Object.values(categoryProgress).reduce((s, c) => s + c.completed, 0);
     return Math.round((completed / 60) * 100);
   };
 
-  const formatTime = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
-  const getScorePercentage = (p) =>
-    p.completed === 0 ? 0 : Math.round((p.correct / p.completed) * 100);
-
-  /* ════════════════════════════════════════════════════════
-     CATEGORIES SCREEN
-  ════════════════════════════════════════════════════════ */
+  /* ── Categories Screen ────────────────────────────────── */
   if (currentScreen === 'categories') {
     const totalProgress = calculateTotalProgress();
     return (
       <div className="task-one-container categories-screen">
-        <div className="task-bg"></div>
-        <div className="dark-overlay"></div>
-
+        <div className="task-bg" /><div className="dark-overlay" />
         <div className="categories-grid">
           {EXERCISES.map((category) => {
             const progress    = categoryProgress[category.key];
-            const percentage  = Math.round((progress.completed / 20) * 100);
-
+            const pct         = Math.round((progress.completed / 20) * 100);
+            const isDone      = progress.completed === 20;
             return (
               <div
                 key={category.key}
-                className={`category-card ${progress.completed === 20 ? 'completed' : ''}`}
-                onClick={() => startCategory(category.key)}
+                className={`category-card ${isDone ? 'completed' : ''}`}
+                onClick={() => !isDone && startCategory(category.key)}
+                style={{ cursor: isDone ? 'default' : 'pointer' }}
               >
                 <div className="category-icon">{category.icon}</div>
                 <h3>{category.title}</h3>
                 <p>{category.description}</p>
-
                 <div className="category-stats">
-                  <div className="stat">
-                    <span className="stat-label">Words:</span>
-                    <span className="stat-value">{progress.completed}/20</span>
-                  </div>
+                  <div className="stat"><span className="stat-label">Words:</span><span className="stat-value">{progress.completed}/20</span></div>
+                  <div className="stat"><span className="stat-label">Correct:</span><span className="stat-value">{progress.correct}</span></div>
                 </div>
-
                 <div className="progress-indicator">
-                  <div className="progress-fill" style={{ width: `${percentage}%` }}></div>
-                  <span className="progress-percentage">{percentage}%</span>
+                  <div className="progress-fill" style={{ width: `${pct}%` }} />
+                  <span className="progress-percentage">{pct}%</span>
                 </div>
-
-                <button className="category-button">
-                  {progress.completed === 20 ? '🎯 Review' : '🚀 Start'}
-                </button>
+                {!isDone && <button className="category-button">{progress.completed > 0 ? '▶️ Continue' : '🚀 Start'}</button>}
               </div>
             );
           })}
         </div>
-
         {totalProgress === 100 && (
           <div className="celebration">
             <div className="confetti">🎉</div>
@@ -296,142 +404,88 @@ export default function TaskOne() {
     );
   }
 
-  /* ════════════════════════════════════════════════════════
-     ASSESSMENT SCREEN
-  ════════════════════════════════════════════════════════ */
-  if (currentScreen === 'assessment') {
-    const category    = selectedCategory;
-    const currentWord = category.words[currentWordIndex];
-    const progress    = ((currentWordIndex + 1) / 20) * 100;
-
+  /* ── Assessment Screen ────────────────────────────────── */
+  if (currentScreen === 'assessment' && selectedCategory) {
+    const word     = selectedCategory.words[currentWordIndex];
+    const progress = ((currentWordIndex + 1) / 20) * 100;
     return (
       <div className="task-one-container assessment-screen">
-        <div className="task-bg"></div>
-        <div className="dark-overlay"></div>
-
+        <div className="task-bg" /><div className="dark-overlay" />
         <div className="assessment-header-bar">
           <div className="header-left">
-            <button className="btn-pause" onClick={() => setIsPaused(true)}>
+            <button className="btn-pause" onClick={handlePause}>
               {isPaused ? '▶️ Resume' : '⏸️ Pause'}
             </button>
-            <span className="category-name">{category.title}</span>
+            <span className="category-name">{selectedCategory.title}</span>
           </div>
-
           <div className="header-center">
             <div className="progress-display">Word {currentWordIndex + 1} of 20</div>
           </div>
-
           <div className="header-right">
-            <div className="timer">⏰ {formatTime(timeRemaining)}</div>
+            <div className="timer"> {formatTime(timeElapsed)}</div>
           </div>
         </div>
-
         <div className="assessment-progress-bar">
-          <div className="assessment-progress-fill" style={{ width: `${progress}%` }}></div>
+          <div className="assessment-progress-fill" style={{ width: `${progress}%` }} />
         </div>
-
         <div className="word-display-area">
           <div className={`word-card-big ${feedbackBorder === 'correct' ? 'feedback-correct-border' : ''} ${feedbackBorder === 'incorrect' ? 'feedback-incorrect-border' : ''}`}>
             <div className="word-text-big">
-              {currentWord.split('').map((letter, i) => (
-                <span key={i} className="letter-animated" style={{ animationDelay: `${i * 0.1}s` }}>
-                  {letter}
-                </span>
+              {word.split('').map((letter, i) => (
+                <span key={i} className="letter-animated" style={{ animationDelay: `${i * 0.1}s` }}>{letter}</span>
               ))}
             </div>
             <div className="word-hint">
-              {category.key === 'nonWords' ? '🔤 Sound it out!' : '📖 Read it out loud!'}
+              {selectedCategory.key === 'nonWords' ? '🔤 Sound it out!' : '📖 Read it out loud!'}
             </div>
           </div>
-
           <div className="character-area">
             <div className="character-thinking">🐵</div>
             <div className="speech-bubble">Can you read this word?</div>
           </div>
         </div>
-
         <div className="assessment-action-buttons">
-          <button className="btn-next-word" onClick={() => handleAnswer(false)} disabled={feedbackBorder !== null}>
-            ➡️ Next Word
-            <span className="sub-text">I'll try this later</span>
-          </button>
-          <button className="btn-got-it" onClick={() => handleAnswer(true)} disabled={feedbackBorder !== null}>
-            ✅ Got It!
-            <span className="sub-text">I read it correctly</span>
-          </button>
+          <button className="btn-next-word" onClick={() => handleAnswer(false)} disabled={feedbackBorder !== null}>➡️ Next Word</button>
+          <button className="btn-got-it" onClick={() => handleAnswer(true)} disabled={feedbackBorder !== null}>✅ Got It!</button>
         </div>
-
         {isPaused && (
           <div className="pause-overlay-full">
             <div className="pause-content-card">
               <h2>⏸️ Game Paused</h2>
               <p>Your progress has been saved!</p>
               <button className="btn-resume-game" onClick={handleResume}>▶️ Resume Challenge</button>
-              <button className="btn-quit-game" onClick={() => setCurrentScreen('categories')}>🏠 Back to Challenges</button>
+              <button className="btn-quit-game" onClick={handleQuit}>🏠 Save & Quit</button>
             </div>
           </div>
         )}
+        {isSaving && <div className="saving-overlay"><div className="saving-spinner">💾 Saving...</div></div>}
       </div>
     );
   }
 
-  /* ════════════════════════════════════════════════════════
-     FINAL RESULTS SCREEN
-  ════════════════════════════════════════════════════════ */
+  /* ── Final Results Screen ─────────────────────────────── */
   if (currentScreen === 'finalResults') {
-    const totalCorrect = Object.values(categoryProgress).reduce((s, c) => s + c.correct, 0);
-    const totalWords   = 60;
-    const percentage   = Math.round((totalCorrect / totalWords) * 100);
-
-    // Also persist to localStorage (for offline reference)
-    localStorage.setItem('task_one_results', JSON.stringify({
-      date: new Date().toISOString(), totalCorrect, totalWords, percentage, categoryProgress,
-    }));
-    localStorage.removeItem(STORAGE_KEY);
-
+    const totalCorrect   = Object.values(categoryProgress).reduce((s, c) => s + c.correct, 0);
+    const totalCompleted = Object.values(categoryProgress).reduce((s, c) => s + c.completed, 0);
+    const percentage     = totalCompleted > 0 ? Math.round((totalCorrect / totalCompleted) * 100) : 0;
     return (
       <div className="task-one-container results-screen">
-        <div className="task-bg"></div>
-        <div className="dark-overlay"></div>
-
-        <div className="task-nav">
+        <div className="task-bg" /><div className="dark-overlay" />
+        <div className="results-back-btn">
           <button className="nav-back-btn" onClick={() => navigate('/adventure')}>← Back to Adventure</button>
-          <div className="nav-title">🏆 Results</div>
-          <div className="nav-spacer"></div>
         </div>
-
         <div className="results-header-area">
-          <div className="trophy-icon">🏆</div>
-          <h1 className="child-font">Reading Champion!</h1>
+          <div className="trophy-icon">🤩</div>
+          <h1>Reading Champion!</h1>
           <p>You completed all 3 challenges! Amazing work! 🎉</p>
         </div>
-
-        {/* Save status */}
-        {saving && (
-          <div style={{ textAlign: 'center', color: '#3D5A4C', marginBottom: '1rem', fontWeight: 600 }}>
-            💾 Saving your results…
-          </div>
-        )}
-        {savedId && !saving && (
-          <div style={{ textAlign: 'center', color: '#3AB07A', marginBottom: '1rem', fontWeight: 600 }}>
-            ✓ Results saved to your account!
-          </div>
-        )}
-        {saveError && !saving && (
-          <div style={{ textAlign: 'center', color: '#E8A234', marginBottom: '1rem', fontSize: '.85rem' }}>
-            ⚠️ {saveError}
-          </div>
-        )}
-
         <div className="final-score-area">
           <div className="score-circle-big">
-            <span className="score-number-big">{totalCorrect}/60</span>
+            <span className="score-number-big">{totalCorrect}/{totalCompleted}</span>
             <span className="score-label-small">Words Correct</span>
           </div>
           <div className="score-grade-area">
-            <div className="grade-circle-big" style={{
-              background: percentage >= 80 ? '#7fb685' : percentage >= 60 ? '#ff9a76' : '#a8d0db',
-            }}>
+            <div className="grade-circle-big" style={{ background: percentage >= 80 ? '#7fb685' : percentage >= 60 ? '#ff9a76' : '#a8d0db' }}>
               {percentage}%
             </div>
             <p className="grade-label-text">
@@ -439,75 +493,32 @@ export default function TaskOne() {
             </p>
           </div>
         </div>
-
         <div className="category-breakdown-area">
           <h2>📊 Your Results by Challenge</h2>
           <div className="breakdown-grid-area">
             {EXERCISES.map((category) => {
-              const prog      = categoryProgress[category.key];
-              const catPct    = Math.round((prog.correct / 20) * 100);
+              const prog    = categoryProgress[category.key];
+              const catPct  = prog.completed > 0 ? Math.round((prog.correct / prog.completed) * 100) : 0;
               return (
                 <div key={category.key} className="breakdown-card-item">
                   <div className="breakdown-icon-item">{category.icon}</div>
                   <h3>{category.title}</h3>
                   <div className="breakdown-score-item">
-                    <span className="score-number-item">{prog.correct}/20</span>
+                    <span>{prog.correct}/{prog.completed}</span>
                     <span className="percentage-item">({catPct}%)</span>
                   </div>
                   <div className="breakdown-bar-item">
-                    <div className="bar-fill-item" style={{ width: `${catPct}%` }}></div>
+                    <div className="bar-fill-item" style={{ width: `${catPct}%` }} />
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-
-        <div className="recommendations-area">
-          <h2>💡 Reading Tips</h2>
-          <div className="tips-grid-area">
-            <div className="tip-card-item">
-              <div className="tip-icon-item">🔤</div>
-              <h4>For Twins Words</h4>
-              <p>Practice letter sounds: b/p, f/v, sh/ch</p>
-            </div>
-            <div className="tip-card-item">
-              <div className="tip-icon-item">📚</div>
-              <h4>For Everyday Words</h4>
-              <p>Read books about things you love!</p>
-            </div>
-            <div className="tip-card-item">
-              <div className="tip-icon-item">🎮</div>
-              <h4>For Funny Words</h4>
-              <p>Play sound games - you're great at decoding!</p>
-            </div>
-          </div>
-        </div>
-
         <div className="results-action-buttons">
-          <button className="btn-play-again" onClick={() => {
-            setCategoryProgress({
-              similarWords:    { completed: 0, correct: 0, timeSpent: 0 },
-              nonSimilarWords: { completed: 0, correct: 0, timeSpent: 0 },
-              nonWords:        { completed: 0, correct: 0, timeSpent: 0 },
-            });
-            setSavedId(null);
-            setSaveError('');
-            setCurrentScreen('categories');
-          }}>
-            🔄 Play Again
-          </button>
-          <button className="btn-home-page" onClick={() => navigate('/adventure')}>
-            🏠 Back to Home
-          </button>
+          <button className="btn-home-page" onClick={() => navigate('/adventure')}>🏠 Back to Home</button>
         </div>
-
-        <div className="certificate-area">
-          <p>🎓 <strong>Certificate of Reading</strong></p>
-          <p>Presented to: <em>Our Amazing Reader</em></p>
-          <p>For completing the Dyslexia Word Adventure!</p>
-          <p className="certificate-date">{new Date().toLocaleDateString()}</p>
-        </div>
+        {isSaving && <div className="saving-overlay"><div className="saving-spinner">💾 Saving your progress...</div></div>}
       </div>
     );
   }

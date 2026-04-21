@@ -390,3 +390,13 @@
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
+/* Add to Hero.css */
+.Hero {
+  /* ... existing styles ... */
+  z-index: 1; /* Ensure hero creates stacking context */
+}
+
+/* Ensure background is BEHIND the nav */
+.Hero__background {
+  z-index: -1; /* Push behind everything */
+}

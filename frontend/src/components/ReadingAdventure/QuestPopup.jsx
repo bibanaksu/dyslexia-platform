@@ -1,3 +1,4 @@
+// frontend/src/components/ReadingAdventure/QuestPopup.jsx
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,12 +21,36 @@ const QuestPopup = ({ quest, isVisible, onClose, onStart }) => {
   const handleStartClick = () => {
     if (quest.status === 'locked') return;
     
+    console.log('Popup - Starting quest:', quest.title, 'Path:', quest.taskPath);
+    
     // Close the popup first
     onClose();
     
-    // Navigate to the word assessment instructions page
+    // Navigate based on quest taskPath
     setTimeout(() => {
-      navigate('/tasks/word-assessment');
+      if (quest.taskPath && quest.taskPath !== '') {
+        console.log('Popup navigating to:', quest.taskPath);
+        navigate(quest.taskPath);
+      } else {
+        // Fallback logic
+        console.log('Popup using ID-based fallback for quest:', quest.id);
+        switch(quest.id) {
+          case 1:
+            navigate('/tasks/task-one');
+            break;
+          case 2:
+            navigate('/tasks/enhanced-voice');
+            break;
+          case 3:
+            navigate('/tasks/task-three');
+            break;
+          case 4:
+            navigate('/tasks/task-four');
+            break;
+          default:
+            navigate('/tasks/task-one');
+        }
+      }
     }, 300);
   };
 

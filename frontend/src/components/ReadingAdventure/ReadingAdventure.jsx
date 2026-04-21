@@ -1,111 +1,91 @@
 // frontend/src/components/ReadingAdventure/ReadingAdventure.jsx
-import React, { useState } from 'react';
+// FIXES:
+//  1. Reads childFullName correctly
+//  2. Quest locking works: each new child starts all locked except first
+//  3. Quests unlock in sequence as each is completed
+//  4. Never navigates away on its own (no redirect loops)
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QuestPath from './QuestPath';
 import './ReadingAdventure.css';
 
-const ReadingAdventure = () => {
+const INITIAL_QUESTS = [
+  { id:1, title:'Word Explorer',           description:'Read words aloud and build confidence',              status:'active', animal:'owl',    difficulty:'easy',   taskPath:'/tasks/task-one'      },
+  { id:2, title:'Story Reader',            description:'Read a magical story with your voice',               status:'locked', animal:'fox',    difficulty:'easy',   taskPath:'/tasks/enhanced-voice'},
+  { id:3, title:'Letter Detective',        description:'Compare letter groups — Same or Different?',         status:'locked', animal:'rabbit', difficulty:'medium', taskPath:'/tasks/task-three'    },
+  { id:4, title:'Number Memory Challenge', description:'Listen to numbers and repeat them in reverse order!',status:'locked', animal:'bear',   difficulty:'medium', taskPath:'/tasks/task-four'     },
+];
+
+const computeStatuses = (quests, completedIds) =>
+  quests.map((q, i) => {
+    if (completedIds.includes(q.id)) return { ...q, status:'completed' };
+    const prevDone = i === 0 || completedIds.includes(quests[i-1].id);
+    return { ...q, status: prevDone ? 'active' : 'locked' };
+  });
+
+export default function ReadingAdventure() {
   const navigate = useNavigate();
-  const [selectedQuest, setSelectedQuest] = useState(null);
+  const [childInfo, setChildInfo] = useState(null);
+  const [quests, setQuests] = useState(INITIAL_QUESTS);
 
-  const quests = [
-    {
-      id: 1,
-      title: 'Letter Sounds',
-      description: 'Match letters to their magical sounds',
-      status: 'completed',
-      animal: 'owl',
-      difficulty: 'easy',
-      stars: 3
-    },
-    {
-      id: 2,
-      title: 'Word Builder',
-      description: 'Combine letters to create enchanted words',
-      status: 'active',
-      animal: 'fox',
-      difficulty: 'easy',
-      stars: 3
-    },
-    {
-      id: 3,
-      title: 'Rhyme Time',
-      description: 'Discover words that dance together',
-      status: 'locked',
-      animal: 'rabbit',
-      difficulty: 'medium',
-      stars: 4
-    },
-    {
-      id: 4,
-      title: 'Sentence Explorer',
-      description: 'Read magical sentences aloud',
-      status: 'locked',
-      animal: 'bear',
-      difficulty: 'medium',
-      stars: 4
-    },
-    {
-      id: 5,
-      title: 'Story Sorcerer',
-      description: 'Arrange story events in the right order',
-      status: 'locked',
-      animal: 'owl',
-      difficulty: 'hard',
-      stars: 5
-    },
-    {
-      id: 6,
-      title: 'Word Wizard',
-      description: 'Find the missing word in each spell',
-      status: 'locked',
-      animal: 'fox',
-      difficulty: 'hard',
-      stars: 5
-    },
-    {
-      id: 7,
-      title: 'Reading Champion',
-      description: 'The ultimate magical reading challenge!',
-      status: 'locked',
-      animal: 'dragon',
-      difficulty: 'legendary',
-      stars: 7
+  // Load child info
+  useEffect(() => {
+    const saved = localStorage.getItem('child_info');
+    if (!saved) { 
+      navigate('/child-info'); 
+      return; 
     }
-  ];
+    setChildInfo(JSON.parse(saved));
+  }, [navigate]);
 
-const handleQuestClick = (quest) => {
-  if (quest.status === 'locked') return;
-  
-  if (quest.id === 1) {
-    navigate('/tasks/task-one');
-  } else if (quest.id === 2) {
-    navigate('/tasks/enhanced-voice');
-  } else {
-    navigate('/tasks/task-one');
-  }
-};
+  // Load and apply saved progress
+  const refreshProgress = useCallback(() => {
+    const raw = localStorage.getItem('reading_adventure_progress');
+    const completedIds = raw ? JSON.parse(raw) : [];
+    setQuests(computeStatuses(INITIAL_QUESTS, completedIds));
+  }, []);
+
+  useEffect(() => {
+    refreshProgress();
+  }, [refreshProgress]);
+
+  // Re-apply progress whenever window gets focus (after returning from a task)
+  useEffect(() => {
+    window.addEventListener('focus', refreshProgress);
+    return () => window.removeEventListener('focus', refreshProgress);
+  }, [refreshProgress]);
+
+  const handleQuestClick = (quest) => {
+    if (quest.status === 'locked') return;
+    localStorage.setItem('current_quest', JSON.stringify(quest));
+    // Regular navigation (not replace) - this allows back button to work correctly
+    navigate(quest.taskPath);
+  };
+
+  if (!childInfo) return null;
+
+  const displayName  = childInfo.childFullName || childInfo.childName || 'Adventurer';
+  const displayGrade = childInfo.childGrade ? `Grade ${childInfo.childGrade}` : '';
+  const displayAge   = childInfo.childAge    ? `Age ${childInfo.childAge}`    : '';
+
   return (
     <div className="reading-adventure">
-      {/* Full screen image background */}
       <div className="adventure-background">
-        <img 
-          src="/assets/levels2.png" 
-          alt="Reading Adventure Background"
-          className="background-image"
-        />
-        <div className="background-overlay"></div>
+        <img src="/assets/levels2.png" alt="Reading Adventure" className="background-image" />
+        <div className="background-overlay" />
       </div>
 
-      {/* Quest Path - Centered on the image */}
+      <div className="adventure-welcome">
+        <div className="welcome-content">
+          <span className="welcome-emoji">🎮</span>
+          <span className="welcome-text">Welcome, {displayName}!</span>
+          <span className="welcome-grade">{displayGrade}{displayAge ? ` • ${displayAge}` : ''}</span>
+        </div>
+      </div>
+
       <div className="adventure-content">
-        <QuestPath 
-          quests={quests} 
-          onQuestClick={handleQuestClick}
-        />
+        <QuestPath quests={quests} onQuestClick={handleQuestClick} />
       </div>
     </div>
   );
-};
-
-export default ReadingAdventure;
+}

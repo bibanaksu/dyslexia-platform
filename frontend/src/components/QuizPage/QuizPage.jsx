@@ -343,28 +343,7 @@ export default function QuizPage() {
           </div>
         )}
 
-        {/* Progress */}
-        <div className="quiz-page__progress-section">
-          <div className="quiz-page__progress-meta">
-            <span className="quiz-page__progress-label">
-              {totalAnswered} of {questions.length} answered
-            </span>
-            <span className="quiz-page__progress-pct">{Math.round(progress)}%</span>
-          </div>
-          <div className="quiz-page__progress-bar">
-            <div className="quiz-page__progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-          <div className="quiz-page__page-indicator">
-            {Array.from({ length: totalPages }, (_, i) => (
-              <div
-                key={i}
-                className={`quiz-page__page-dot ${
-                  i === currentPage ? 'active' : i < currentPage ? 'done' : ''
-                }`}
-              />
-            ))}
-          </div>
-        </div>
+        
 
         {/* Child Info */}
         <div className="quiz-page__child-info">

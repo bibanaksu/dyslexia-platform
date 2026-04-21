@@ -1,5 +1,7 @@
-﻿import { useState } from 'react';
-import { registerParent, saveUserSession } from '../../services/api';
+﻿// Auth.jsx - Complete working version
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { registerParent, login, saveUserSession } from '../../services/api';
 import './Auth.css';
 
 // ── Icons ─────────────────────────────────────────────────────
@@ -59,36 +61,27 @@ const EyeOffIcon = () => (
   </svg>
 );
 
-// ── Unified login — single call, backend decides the role ─────
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-async function unifiedLogin(email, password) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
-  return data;
-}
-
-// ── Component ─────────────────────────────────────────────────
 export function Auth() {
-  const [isSignIn, setIsSignIn]                       = useState(true);
-  const [showPassword, setShowPassword]               = useState(false);
+  const navigate = useNavigate();
+  
+  const [isSignIn, setIsSignIn] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [email, setEmail]                             = useState('');
-  const [password, setPassword]                       = useState('');
-  const [fullName, setFullName]                       = useState('');
-  const [phone, setPhone]                             = useState('');
-  const [confirmPassword, setConfirmPassword]         = useState('');
-  const [error, setError]                             = useState('');
-  const [loading, setLoading]                         = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const resetForm = () => {
-    setEmail(''); setPassword(''); setConfirmPassword('');
-    setFullName(''); setPhone(''); setError('');
+    setEmail(''); 
+    setPassword(''); 
+    setConfirmPassword('');
+    setFullName(''); 
+    setPhone(''); 
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -98,17 +91,22 @@ export function Auth() {
 
     try {
       if (isSignIn) {
-        // ✅ ONE call — backend checks Therapist first, then Parent
-        const data = await unifiedLogin(email, password);
+        // LOGIN
+        const data = await login(email, password);
         saveUserSession(data);
-        // Backend tells us the role — we just follow
-        window.location.href = data.role === 'therapist' ? '/dashboard' : '/parent-dashboard';
+        navigate(data.role === 'therapist' ? '/dashboard' : '/parent-dashboard');
       } else {
-        // Sign Up is always a parent registration
-        if (password !== confirmPassword) throw new Error('Passwords do not match');
+        // SIGNUP
+        if (password !== confirmPassword) {
+          throw new Error('Passwords do not match');
+        }
+        if (password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        
         const data = await registerParent(fullName, email, phone, password);
         saveUserSession(data);
-        window.location.href = '/parent-dashboard';
+        navigate('/parent-dashboard');
       }
     } catch (err) {
       setError(err.message);
@@ -119,34 +117,22 @@ export function Auth() {
 
   return (
     <div className="Auth">
-      {/* Left Panel */}
       <div className="Auth__left">
         <a href="/" className="Auth__back-btn" title="Back to Home">
           <BackArrowIcon />
         </a>
         <div className="Auth__illustration">
           <img
-            src="assets/authnt.png"
+            src="/assets/authnt.png"
             alt="Child reading"
             className="Auth__illustration-img"
             onError={(e) => {
               e.target.style.display = 'none';
-              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
             }}
           />
-          <div className="Auth__illustration-fallback">
-            <svg viewBox="0 0 120 120" width="120" height="120" fill="none">
-              <circle cx="60" cy="35" r="20" fill="#a8c4b0"/>
-              <rect x="20" y="60" width="80" height="50" rx="8" fill="#7aaa8d"/>
-              <rect x="30" y="65" width="60" height="8" rx="2" fill="white" opacity="0.6"/>
-              <rect x="30" y="78" width="45" height="8" rx="2" fill="white" opacity="0.6"/>
-              <rect x="30" y="91" width="55" height="8" rx="2" fill="white" opacity="0.6"/>
-            </svg>
-          </div>
         </div>
       </div>
 
-      {/* Right Panel */}
       <div className="Auth__right">
         <div className="Auth__form-container">
           <div className="Auth__header">
@@ -157,105 +143,121 @@ export function Auth() {
             </p>
           </div>
 
-          {/* Toggle */}
           <div className="Auth__toggle">
-            <button type="button"
+            <button
+              type="button"
               className={`Auth__toggle-btn ${isSignIn ? 'active' : ''}`}
-              onClick={() => { setIsSignIn(true); resetForm(); }}>
+              onClick={() => { setIsSignIn(true); resetForm(); }}
+            >
               Sign In
             </button>
-            <button type="button"
+            <button
+              type="button"
               className={`Auth__toggle-btn ${!isSignIn ? 'active' : ''}`}
-              onClick={() => { setIsSignIn(false); resetForm(); }}>
+              onClick={() => { setIsSignIn(false); resetForm(); }}
+            >
               Sign Up
             </button>
           </div>
 
           {error && (
-            <div style={{
-              background: '#ffebee', color: '#c62828',
-              padding: '10px 14px', borderRadius: '6px',
-              marginBottom: '15px', fontSize: '14px',
-              borderLeft: '3px solid #c62828',
-            }}>
+            <div className="error-message">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="Auth__form">
-            {/* Full Name — sign up only */}
             {!isSignIn && (
               <div className="Auth__field">
                 <label>Full Name</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><UserIcon /></span>
-                  <input type="text" className="Auth__input" placeholder="John Doe"
-                    value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    required={!isSignIn} />
+                  <input 
+                    type="text" 
+                    className="Auth__input" 
+                    placeholder="John Doe"
+                    value={fullName} 
+                    onChange={(e) => setFullName(e.target.value)}
+                    required 
+                  />
                 </div>
               </div>
             )}
 
-            {/* Email */}
             <div className="Auth__field">
               <label>Email Address</label>
               <div className="Auth__input-wrapper">
                 <span className="Auth__input-icon"><MailIcon /></span>
-                <input type="email" className="Auth__input" placeholder="name@example.com"
-                  value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <input 
+                  type="email" 
+                  className="Auth__input" 
+                  placeholder="name@example.com"
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  required 
+                />
               </div>
             </div>
 
-            {/* Phone — sign up only */}
             {!isSignIn && (
               <div className="Auth__field">
-                <label>Phone Number</label>
+                <label>Phone Number (Optional)</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><PhoneIcon /></span>
-                  <input type="tel" className="Auth__input" placeholder="+213 000-0000"
-                    value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <input 
+                    type="tel" 
+                    className="Auth__input" 
+                    placeholder="+213 000-0000"
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)} 
+                  />
                 </div>
               </div>
             )}
 
-            {/* Password */}
             <div className="Auth__field">
               <label>Password</label>
               <div className="Auth__input-wrapper">
                 <span className="Auth__input-icon"><LockIcon /></span>
-                <input type={showPassword ? 'text' : 'password'} className="Auth__input"
-                  placeholder="••••••••" value={password}
-                  onChange={(e) => setPassword(e.target.value)} required />
-                <button type="button" className="Auth__input-toggle"
-                  onClick={() => setShowPassword(!showPassword)}>
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  className="Auth__input"
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)} 
+                  required 
+                />
+                <button type="button" className="Auth__input-toggle" onClick={() => setShowPassword(!showPassword)}>
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
               {!isSignIn && (
                 <div className="Auth__password-hint">
-                  Must be at least 8 characters with one special symbol.
+                  Must be at least 6 characters
                 </div>
               )}
             </div>
 
-            {/* Confirm Password — sign up only */}
             {!isSignIn && (
               <div className="Auth__field">
                 <label>Confirm Password</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><LockIcon /></span>
-                  <input type={showConfirmPassword ? 'text' : 'password'} className="Auth__input"
-                    placeholder="••••••••" value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)} required={!isSignIn} />
-                  <button type="button" className="Auth__input-toggle"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <input 
+                    type={showConfirmPassword ? 'text' : 'password'} 
+                    className="Auth__input"
+                    placeholder="••••••••" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)} 
+                    required 
+                  />
+                  <button type="button" className="Auth__input-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
                     {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* FORGOT PASSWORD LINK - ADDED HERE */}
             {isSignIn && (
               <div style={{ textAlign: 'right', marginTop: '-8px', marginBottom: '8px' }}>
                 <a href="/forgot-password" style={{ fontSize: '13px', color: '#16a34a', textDecoration: 'none' }}>
@@ -273,8 +275,7 @@ export function Auth() {
           <div className="Auth__divider"><span>Or continue with</span></div>
 
           <div className="Auth__social">
-            <button type="button" className="Auth__social-btn"
-              onClick={() => alert('Google login coming soon!')}>
+            <button type="button" className="Auth__social-btn" onClick={() => alert('Google login coming soon!')}>
               <GoogleIcon />
               <span>Google</span>
             </button>
@@ -283,15 +284,13 @@ export function Auth() {
           <div className="Auth__switch">
             {isSignIn ? (
               <p>Don't have an account?{' '}
-                <a role="button" style={{ cursor: 'pointer' }}
-                  onClick={() => { setIsSignIn(false); resetForm(); }}>
+                <a onClick={() => { setIsSignIn(false); resetForm(); }} style={{ cursor: 'pointer' }}>
                   Sign up instead
                 </a>
               </p>
             ) : (
               <p>Already have an account?{' '}
-                <a role="button" style={{ cursor: 'pointer' }}
-                  onClick={() => { setIsSignIn(true); resetForm(); }}>
+                <a onClick={() => { setIsSignIn(true); resetForm(); }} style={{ cursor: 'pointer' }}>
                   Sign in instead
                 </a>
               </p>

@@ -1,3 +1,4 @@
+// frontend/src/App.jsx
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/variables.css';
@@ -17,9 +18,13 @@ import Dashboard from './components/Dashboard/Dashboard';
 import ReadingAdventure from './components/ReadingAdventure/ReadingAdventure';
 import ParentDashboard from './components/ParentDashboard/ParentDashboard';
 import StartAssessment from './components/Startassessment/Startassessment';
+import ChildInfo from './components/ChildInfoPage/ChildInfo.jsx';
 import QuizPage from './components/QuizPage/QuizPage';
 import TaskOne from './components/tasks/TaskOne';
 import EnhancedVoiceReading from './components/tasks/EnhancedVoiceReading';
+import TaskThree from './components/tasks/TaskThree';
+import TaskFour from './components/tasks/TaskFour';
+import AssessmentResults from './components/AssessmentResults/AssessmentResults.jsx';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AuditLog from './pages/AuditLog';
@@ -30,10 +35,12 @@ function App() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrollY(window.scrollY);
+      const currentScrollY = window.scrollY;
+      setScrollY(currentScrollY);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
     
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -42,7 +49,7 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
-          {/* Home Page Route - Public */}
+          {/* Landing page routes */}
           <Route path="/" element={
             <>
               <Navigation scrollY={scrollY} />
@@ -56,64 +63,66 @@ function App() {
             </>
           } />
           
-          {/* Quiz Page Route - Public */}
-          <Route path="/quiz" element={<QuizPage />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
           
-          {/* Reading Adventure - Public route (no login required) */}
+          {/* Assessment flow routes */}
+          <Route path="/child-info" element={<ChildInfo />} />
+          <Route path="/start-assessment" element={<StartAssessment />} />
+          <Route path="/start" element={<Navigate to="/start-assessment" replace />} />
           <Route path="/adventure" element={<ReadingAdventure />} />
           
-          {/* Start Assessment Page - PUBLIC (no login required) */}
-          <Route path="/start-assessment" element={<StartAssessment />} />
-          
-          {/* Task One - Word Reading Assessment - PUBLIC (no login required) */}
+          {/* Task routes */}
           <Route path="/tasks/task-one" element={<TaskOne />} />
-          
-          {/* Task Two - Voice Reading Assessment - PUBLIC (no login required) */}
           <Route path="/tasks/enhanced-voice" element={<EnhancedVoiceReading />} />
+          <Route path="/tasks/task-three" element={<TaskThree />} />
+          <Route path="/tasks/task-four" element={<TaskFour />} />
           
-          {/* Auth Route - Redirects to dashboard if already logged in */}
+          {/* Assessment results */}
+          <Route path="/assessment/results" element={<AssessmentResults />} />
+          <Route path="/assessment/summary" element={<Navigate to="/assessment/results" replace />} />
+          
+          {/* Quiz route */}
+          <Route path="/quiz" element={<QuizPage />} />
+          
+          {/* Auth routes */}
           <Route path="/auth" element={
             <PublicRoute>
               <Auth />
             </PublicRoute>
           } />
           
-          {/* Forgot Password - Public */}
           <Route path="/forgot-password" element={
             <PublicRoute>
               <ForgotPassword />
             </PublicRoute>
           } />
           
-          {/* Reset Password - Public (with token) */}
           <Route path="/reset-password/:token" element={
             <PublicRoute>
               <ResetPassword />
             </PublicRoute>
           } />
           
-          {/* Therapist Dashboard - Protected */}
+          {/* Protected routes */}
           <Route path="/dashboard" element={
             <RoleRoute allowedRole="therapist">
               <Dashboard />
             </RoleRoute>
           } />
           
-          {/* Audit Log - Therapist Only */}
           <Route path="/audit-log" element={
             <RoleRoute allowedRole="therapist">
               <AuditLog />
             </RoleRoute>
           } />
           
-          {/* Parent Dashboard - Protected */}
           <Route path="/parent-dashboard" element={
             <RoleRoute allowedRole="parent">
               <ParentDashboard />
             </RoleRoute>
           } />
           
-          {/* Catch all - redirect to home */}
+          {/* 404 redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

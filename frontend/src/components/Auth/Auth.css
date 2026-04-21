@@ -1,18 +1,12 @@
-/* Auth Component — Two Column Layout, Forest Green Palette */
+/* Auth.css - FIXED VERSION */
 
 .Auth {
   min-height: 100vh;
   display: flex;
   background: var(--bg-beige, #fefae0);
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   width: 100%;
-  height: 100vh;
-  overflow-y: auto;
-  z-index: 1000;
+  /* ⭐ REMOVED z-index: 1000 - this was causing stacking issues! */
+  position: relative;
 }
 
 /* Left Panel */
@@ -56,41 +50,7 @@
   transform: translateX(-2px);
 }
 
-/* Brand */
-.Auth__brand {
-  position: absolute;
-  top: var(--spacing-xl, 1.5rem);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm, 0.5rem);
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.9);
-  padding: var(--spacing-xs, 0.25rem) var(--spacing-md, 1rem);
-  border-radius: 40px;
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.Auth__logo {
-  width: 32px;
-  height: 32px;
-  background: var(--forest-green, #3d5a4c);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.Auth__brand-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--charcoal, #2d2d2d);
-}
-
-/* Illustration - 9:16 aspect ratio */
+/* Illustration */
 .Auth__illustration {
   width: 100%;
   height: 100%;
@@ -116,11 +76,6 @@
   justify-content: center;
   background: var(--bg-beige, #fefae0);
   aspect-ratio: 9/16;
-}
-
-/* Remove left text completely */
-.Auth__left-text {
-  display: none;
 }
 
 /* Right Panel */
@@ -315,6 +270,12 @@
   transition: transform 0.2s;
 }
 
+.Auth__submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Divider */
 .Auth__divider {
   position: relative;
@@ -390,19 +351,17 @@
 @media (max-width: 900px) {
   .Auth {
     flex-direction: column;
-    position: relative;
-    height: auto;
-    min-height: 100vh;
   }
 
   .Auth__left {
     width: 100%;
-    min-height: 50vh;
+    min-height: 40vh;
     padding: 0;
   }
 
   .Auth__illustration-img {
     aspect-ratio: auto;
+    max-height: 40vh;
   }
 
   .Auth__right {
@@ -412,6 +371,6 @@
 
 @media (max-width: 480px) {
   .Auth__left {
-    min-height: 40vh;
+    min-height: 30vh;
   }
 }

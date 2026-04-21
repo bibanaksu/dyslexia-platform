@@ -1,7 +1,14 @@
 // frontend/src/components/tasks/EnhancedVoiceReading.jsx
+// FIXES:
+//  1. Reads childFullName + sessionUUID correctly — no more "Guest User / NULL"
+//  2. savedIdRef: POST once → PATCH on every subsequent save (no duplicate rows)
+//  3. Navbar matches Task 1 & Task 3 style exactly
+//  4. Back button goes to /adventure without creating a new DB row
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import "./EnhancedVoiceReading.css";
+import { getChildInfo, getSessionUUID, getUserInfo, getGuestId } from "../../utils/childSession";
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -12,515 +19,461 @@ const READING_PASSAGE = {
 
 const allWords = READING_PASSAGE.text.split(/\s+/).filter(w => w.length > 0);
 
-/* ─── Text helpers ──────────────────────────────────────── */
-const cleanText = (text) =>
-  text.toLowerCase().replace(/[.,!?;:'"()\[\]{}]/g, '').replace(/\s+/g, ' ').trim();
+const cleanText = t => t.toLowerCase().replace(/[.,!?;:'"()\[\]{}]/g, '').replace(/\s+/g, ' ').trim();
 
 const isDyslexiaSwap = (spoken, expected) => {
-  const swaps = {
-    'b':'d','d':'b','p':'q','q':'p',
-    'was':'saw','saw':'was',
-    'their':'there','there':'their',
-    'from':'form','form':'from',
-    'no':'on','on':'no','not':'ton','ton':'not',
-  };
-  const cs = cleanText(spoken);
-  const ce = cleanText(expected);
+  const swaps = { 'b':'d','d':'b','p':'q','q':'p','was':'saw','saw':'was','their':'there','there':'their','from':'form','form':'from','no':'on','on':'no' };
+  const cs = cleanText(spoken); const ce = cleanText(expected);
   if (swaps[cs] === ce || swaps[ce] === cs) return true;
   if (cs.length === ce.length && cs.length <= 5) {
     let diff = 0;
     for (let i = 0; i < cs.length; i++) {
-      if (cs[i] !== ce[i]) {
-        const pair = cs[i] + ce[i];
-        if (pair === 'bd' || pair === 'db' || pair === 'pq' || pair === 'qp') diff++;
-        else return false;
-      }
+      if (cs[i] !== ce[i]) { const pair = cs[i]+ce[i]; if (pair==='bd'||pair==='db'||pair==='pq'||pair==='qp') diff++; else return false; }
     }
     return diff <= 2;
   }
   return false;
 };
 
-const calculateSimilarity = (spoken, expected) => {
-  const cs = cleanText(spoken);
-  const ce = cleanText(expected);
+const calcSimilarity = (spoken, expected) => {
+  const cs = cleanText(spoken); const ce = cleanText(expected);
   if (cs === ce) return 1.0;
   if (isDyslexiaSwap(spoken, expected)) return 0.85;
   if (cs.includes(ce) || ce.includes(cs)) return 0.8;
-  let matches = 0;
-  const min = Math.min(cs.length, ce.length);
-  for (let i = 0; i < min; i++) { if (cs[i] === ce[i]) matches++; }
-  return matches / Math.max(cs.length, ce.length);
+  let m = 0; const min = Math.min(cs.length, ce.length);
+  for (let i = 0; i < min; i++) { if (cs[i] === ce[i]) m++; }
+  return m / Math.max(cs.length, ce.length);
 };
 
-/* ─── Component ─────────────────────────────────────────── */
+const markQuestCompleted = () => {
+  const q = JSON.parse(localStorage.getItem('current_quest') || '{}');
+  if (!q.id) return;
+  const saved = JSON.parse(localStorage.getItem('reading_adventure_progress') || '[]');
+  if (!saved.includes(q.id)) {
+    localStorage.setItem('reading_adventure_progress', JSON.stringify([...saved, q.id]));
+    console.log('✅ Task2 quest completed');
+  }
+};
+
 export default function EnhancedVoiceReading() {
   const navigate = useNavigate();
 
-  const [isListening, setIsListening]               = useState(false);
-  const [currentWordIndex, setCurrentWordIndex]     = useState(0);
-  const [wordResults, setWordResults]               = useState({});
-  const [errorWords, setErrorWords]                 = useState([]);
-  const [isComplete, setIsComplete]                 = useState(false);
-  const [transcript, setTranscript]                 = useState('');
-  const [finalTranscript, setFinalTranscript]       = useState('');
-  const [micAllowed, setMicAllowed]                 = useState(true);
+  const [isListening,          setIsListening]          = useState(false);
+  const [currentWordIndex,     setCurrentWordIndex]     = useState(0);
+  const [wordResults,          setWordResults]          = useState({});
+  const [errorWords,           setErrorWords]           = useState([]);
+  const [isComplete,           setIsComplete]           = useState(false);
+  const [transcript,           setTranscript]           = useState('');
+  const [micAllowed,           setMicAllowed]           = useState(true);
   const [recognitionSupported, setRecognitionSupported] = useState(true);
-  const [lastProcessedLength, setLastProcessedLength] = useState(0);
-  const [timeRemaining, setTimeRemaining]           = useState(180);
-  const [timeUsed, setTimeUsed]                     = useState(0);
-  const [showTimeWarning, setShowTimeWarning]       = useState(false);
+  const [timeRemaining,        setTimeRemaining]        = useState(180);
+  const [showTimeWarning,      setShowTimeWarning]      = useState(false);
+  const [isTimeUp,             setIsTimeUp]             = useState(false);
+  const [saving,               setSaving]               = useState(false);
+  const [resultsData,          setResultsData]          = useState(null);
+  const [saveError,            setSaveError]            = useState('');
 
-  // Save state
-  const [saving, setSaving]     = useState(false);
-  const [savedId, setSavedId]   = useState(null);
-  const [saveError, setSaveError] = useState('');
-  const [resultsData, setResultsData] = useState(null);
+  const recognitionRef      = useRef(null);
+  const currentWordRef      = useRef(null);
+  const timerIntervalRef    = useRef(null);
+  const isPausedRef         = useRef(false);
+  const isCompleteRef       = useRef(false);
+  const isTimeUpRef         = useRef(false);
+  const isListeningRef      = useRef(false);
+  const startTimeRef        = useRef(null);
+  const pausedAtRef         = useRef(null);
+  const totalPausedMsRef    = useRef(0);
+  const isMountedRef        = useRef(true);
+  const currentWordIndexRef = useRef(0);
+  const wordResultsRef      = useRef({});
+  const errorWordsRef       = useRef([]);
+  const finalTranscriptRef  = useRef('');
+  const lastProcessedRef    = useRef(0);
+  const timeRemainingRef    = useRef(180);
+  const markedCompletedRef  = useRef(false);
+  // ── FIX: single DB row per session ──
+  const savedIdRef          = useRef(
+    localStorage.getItem('task2_saved_db_id') || null
+  );
 
-  const recognitionRef     = useRef(null);
-  const currentWordRef     = useRef(null);
-  const timerIntervalRef   = useRef(null);
-  const isPausedRef        = useRef(false);
-  const startTimeRef       = useRef(null);
+  useEffect(() => { currentWordIndexRef.current = currentWordIndex; }, [currentWordIndex]);
+  useEffect(() => { wordResultsRef.current      = wordResults;      }, [wordResults]);
+  useEffect(() => { errorWordsRef.current       = errorWords;       }, [errorWords]);
+  useEffect(() => { isCompleteRef.current       = isComplete;       }, [isComplete]);
+  useEffect(() => { isTimeUpRef.current         = isTimeUp;         }, [isTimeUp]);
+  useEffect(() => { timeRemainingRef.current    = timeRemaining;    }, [timeRemaining]);
 
   useEffect(() => {
-    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
-      setRecognitionSupported(false);
-    }
+    isMountedRef.current = true;
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) { setRecognitionSupported(false); return; }
+    startListening();
+    return () => { isMountedRef.current = false; stopRecognition(); stopTimer(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ── Timer ────────────────────────────────────────────── */
   useEffect(() => {
-    if (isListening && !isComplete && timeRemaining > 0) {
-      timerIntervalRef.current = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearInterval(timerIntervalRef.current);
-            if (recognitionRef.current) recognitionRef.current.stop();
-            finishAssessment();
-            return 0;
-          }
-          if (prev === 31) setShowTimeWarning(true);
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (timerIntervalRef.current) clearInterval(timerIntervalRef.current); };
-  }, [isListening, isComplete]);
-
-  const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-
-  useEffect(() => {
-    if (currentWordRef.current) {
-      currentWordRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    if (currentWordRef.current) currentWordRef.current.scrollIntoView({ behavior:'smooth', block:'center' });
   }, [currentWordIndex]);
 
-  /* ── Save to DB ───────────────────────────────────────── */
-  const saveResultsToDB = async (results) => {
-    setSaving(true);
-    setSaveError('');
-    const token = localStorage.getItem('token');
-    try {
-      const res  = await fetch(`${API}/api/assessments/task2/submit`, {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          totalWords:   results.total_words,
-          correctWords: results.correct_words,
-          errorCount:   results.errors,
-          percentage:   results.percentage,
-          fluencyLevel: results.fluency_level,
-          timeUsedSec:  results.time_used,
-          passageTitle: READING_PASSAGE.title,
-          errorDetails: results.error_details,
-        }),
+  const stopRecognition = () => {
+    if (recognitionRef.current) { try { recognitionRef.current.onend = null; recognitionRef.current.stop(); } catch(_){} recognitionRef.current = null; }
+  };
+  const stopTimer = () => { if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; } };
+
+  const startTimer = () => {
+    stopTimer();
+    timerIntervalRef.current = setInterval(() => {
+      if (!isMountedRef.current || isPausedRef.current || isCompleteRef.current || isTimeUpRef.current) return;
+      setTimeRemaining(prev => {
+        const next = prev - 1;
+        timeRemainingRef.current = next;
+        if (next === 30) setShowTimeWarning(true);
+        if (next <= 0) { stopTimer(); isTimeUpRef.current = true; setIsTimeUp(true); stopRecognition(); if(isMountedRef.current) finishAssessmentInternal(); return 0; }
+        return next;
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSavedId(data.resultId);
-        console.log('✅ Task2 saved, result:', data.resultId);
-      } else {
-        setSaveError(data.error || 'Could not save to server.');
-      }
-    } catch {
-      setSaveError('Network error — results shown locally only.');
-    } finally {
-      setSaving(false);
-    }
+    }, 1000);
   };
 
-  /* ── Speech processing ────────────────────────────────── */
-  const processContinuousSpeech = useCallback((newTranscript) => {
-    if (isComplete || isPausedRef.current) return;
+  const formatTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
-    const fullText   = finalTranscript + ' ' + newTranscript;
-    const cleanFull  = cleanText(fullText);
-    const spokenWords = cleanFull.split(/\s+/);
+  // ── FIXED: buildPayload reads childFullName + sessionUUID ──
+  const buildPayload = useCallback((results, isPartial) => {
+    const user      = getUserInfo();
+    const childInfo = getChildInfo();
+    const sessionUUID = getSessionUUID();
 
-    if (spokenWords.length <= lastProcessedLength) return;
+    // Support both key names
+    const childName  = childInfo?.childFullName || childInfo?.childName || user?.name || 'Guest User';
+    const childGrade = childInfo?.childGrade    || user?.childGrade     || 'Not Specified';
 
-    const newWords = spokenWords.slice(lastProcessedLength);
-    let newMatches = [];
-    let currentPos = currentWordIndex;
+    const correctCount = Object.values(results.wordResults || wordResultsRef.current).filter(r => r?.correct).length;
+    const elapsed = startTimeRef.current
+      ? Math.round((Date.now() - startTimeRef.current - totalPausedMsRef.current) / 1000) : 0;
 
-    for (const spokenWord of newWords) {
-      if (currentPos >= allWords.length) break;
-      if (wordResults[currentPos]) { currentPos++; continue; }
+    return {
+      sessionUUID,
+      childId:        user?.childId || null,
+      parentId:       user?.role === 'parent' ? user.id : null,
+      guestId:        getGuestId(),
+      childName,
+      childGrade,
+      passageTitle:   READING_PASSAGE.title,
+      totalWords:     allWords.length,
+      correctWords:   results.correctWords ?? correctCount,
+      errorCount:     results.errors       ?? (errorWordsRef.current?.length || 0),
+      timeUsedSeconds: results.time_used   ?? elapsed,
+      maxTimeSeconds:  180,
+      finishedEarly:   results.finishedEarly ?? false,
+      errorDetails:    results.error_details ?? errorWordsRef.current,
+      is_partial:      isPartial ? 1 : 0,
+    };
+  }, []);
 
-      const expectedWord  = allWords[currentPos];
-      const similarity    = calculateSimilarity(spokenWord, expectedWord);
-      const isCorrect     = similarity >= 0.6;
-      const accuracyPct   = Math.round(similarity * 100);
+  // ── FIXED: POST once, PATCH after ──
+  const saveResultsToDB = useCallback(async (results, isPartial = false) => {
+    if (!isMountedRef.current) return;
+    setSaving(true); setSaveError('');
+    const payload = buildPayload(results, isPartial);
+    const token   = localStorage.getItem('token');
+    const headers = { 'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}) };
 
-      newMatches.push({ index: currentPos, expected: expectedWord, spoken: spokenWord, correct: isCorrect, accuracy: accuracyPct });
-      currentPos++;
-    }
-
-    if (newMatches.length > 0) {
-      setWordResults(prev => {
-        const updated = { ...prev };
-        const newErrors = [];
-        for (const match of newMatches) {
-          updated[match.index] = { correct: match.correct, spoken: match.spoken, similarity: match.accuracy / 100, expected: match.expected, accuracy: match.accuracy };
-          if (!match.correct) newErrors.push({ index: match.index, expected: match.expected, spoken: match.spoken, similarity: match.accuracy });
+    try {
+      let res;
+      if (savedIdRef.current) {
+        // PATCH — update existing row
+        res = await axios.patch(`${API}/api/assessments/task2/submit/${savedIdRef.current}`, payload, { headers });
+      } else {
+        // POST — first save only
+        res = await axios.post(`${API}/api/assessments/task2/submit`, payload, { headers });
+        if (res.data?.resultId) {
+          savedIdRef.current = String(res.data.resultId);
+          localStorage.setItem('task2_saved_db_id', savedIdRef.current);
         }
-        setErrorWords(prevErrs => [...prevErrs, ...newErrors]);
-        return updated;
-      });
-
-      let nextIndex = currentWordIndex;
-      while (nextIndex < allWords.length && wordResults[nextIndex]) nextIndex++;
-      for (const match of newMatches) { if (match.index >= nextIndex) nextIndex = match.index + 1; }
-      setCurrentWordIndex(nextIndex);
+      }
+      if (!res.data?.success && isMountedRef.current) setSaveError(res.data?.error || 'Save failed.');
+      else console.log('✅ Task2 saved, id:', savedIdRef.current);
+    } catch (err) {
+      console.error('Task2 save error:', err);
+      if (isMountedRef.current) {
+        setSaveError('Network error — saved locally only.');
+        localStorage.setItem('task2_results_backup', JSON.stringify({ ...payload, savedAt: new Date().toISOString() }));
+      }
+    } finally {
+      if (isMountedRef.current) setSaving(false);
     }
+  }, [buildPayload]);
 
-    setLastProcessedLength(spokenWords.length);
-
-    if (currentPos >= allWords.length ||
-        (currentWordIndex >= allWords.length - 1 && newMatches.some(m => m.index === allWords.length - 1))) {
-      finishAssessment();
+  const processSpeech = useCallback(newAccumulated => {
+    if (isCompleteRef.current || isPausedRef.current || isTimeUpRef.current) return;
+    const cleanFull   = cleanText(newAccumulated);
+    const spokenWords = cleanFull.split(/\s+/).filter(Boolean);
+    if (spokenWords.length <= lastProcessedRef.current) return;
+    const newSlice  = spokenWords.slice(lastProcessedRef.current);
+    const newMatches = [];
+    let pos = currentWordIndexRef.current;
+    for (const sw of newSlice) {
+      if (pos >= allWords.length) break;
+      if (wordResultsRef.current[pos]) { pos++; continue; }
+      const sim = calcSimilarity(sw, allWords[pos]);
+      newMatches.push({ index:pos, expected:allWords[pos], spoken:sw, correct:sim>=0.6, accuracy:Math.round(sim*100) });
+      pos++;
     }
-  }, [currentWordIndex, finalTranscript, lastProcessedLength, wordResults, isComplete]);
+    lastProcessedRef.current = spokenWords.length;
+    if (!newMatches.length) return;
 
-  /* ── Recognition setup ────────────────────────────────── */
-  const initRecognition = useCallback(() => {
+    setWordResults(prev => {
+      const upd = { ...prev };
+      for (const m of newMatches) upd[m.index] = { correct:m.correct, spoken:m.spoken, similarity:m.accuracy/100, expected:m.expected, accuracy:m.accuracy };
+      wordResultsRef.current = upd;
+      return upd;
+    });
+    const newErrors = newMatches.filter(m => !m.correct).map(m => ({ index:m.index, expected:m.expected, spoken:m.spoken, similarity:m.accuracy }));
+    if (newErrors.length) {
+      setErrorWords(prev => { const upd = [...prev, ...newErrors]; errorWordsRef.current = upd; return upd; });
+    }
+    currentWordIndexRef.current = pos;
+    setCurrentWordIndex(pos);
+    if (pos >= allWords.length) finishAssessmentInternal();
+  }, []);
+
+  const buildRecognition = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return null;
-
-    const recognition          = new SR();
-    recognition.continuous     = true;
-    recognition.interimResults = true;
-    recognition.lang           = 'en-US';
-
-    let accumulated = '';
-
-    recognition.onstart = () => { setIsListening(true); isPausedRef.current = false; setTranscript(''); };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      if (!isPausedRef.current && currentWordIndex < allWords.length && !isComplete && timeRemaining > 0) {
-        setTimeout(() => {
-          if (!isListening && !isComplete && !isPausedRef.current) {
-            try { recognition.start(); } catch {}
-          }
-        }, 500);
+    const rec = new SR();
+    rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US'; rec.maxAlternatives = 1;
+    let acc = finalTranscriptRef.current;
+    rec.onstart = () => { if(!isMountedRef.current) return; isListeningRef.current=true; setIsListening(true); setTranscript(''); };
+    rec.onend   = () => {
+      if(!isMountedRef.current) return;
+      isListeningRef.current=false; setIsListening(false);
+      if (!isPausedRef.current && !isCompleteRef.current && !isTimeUpRef.current && timeRemainingRef.current>0 && currentWordIndexRef.current<allWords.length) {
+        setTimeout(() => { if(isMountedRef.current&&!isPausedRef.current&&!isCompleteRef.current&&!isTimeUpRef.current&&!isListeningRef.current) { try{rec.start();}catch(_){} } }, 300);
       }
     };
-
-    recognition.onerror = (event) => {
-      if (event.error === 'not-allowed') setMicAllowed(false);
-      setIsListening(false);
+    rec.onerror = e => { if(e.error==='not-allowed'&&isMountedRef.current) setMicAllowed(false); };
+    rec.onresult = e => {
+      if (isPausedRef.current||isCompleteRef.current||isTimeUpRef.current) return;
+      let interim='', finalSeg='';
+      for (let i=e.resultIndex; i<e.results.length; i++) {
+        const t=e.results[i][0].transcript;
+        if(e.results[i].isFinal) finalSeg+=t; else interim+=t;
+      }
+      if (finalSeg) { acc+=' '+finalSeg; finalTranscriptRef.current=acc; processSpeech(acc); }
+      if (isMountedRef.current) setTranscript(interim);
     };
+    return rec;
+  }, [processSpeech]);
 
-    recognition.onresult = (event) => {
-      if (isPausedRef.current) return;
-      let interim = '', finalSeg = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) finalSeg += event.results[i][0].transcript;
-        else interim += event.results[i][0].transcript;
-      }
-      if (finalSeg) {
-        accumulated += ' ' + finalSeg;
-        setFinalTranscript(prev => prev + ' ' + finalSeg);
-        setTranscript(interim);
-        processContinuousSpeech(accumulated);
-      } else {
-        setTranscript(interim);
-      }
-    };
-
-    return recognition;
-  }, [currentWordIndex, isComplete, processContinuousSpeech, timeRemaining]);
-
-  /* ── Controls ─────────────────────────────────────────── */
-  const startListening = async () => {
-    if (currentWordIndex === 0 && Object.keys(wordResults).length === 0) {
-      setTimeRemaining(180);
-      setShowTimeWarning(false);
-      setFinalTranscript('');
-      setLastProcessedLength(0);
-      setWordResults({});
-      setErrorWords([]);
-      startTimeRef.current = Date.now();
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
-      const recognition = initRecognition();
-      if (recognition) {
-        recognitionRef.current = recognition;
-        recognition.start();
-        setMicAllowed(true);
-        isPausedRef.current = false;
-        if (!startTimeRef.current) startTimeRef.current = Date.now();
-      }
-    } catch {
-      setMicAllowed(false);
-    }
-  };
-
-  const pauseListening = () => {
-    isPausedRef.current = true;
-    if (recognitionRef.current) recognitionRef.current.stop();
-    if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; }
-    setIsListening(false);
-  };
-
-  const resumeListening = () => {
-    if (isComplete) return;
+  const startListening = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    try { const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); }
+    catch { if(isMountedRef.current) setMicAllowed(false); return; }
     isPausedRef.current = false;
+    if (!startTimeRef.current) startTimeRef.current = Date.now();
+    const rec = buildRecognition();
+    if (!rec || !isMountedRef.current) return;
+    stopRecognition();
+    recognitionRef.current = rec;
+    try { rec.start(); startTimer(); setMicAllowed(true); } catch(e) { console.error(e); }
+  }, [buildRecognition]);
+
+  const pauseListening = useCallback(async () => {
+    isPausedRef.current = true;
+    pausedAtRef.current = Date.now();
+    stopRecognition(); stopTimer();
+    setIsListening(false); isListeningRef.current = false;
+    const elapsed = startTimeRef.current ? Math.round((Date.now()-startTimeRef.current-totalPausedMsRef.current)/1000) : 0;
+    const cc = Object.values(wordResultsRef.current).filter(r=>r?.correct).length;
+    await saveResultsToDB({ correctWords:cc, errors:errorWordsRef.current.length, time_used:elapsed, error_details:errorWordsRef.current }, true);
+  }, [saveResultsToDB]);
+
+  const resumeListening = useCallback(() => {
+    if (isCompleteRef.current||isTimeUpRef.current) return;
+    if (pausedAtRef.current) { totalPausedMsRef.current += Date.now()-pausedAtRef.current; pausedAtRef.current=null; }
     startListening();
-  };
+  }, [startListening]);
 
-  const finishAssessment = () => {
-    if (recognitionRef.current) recognitionRef.current.stop();
-    if (timerIntervalRef.current) { clearInterval(timerIntervalRef.current); timerIntervalRef.current = null; }
-    setIsListening(false);
+  const finishAssessmentInternal = useCallback(() => {
+    if (isCompleteRef.current) return;
+    isCompleteRef.current = true;
+    stopRecognition(); stopTimer();
+    isListeningRef.current = false; setIsListening(false);
 
-    const elapsed      = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : 0;
-    const correctCount = Object.values(wordResults).filter(r => r?.correct === true).length;
-    const percentage   = Math.round((correctCount / allWords.length) * 100);
+    const elapsed = startTimeRef.current ? Math.round((Date.now()-startTimeRef.current-totalPausedMsRef.current)/1000) : 0;
+    const cc  = Object.values(wordResultsRef.current).filter(r=>r?.correct).length;
+    const pct = Math.round((cc/allWords.length)*100);
 
-    let fluencyLevel = 'Building', fluencyColor = '#f44336',
-        recommendation = '💪 You tried your best and that is what matters! Every time you read, you get better and better!';
+    let fluency='Building', fColor='#f44336', rec='💪 You tried your best — that is what matters!';
+    if(pct>=85){fluency='Excellent';fColor='#4CAF50';rec='🎉 Amazing reading! You are a superstar!';}
+    else if(pct>=70){fluency='Good';fColor='#8BC34A';rec='👍 Great job! A few words to practice and you will be perfect!';}
+    else if(pct>=50){fluency='Developing';fColor='#FF9800';rec='🌱 You are growing every day! Keep practicing!';}
 
-    if (percentage >= 85) {
-      fluencyLevel = 'Excellent'; fluencyColor = '#4CAF50';
-      recommendation = '🎉 Amazing reading! You are a superstar! Keep sharing your wonderful voice with the world! 🌟';
-    } else if (percentage >= 70) {
-      fluencyLevel = 'Good'; fluencyColor = '#8BC34A';
-      recommendation = '👍 Great job! You read so well! A few words to practice and you will be perfect!';
-    } else if (percentage >= 50) {
-      fluencyLevel = 'Developing'; fluencyColor = '#FF9800';
-      recommendation = '🌱 You are growing every day! Keep practicing these words and you will shine!';
-    }
-
-    const results = {
-      total_words:   allWords.length,
-      correct_words: correctCount,
-      errors:        errorWords.length,
-      percentage,
-      fluency_level: fluencyLevel,
-      fluency_color: fluencyColor,
-      recommendation,
-      error_details: errorWords,
-      time_used:     elapsed,
-    };
+    const results = { total_words:allWords.length, correct_words:cc, correctWords:cc, errors:errorWordsRef.current.length,
+      percentage:pct, fluency_level:fluency, fluency_color:fColor, recommendation:rec,
+      error_details:errorWordsRef.current, time_used:elapsed, finishedEarly:pct===100||isTimeUpRef.current===false };
 
     localStorage.setItem('enhanced_voice_results', JSON.stringify(results));
-    setResultsData(results);
-    setTimeUsed(elapsed);
-    setIsComplete(true);
+    if (!markedCompletedRef.current) { markQuestCompleted(); markedCompletedRef.current=true; }
+    if (isMountedRef.current) { setResultsData(results); setIsComplete(true); }
+    saveResultsToDB({ ...results, error_details:errorWordsRef.current }, false);
+  }, [saveResultsToDB]);
 
-    // Save to DB
-    saveResultsToDB(results);
-  };
+  const finishAssessment = useCallback(() => finishAssessmentInternal(), [finishAssessmentInternal]);
 
-  const resetAssessment = () => {
-    setCurrentWordIndex(0);
-    setWordResults({});
-    setErrorWords([]);
-    setIsComplete(false);
-    setTranscript('');
-    setFinalTranscript('');
-    setLastProcessedLength(0);
-    setTimeRemaining(180);
-    setShowTimeWarning(false);
-    setSavedId(null);
-    setSaveError('');
-    setResultsData(null);
-    isPausedRef.current    = false;
-    startTimeRef.current   = null;
-    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} recognitionRef.current = null; }
-    setTimeout(() => startListening(), 100);
-  };
+  const resetAssessment = useCallback(() => {
+    stopRecognition(); stopTimer();
+    isPausedRef.current=false; isCompleteRef.current=false; isTimeUpRef.current=false;
+    isListeningRef.current=false; startTimeRef.current=null; pausedAtRef.current=null;
+    totalPausedMsRef.current=0; finalTranscriptRef.current=''; lastProcessedRef.current=0;
+    currentWordIndexRef.current=0; wordResultsRef.current={}; errorWordsRef.current=[];
+    timeRemainingRef.current=180; markedCompletedRef.current=false;
+    // ── Reset saved ID so next attempt is a fresh POST ──
+    savedIdRef.current=null;
+    localStorage.removeItem('task2_saved_db_id');
 
-  const handleBack = () => {
-    if (recognitionRef.current) { try { recognitionRef.current.stop(); } catch {} recognitionRef.current = null; }
-    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    setIsListening(false);
-    navigate('/adventure');
-  };
+    setCurrentWordIndex(0); setWordResults({}); setErrorWords([]); setIsComplete(false);
+    setIsTimeUp(false); setTranscript(''); setTimeRemaining(180); setShowTimeWarning(false);
+    setSaveError(''); setResultsData(null); setIsListening(false);
+    setTimeout(() => { if(isMountedRef.current) startListening(); }, 200);
+  }, [startListening]);
 
-  /* ════════════════════════════════════════════════════════
-     RESULTS SCREEN
-  ════════════════════════════════════════════════════════ */
+  const handleBack = useCallback(() => { stopRecognition(); stopTimer(); navigate('/adventure'); }, [navigate]);
+
+  // ════════════════════════════════════════════════════════
+  // RESULTS SCREEN
+  // ════════════════════════════════════════════════════════
   if (isComplete) {
-    const results = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
-
+    const r   = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
+    const pct = r.percentage || 0;
     return (
-      <div className="enhanced-voice-container">
-        <div className="enhanced-bg"></div>
-        <div className="enhanced-overlay"></div>
-
-        <div className="enhanced-nav">
-          <button className="enhanced-back-btn" onClick={handleBack}>←</button>
-          <div className="enhanced-title">🎙️ Reading Results</div>
+      <div className="task-one-container results-screen">
+        <div className="task-bg"/><div className="dark-overlay"/>
+        {/* ── Navbar matches Task 1 & 3 (updated to match Task 3 style) ── */}
+        <div className="task-nav">
+          <button className="nav-back-btn" onClick={handleBack}>← Back</button>
+          <span className="nav-title">🎙️ Story Reader</span>
+          <div style={{width:100}}/>
         </div>
-
-        <div className="enhanced-results" style={{ overflowY: 'auto', flex: 1 }}>
-          <div className="results-icon">🎉</div>
+        <div className="results-back-btn">
+          <button className="nav-back-btn" onClick={handleBack}>← Back to Adventure</button>
+        </div>
+        <div className="results-header-area">
+          <div className="trophy-icon">🎉</div>
           <h1>Wonderful Reading!</h1>
-
-          {/* Save status */}
-          {saving && (
-            <div style={{ textAlign: 'center', color: '#3D5A4C', fontWeight: 600, marginBottom: '.75rem' }}>
-              💾 Saving your results…
-            </div>
-          )}
-          {savedId && !saving && (
-            <div style={{ textAlign: 'center', color: '#4CAF50', fontWeight: 600, marginBottom: '.75rem' }}>
-              ✓ Results saved to your account!
-            </div>
-          )}
-          {saveError && !saving && (
-            <div style={{ textAlign: 'center', color: '#FF9800', fontSize: '.85rem', marginBottom: '.75rem' }}>
-              ⚠️ {saveError}
-            </div>
-          )}
-
-          <div className="score-circle" style={{ borderColor: results.fluency_color }}>
-            <span className="score-number">{results.percentage}%</span>
-            <span className="score-label">Accuracy</span>
+          <p>You read the passage — great effort! 🌟</p>
+        </div>
+        {saving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>💾 Saving…</div>}
+        {saveError&&!saving&&<div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
+        <div className="final-score-area">
+          <div className="score-circle-big">
+            <span className="score-number-big">{r.correct_words}/{r.total_words}</span>
+            <span className="score-label-small">Words Correct</span>
           </div>
-
-          <div className="results-stats">
-            <div className="stat">
-              <div className="stat-value">{results.correct_words}/{results.total_words}</div>
-              <div className="stat-label">Great Reads</div>
-            </div>
-            <div className="stat">
-              <div className="stat-value">{results.errors}</div>
-              <div className="stat-label">Let's Practice</div>
-            </div>
-            <div className="stat">
-              <div className="stat-value" style={{ color: results.fluency_color }}>{results.fluency_level}</div>
-              <div className="stat-label">Your Level</div>
-            </div>
+          <div className="score-grade-area">
+            <div className="grade-circle-big" style={{background:pct>=80?'#7fb685':pct>=60?'#ff9a76':'#a8d0db'}}>{pct}%</div>
+            <p className="grade-label-text">{pct>=80?'🌟 Excellent!':pct>=60?'👍 Good Job!':'💪 Keep Practicing!'}</p>
           </div>
-
-          <div className="recommendation-box">
-            <p>{results.recommendation}</p>
+        </div>
+        <div className="category-breakdown-area">
+          <h2>📊 Your Reading Performance</h2>
+          <div className="breakdown-grid-area">
+            <div className="breakdown-card-item"><div className="breakdown-icon-item">📖</div><h3>Words Read</h3><div className="breakdown-score-item">{r.correct_words}/{r.total_words}</div></div>
+            <div className="breakdown-card-item"><div className="breakdown-icon-item">📝</div><h3>Let's Practice</h3><div className="breakdown-score-item">{r.errors}</div></div>
+            <div className="breakdown-card-item"><div className="breakdown-icon-item">⭐</div><h3>Your Level</h3><div className="breakdown-score-item" style={{color:r.fluency_color}}>{r.fluency_level}</div></div>
           </div>
-
-          {results.error_details && results.error_details.length > 0 && (
-            <div className="error-list">
-              <h3>📝 Words to practice together:</h3>
-              <div className="error-grid">
-                {results.error_details.slice(0, 15).map((err, idx) => (
-                  <div key={idx} className="error-item">
-                    <span className="expected">{err.expected}</span>
-                    <span className="spoken">→ "{err.spoken}"</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="enhanced-actions">
-            <button className="btn-try-again" onClick={resetAssessment}>🔄 Read Again</button>
-            <button className="btn-home"      onClick={handleBack}>🏠 Back to Adventure</button>
-          </div>
+        </div>
+        <div className="results-action-buttons">
+          <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
         </div>
       </div>
     );
   }
 
-  /* ════════════════════════════════════════════════════════
-     READING SCREEN
-  ════════════════════════════════════════════════════════ */
+  // ════════════════════════════════════════════════════════
+  // ERROR: no speech support
+  // ════════════════════════════════════════════════════════
+  if (!recognitionSupported) return (
+    <div className="task-one-container results-screen">
+      <div className="task-bg"/><div className="dark-overlay"/>
+      <div className="task-nav">
+        <button className="nav-back-btn" onClick={handleBack}>← Back</button>
+        <span className="nav-title">🎙️ Story Reader</span>
+        <div style={{width:100}}/>
+      </div>
+      <div className="results-header-area" style={{marginTop:'2rem'}}><div className="trophy-icon" style={{fontSize:'4rem'}}>😕</div><h1>Browser Not Supported</h1><p>Please use Google Chrome for voice reading.</p></div>
+      <div className="results-action-buttons"><button className="btn-home-page" onClick={handleBack}>← Go Back</button></div>
+    </div>
+  );
+
+  if (!micAllowed) return (
+    <div className="task-one-container results-screen">
+      <div className="task-bg"/><div className="dark-overlay"/>
+      <div className="task-nav">
+        <button className="nav-back-btn" onClick={handleBack}>← Back</button>
+        <span className="nav-title">🎙️ Story Reader</span>
+        <div style={{width:100}}/>
+      </div>
+      <div className="results-header-area" style={{marginTop:'2rem'}}><div className="trophy-icon" style={{fontSize:'4rem'}}>🎤</div><h1>Microphone Required</h1><p>Please allow microphone access to use voice reading.</p></div>
+      <div className="results-action-buttons">
+        <button className="btn-play-again" onClick={startListening}>🔄 Try Again</button>
+        <button className="btn-home-page"  onClick={handleBack}>← Go Back</button>
+      </div>
+    </div>
+  );
+
+  // ════════════════════════════════════════════════════════
+  // MAIN READING SCREEN
+  // ════════════════════════════════════════════════════════
   return (
     <div className="enhanced-voice-container reading-active">
-      <div className="enhanced-bg"></div>
-      <div className="enhanced-overlay"></div>
+      <div className="enhanced-bg"/><div className="enhanced-overlay"/>
 
-      {/* Fixed Header */}
-      <div className="enhanced-nav reading-nav">
-        <button className="enhanced-back-btn" onClick={handleBack}>←</button>
-        <div className="enhanced-title">🎙️ Reading Time</div>
-        <div className={`timer-badge ${showTimeWarning && timeRemaining <= 30 ? 'warning' : ''}`}>
-          ⏱️ {formatTime(timeRemaining)}
-        </div>
-        <div className="progress-badge">
-          {Object.keys(wordResults).filter(i => wordResults[i]?.correct).length} / {allWords.length}
-        </div>
+      {/* ── Navbar — updated to match Task 3 style exactly (like second TaskThree code) ── */}
+      <div className="task-nav">
+        <button className="nav-back-btn" onClick={handleBack}>← Back</button>
+        <span className="nav-title">🎙️ Story Reader</span>
+        <div className={`timer ${showTimeWarning ? 'warning' : ''}`}>⏱️ {formatTime(timeRemaining)}</div>
       </div>
 
-      {/* Scrollable Content */}
-      <div className="enhanced-reading-content" style={{ overflowY: 'auto', flex: 1 }}>
+      <div className="enhanced-reading-content">
         <div className="current-word-section">
           <div className="enhanced-word-card">
-            <div className="enhanced-word-text">{allWords[currentWordIndex]}</div>
-            {!wordResults[currentWordIndex] && (
-              <div className="word-timer">⏰ {timeRemaining}s</div>
-            )}
+            <div className="enhanced-word-text">
+              {currentWordIndex < allWords.length ? allWords[currentWordIndex] : '🏁'}
+            </div>
           </div>
 
-          {/* Mic status */}
+          {saving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,fontSize:'0.85rem',marginBottom:'0.5rem'}}>💾 Saving…</div>}
+
           <div className="mic-status-section">
-            <div className={`mic-indicator ${isListening ? 'listening' : ''}`}>
-              {isListening ? (
-                <><span className="mic-wave">🎙️</span><span className="mic-text">Listening... Keep reading! I'm following along</span></>
-              ) : (
-                <><span className="mic-wave">⏸️</span><span className="mic-text">Paused - Click Resume to continue reading</span></>
-              )}
+            <div className={`mic-indicator ${isListening?'listening':''}`}>
+              {isListening ? <><span>🎙️</span><span className="mic-text"> Listening… Keep reading!</span></> : <><span>⏸️</span><span className="mic-text"> Paused — press Resume</span></>}
             </div>
-            {transcript && (
+            {transcript&&(
               <div className="transcript-box">
                 <span className="transcript-label">I hear:</span>
-                <span className="transcript-text">"{transcript}"</span>
+                <span className="transcript-text"> "{transcript}"</span>
               </div>
             )}
           </div>
 
-          {/* Full passage */}
           <div className="full-passage">
             <h3>The Teacher</h3>
             <div className="passage-words">
               {allWords.map((word, idx) => {
                 let cls = 'passage-word';
-                if (idx === currentWordIndex && !wordResults[idx]) cls += ' current';
+                if (idx===currentWordIndex && !wordResults[idx]) cls+=' current';
                 if (wordResults[idx]) cls += wordResults[idx].correct ? ' done-correct' : ' done-wrong';
-                return (
-                  <span key={idx} className={cls} ref={idx === currentWordIndex ? currentWordRef : null}>
-                    {word}{' '}
-                  </span>
-                );
+                return <span key={idx} className={cls} ref={idx===currentWordIndex?currentWordRef:null}>{word} </span>;
               })}
             </div>
           </div>
 
-          {/* Controls */}
           <div className="word-controls">
-            {!isListening ? (
-              <button className="word-ctrl-btn resume-word" onClick={resumeListening}>▶️ Resume</button>
-            ) : (
-              <button className="word-ctrl-btn pause-word" onClick={pauseListening}>⏸️ Pause</button>
-            )}
+            {!isListening
+              ? <button className="word-ctrl-btn resume-word" onClick={resumeListening}>▶️ Resume</button>
+              : <button className="word-ctrl-btn pause-word"  onClick={pauseListening}>⏸️ Pause</button>
+            }
             <button className="word-ctrl-btn finish-word" onClick={finishAssessment}>🏁 Finish</button>
           </div>
         </div>
