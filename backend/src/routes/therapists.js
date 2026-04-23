@@ -69,12 +69,12 @@ router.post('/login', async (req, res) => {
 
         res.json({
             token,
-            therapistId: therapist.id,
+            userId: therapist.id,          // ✅ Fixed: was 'therapistId'
             email: therapist.email,
             role: 'therapist',
             name: therapist.username,
-            loginCount: updated[0].login_count,   // ✅ fresh value
-            lastLogin: updated[0].last_login,      // ✅ fresh value
+            loginCount: updated[0].login_count,
+            lastLogin: updated[0].last_login,
             message: 'Login successful',
         });
 
@@ -125,10 +125,11 @@ router.post('/register', async (req, res) => {
             name: username,
         });
 
+        // ✅ Fixed registration response
         res.status(201).json({
             token,
-            therapistId: result.insertId,
-            email,
+            userId: result.insertId,     // ✅ Fixed: was 'therapistId'
+            email: email,
             role: 'therapist',
             name: username,
             message: 'Registered successfully',

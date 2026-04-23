@@ -1,310 +1,740 @@
-// ParentDashboard.jsx - Complete beautiful dashboard
-import React, { useState, useEffect } from 'react';
+// ParentDashboard.jsx — LexiCare Parent Portal (Redesigned)
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiFetch, getCurrentUser, logout } from '../../services/api';
+import {
+  apiFetch,
+  getCurrentUser,
+  logout,
+  fetchMyResults,
+  fetchMessages,
+  sendMessage,
+  updateParentProfile,
+} from '../../services/api';
 import './ParentDashboard.css';
 
-// Icons
-const AddIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
+// ─────────────────────────────────────────────────────────────
+// SVG ICONS (no emojis)
+// ─────────────────────────────────────────────────────────────
+const Icon = ({ d, size = 18, fill = 'none', stroke = 'currentColor', strokeWidth = 2 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke}
+    strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
   </svg>
 );
 
-const LogoutIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
+const HomeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    <polyline points="9 22 9 12 15 12 15 22" />
   </svg>
 );
-
-const ChildIcon = () => (
-  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="8" r="4" />
-    <path d="M5 20v-2a7 7 0 0 1 14 0v2" />
+const ProfileIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+    <circle cx="12" cy="7" r="4" />
   </svg>
 );
-
-const StarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+const ResultsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="18" y1="20" x2="18" y2="10" />
+    <line x1="12" y1="20" x2="12" y2="4" />
+    <line x1="6" y1="20" x2="6" y2="14" />
   </svg>
 );
-
+const ActivitiesIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+  </svg>
+);
+const ChatIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+const LogoutIcon = () => <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />;
+const AddIcon = () => <Icon d="M12 5v14M5 12h14" strokeWidth="2.5" />;
+const EditIcon = () => <Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />;
+const SaveIcon = () => <Icon d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8" />;
+const SendIcon = () => <Icon d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" size={16} />;
+const MailIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="4" width="20" height="16" rx="2" />
+    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+  </svg>
+);
+const PhoneIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.42 2 2 0 0 1 3.6 1.24h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+const CalendarIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+const BellIcon = () => (
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
+  </svg>
+);
 const BookIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
   </svg>
 );
-
-const AssessmentIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <polyline points="10 9 9 9 8 9" />
+const ChevronIcon = ({ open }) => (
+  <svg className={`chevron ${open ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+);
+const CheckIcon = () => (
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+const LockIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <rect x="3" y="11" width="18" height="11" rx="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 );
 
-const ProgressIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M22 12A10 10 0 1 1 12 2" />
-    <polyline points="12 6 12 12 16 14" />
-  </svg>
-);
+// ─────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────
+const RISK_CONFIG = {
+  Normal:   { color: '#1a6b40', bg: '#e6f5ee', label: 'Normal' },
+  Mild:     { color: '#8a5a0a', bg: '#fef6e4', label: 'Mild' },
+  Moderate: { color: '#8a3a10', bg: '#fff0e8', label: 'Moderate' },
+  Severe:   { color: '#8a1f1f', bg: '#feeaea', label: 'Severe' },
+};
+const scoreColor = (s) => {
+  if (s == null) return '#c4c2dc';
+  if (s >= 85) return '#1a6b40';
+  if (s >= 70) return '#8a5a0a';
+  if (s >= 50) return '#8a3a10';
+  return '#8a1f1f';
+};
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
 
-const ParentDashboard = () => {
-  const navigate = useNavigate();
-  const [children, setChildren] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddChild, setShowAddChild] = useState(false);
-  const [newChild, setNewChild] = useState({ full_name: '', grade: '', dob: '' });
-  const [user, setUser] = useState(getCurrentUser());
-  const [parentInfo, setParentInfo] = useState(null);
+// ─────────────────────────────────────────────────────────────
+// SCORE BAR COMPONENT
+// ─────────────────────────────────────────────────────────────
+function ScoreBar({ label, score }) {
+  const color = scoreColor(score);
+  return (
+    <div className="bar-row">
+      <div className="bar-hdr">
+        <span>{label}</span>
+        <span className="bar-val" style={{ color }}>{score != null ? `${score}%` : 'N/A'}</span>
+      </div>
+      <div className="bar-track">
+        <div className="bar-fill" style={{ width: `${score ?? 0}%`, background: color }} />
+      </div>
+    </div>
+  );
+}
 
-  useEffect(() => {
-    fetchChildren();
-    fetchParentInfo();
-  }, []);
+// ─────────────────────────────────────────────────────────────
+// ADD CHILD MODAL
+// ─────────────────────────────────────────────────────────────
+function AddChildModal({ onClose, onAdded }) {
+  const [form, setForm] = useState({ full_name: '', grade: '', dob: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const fetchParentInfo = async () => {
-    try {
-      const res = await apiFetch('/api/parents/me');
-      const data = await res.json();
-      if (res.ok) {
-        setParentInfo(data);
-      }
-    } catch (error) {
-      console.error('Error fetching parent info:', error);
-    }
-  };
-
-  const fetchChildren = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
+    setError('');
     try {
-      const res = await apiFetch('/api/children');
+      const res = await apiFetch('/api/children', { method: 'POST', body: JSON.stringify(form) });
       const data = await res.json();
-      if (res.ok) {
-        setChildren(data);
-      }
-    } catch (error) {
-      console.error('Error fetching children:', error);
+      if (!res.ok) throw new Error(data.error || 'Failed to add child');
+      onAdded();
+      onClose();
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddChild = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await apiFetch('/api/children', {
-        method: 'POST',
-        body: JSON.stringify(newChild),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        await fetchChildren();
-        setShowAddChild(false);
-        setNewChild({ full_name: '', grade: '', dob: '' });
-      } else {
-        alert(data.error || 'Failed to add child');
-      }
-    } catch (error) {
-      alert('Error adding child: ' + error.message);
-    }
-  };
+  return (
+    <div className="modal-overlay open" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">Register a Child</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        {error && <div className="error-msg show" style={{ margin: '0 24px' }}>{error}</div>}
+        <div className="modal-body">
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="field">
+              <label>Full name *</label>
+              <input type="text" placeholder="Child's full name" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+            </div>
+            <div className="field">
+              <label>School year *</label>
+              <select value={form.grade} onChange={(e) => setForm({ ...form, grade: e.target.value })} required>
+                <option value="">Select year</option>
+                {[1, 2, 3, 4, 5, 6].map(g => <option key={g} value={g}>Year {g}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Date of birth (optional)</label>
+              <input type="date" value={form.dob} onChange={(e) => setForm({ ...form, dob: e.target.value })} />
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? 'Saving...' : 'Register child'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  const handleLogout = async () => {
+// ─────────────────────────────────────────────────────────────
+// PROFILE TAB
+// ─────────────────────────────────────────────────────────────
+function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ full_name: '', phone: '' });
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState('');
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    if (parentInfo) setForm({ full_name: parentInfo.full_name || '', phone: parentInfo.phone || '' });
+  }, [parentInfo]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveMsg('');
     try {
-      await apiFetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Logout error:', error);
+      await apiFetch(`/api/parents/${user.userId}`, { method: 'PUT', body: JSON.stringify(form) });
+      setSaveMsg('Profile updated successfully.');
+      setEditing(false);
+      setTimeout(() => setSaveMsg(''), 3500);
+    } catch {
+      setSaveMsg('Failed to save changes.');
     } finally {
-      localStorage.clear();
-      navigate('/auth');
+      setSaving(false);
     }
   };
 
-  const getGradeColor = (grade) => {
-    const colors = {
-      1: '#10b981', 2: '#34d399', 3: '#fbbf24',
-      4: '#f59e0b', 5: '#ef4444', 6: '#8b5cf6'
-    };
-    return colors[grade] || '#6b7280';
+  const displayName = form.full_name || user?.name || 'Parent';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  return (
+    <div className="pane active">
+      <div className="page-eyebrow">Step 1 of 5 — Completed</div>
+      <h1 className="page-title">Your <em>Profile</em></h1>
+      <p className="page-sub">Manage your account details and registered children.</p>
+
+      <div className="profile-hero">
+        <div className="ph-mono">{initial}</div>
+        <div className="ph-info">
+          <div className="ph-name">{displayName}</div>
+          <div className="ph-role">Parent Account</div>
+          <div className="ph-plan">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <div>
+              <div className="ph-plan-txt">Active Treatment Plan</div>
+              <div className="ph-plan-sub">With Dr. Amara Nwosu — 42% complete</div>
+            </div>
+          </div>
+        </div>
+        <div className="ph-actions">
+          {!editing && (
+            <button className="btn btn-ghost-light btn-sm" onClick={() => setEditing(true)}>
+              <EditIcon /> Edit profile
+            </button>
+          )}
+        </div>
+      </div>
+
+      {saveMsg && <div className="success-msg show" style={{ marginBottom: '14px' }}>{saveMsg}</div>}
+
+      <div className="two-col">
+        <div className="card">
+          <div className="card-header"><span className="card-title">Account details</span></div>
+          <div id="profile-view" style={{ display: editing ? 'none' : 'block' }}>
+            <div className="info-row">
+              <div className="ir-icon"><ProfileIcon /></div>
+              <div><div className="ir-label">Full name</div><div className="ir-val">{parentInfo?.full_name || '—'}</div></div>
+            </div>
+            <div className="info-row">
+              <div className="ir-icon"><MailIcon /></div>
+              <div><div className="ir-label">Email</div><div className="ir-val">{parentInfo?.email || '—'}</div></div>
+            </div>
+            <div className="info-row">
+              <div className="ir-icon"><PhoneIcon /></div>
+              <div><div className="ir-label">Phone</div><div className="ir-val">{parentInfo?.phone || 'Not provided'}</div></div>
+            </div>
+            <div className="info-row">
+              <div className="ir-icon"><CalendarIcon /></div>
+              <div><div className="ir-label">Member since</div><div className="ir-val">{fmtDate(parentInfo?.created_at)}</div></div>
+            </div>
+          </div>
+          {editing && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '4px' }}>
+              <div className="field"><label>Full name</label><input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
+              <div className="field"><label>Phone</label><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>Save changes</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <span className="card-title">Registered children {children.length > 0 ? `(${children.length})` : ''}</span>
+            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}><AddIcon /> Add child</button>
+          </div>
+          {children.length === 0 ? (
+            <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--ink-soft)', fontSize: '13px' }}>No children registered yet.</div>
+          ) : (
+            children.map(child => (
+              <div key={child.id} className="child-row">
+                <div className="cr-av">{child.full_name?.charAt(0).toUpperCase() || 'C'}</div>
+                <div>
+                  <div className="cr-name">{child.full_name}</div>
+                  <div className="cr-meta">Age {child.dob ? new Date().getFullYear() - new Date(child.dob).getFullYear() : '—'} • Active</div>
+                  <div className="year-pill">Year {child.grade}</div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {showModal && <AddChildModal onClose={() => setShowModal(false)} onAdded={onChildrenChange} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// RESULTS TAB
+// ─────────────────────────────────────────────────────────────
+function ResultsTab() {
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    fetchMyResults().then(setResults).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading assessment records...</div></div>;
+
+  const latestScore = results[0]?.overall_score || 0;
+  const risk = RISK_CONFIG[results[0]?.risk_level] || RISK_CONFIG.Mild;
+
+  return (
+    <div className="pane active">
+      <div className="page-eyebrow">Step 3 of 5 — In progress</div>
+      <h1 className="page-title">Assessment <em>Results</em></h1>
+      <p className="page-sub">Your child has completed {results.length} session{results.length !== 1 ? 's' : ''}. Results inform the treatment plan.</p>
+
+      <div className="journey-banner">
+        <div className="jb-icon"><ChatIcon /></div>
+        <div className="jb-text">
+          <div className="jb-title">Next step: Sign up for your treatment plan</div>
+          <div className="jb-desc">Results show {risk.label} risk. Your therapist recommends a structured programme. Message to confirm.</div>
+        </div>
+        <div className="jb-action"><button className="btn btn-primary btn-sm" onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'chat' }))}>Contact Therapist →</button></div>
+      </div>
+
+      {results.length > 0 && (
+        <div className="three-col">
+          <div className="stat-card"><div className="stat-val">{latestScore}%</div><div className="stat-lbl">Latest score</div><div className="stat-change up">+14% from previous</div></div>
+          <div className="stat-card"><div className="stat-val" style={{ color: risk.color }}>{risk.label}</div><div className="stat-lbl">Risk level</div><div className="stat-change up">Improved</div></div>
+          <div className="stat-card"><div className="stat-val">{results.length}</div><div className="stat-lbl">Sessions completed</div><div className="stat-change neutral">of 4 in phase</div></div>
+        </div>
+      )}
+
+      {results.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>No assessments on record</div>
+          <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Once your child completes an assessment, results will appear here.</div>
+        </div>
+      ) : (
+        results.map((r, idx) => {
+          const riskConf = RISK_CONFIG[r.risk_level] || RISK_CONFIG.Mild;
+          const isOpen = expanded === r.session_uuid;
+          return (
+            <div key={r.session_uuid} className="session-card">
+              <div className="session-top" onClick={() => setExpanded(isOpen ? null : r.session_uuid)}>
+                <div>
+                  <div className="sc-child">Session {results.length - idx} — {r.child_name}</div>
+                  <div className="sc-date">Year {r.child_grade} • {fmtDate(r.completed_at || r.session_started_at)}</div>
+                </div>
+                <div className="sc-right">
+                  <div className="score-big">{r.overall_score != null ? `${r.overall_score}%` : '—'}</div>
+                  <span className="rpill" style={{ background: riskConf.bg, color: riskConf.color }}>{riskConf.label}</span>
+                  <ChevronIcon open={isOpen} />
+                </div>
+              </div>
+              <div className={`bars-area ${isOpen ? 'open' : ''}`}>
+                <ScoreBar label="Word Explorer (Task 1)" score={r.task1_score} />
+                <ScoreBar label="Story Reader (Task 2)" score={r.task2_score} />
+                <ScoreBar label="Letter Detective (Task 3)" score={r.task3_score} />
+                <ScoreBar label="Number Memory (Task 4)" score={r.task4_score} />
+                <div className="bar-footer">
+                  <span>Method: {r.scoring_method === 'weighted' ? 'Weighted average' : 'Simple average'}</span>
+                  <span>Session ref: {r.session_uuid?.slice(0, 8)}…</span>
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// ACTIVITIES TAB
+// ─────────────────────────────────────────────────────────────
+function ActivitiesTab({ children }) {
+  const navigate = useNavigate();
+  const [selectedChild, setSelectedChild] = useState('');
+
+  const handleStart = () => {
+    if (children.length === 0) { alert('Please add a child first.'); return; }
+    const childId = selectedChild || children[0]?.id;
+    navigate(`/adventure?childId=${childId}`);
+  };
+  const handleScreening = () => {
+    if (children.length === 0) { alert('Please add a child first.'); return; }
+    const childId = selectedChild || children[0]?.id;
+    const child = children.find(c => c.id === (parseInt(selectedChild) || children[0]?.id));
+    navigate(`/quiz?childId=${childId}&childName=${child?.full_name}&childGrade=${child?.grade}`);
   };
 
   return (
-    <div className="parent-dashboard">
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="header-left">
-          <div className="welcome-badge">
-            <span className="welcome-text">Welcome back,</span>
-            <span className="parent-name">{user?.name || 'Parent'}! 👋</span>
-          </div>
-          <p className="header-subtitle">Manage your children's learning journey</p>
-        </div>
-        <div className="header-right">
-          <button className="logout-btn" onClick={handleLogout}>
-            <LogoutIcon />
-            <span>Logout</span>
-          </button>
-        </div>
-      </header>
+    <div className="pane active">
+      <div className="page-eyebrow">Step 2 of 5 — Completed</div>
+      <h1 className="page-title">Learning <em>Activities</em></h1>
+      <p className="page-sub">Activities assigned by your therapist. Complete them to unlock the full assessment.</p>
 
-      {/* Stats Cards */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">👨‍👩‍👧‍👦</div>
-          <div className="stat-info">
-            <h3>{children.length}</h3>
-            <p>Children</p>
+      <div className="activity-hero">
+        <div className="ah-left">
+          <div className="ah-eyebrow">Featured activity</div>
+          <h2 className="ah-title">Word <em>Adventure</em></h2>
+          <p className="ah-desc">Interactive reading stories designed to develop fluency and confidence at your child's own pace. Adapts in real time to performance.</p>
+          <div className="ah-tags">
+            <span className="ah-tag">Reading</span>
+            <span className="ah-tag">Comprehension</span>
+            <span className="ah-tag">10–15 min</span>
+            <span className="ah-tag">Year 3</span>
           </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">📚</div>
-          <div className="stat-info">
-            <h3>4</h3>
-            <p>Activities</p>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon">⭐</div>
-          <div className="stat-info">
-            <h3>0</h3>
-            <p>Assessments</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="dashboard-content">
-        <div className="content-header">
-          <h2>My Children</h2>
-          <button className="add-child-btn" onClick={() => setShowAddChild(true)}>
-            <AddIcon />
-            <span>Add Child</span>
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>Loading your children...</p>
-          </div>
-        ) : children.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">👶</div>
-            <h3>No children added yet</h3>
-            <p>Add your first child to start tracking their progress</p>
-            <button className="empty-add-btn" onClick={() => setShowAddChild(true)}>
-              Add Your First Child
-            </button>
-          </div>
-        ) : (
-          <div className="children-grid">
-            {children.map((child) => (
-              <div key={child.id} className="child-card">
-                <div className="child-avatar" style={{ backgroundColor: getGradeColor(child.grade) }}>
-                  <ChildIcon />
-                </div>
-                <div className="child-info">
-                  <h3>{child.full_name}</h3>
-                  <div className="child-details">
-                    <span className="grade-badge" style={{ backgroundColor: getGradeColor(child.grade) }}>
-                      Grade {child.grade}
-                    </span>
-                    {child.dob && (
-                      <span className="age-badge">
-                        {new Date().getFullYear() - new Date(child.dob).getFullYear()} years
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="child-actions">
-                  <button 
-                    className="action-btn start-btn"
-                    onClick={() => navigate(`/adventure?childId=${child.id}`)}
-                  >
-                    <BookIcon />
-                    <span>Start Adventure</span>
-                  </button>
-                  <button 
-                    className="action-btn assessment-btn"
-                    onClick={() => navigate(`/quiz?childId=${child.id}&childName=${child.full_name}&childGrade=${child.grade}`)}
-                  >
-                    <AssessmentIcon />
-                    <span>Assessment</span>
-                  </button>
-                </div>
-                <div className="child-progress">
-                  <div className="progress-item">
-                    <ProgressIcon />
-                    <span>Progress: 0%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add Child Modal */}
-      {showAddChild && (
-        <div className="modal-overlay" onClick={() => setShowAddChild(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Add New Child</h3>
-              <button className="modal-close" onClick={() => setShowAddChild(false)}>×</button>
+          {children.length > 1 && (
+            <div style={{ marginBottom: '12px' }}>
+              <select style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white' }} value={selectedChild} onChange={(e) => setSelectedChild(e.target.value)}>
+                {children.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+              </select>
             </div>
-            <form onSubmit={handleAddChild}>
-              <div className="form-group">
-                <label>Full Name *</label>
-                <input
-                  type="text"
-                  placeholder="Enter child's full name"
-                  value={newChild.full_name}
-                  onChange={(e) => setNewChild({ ...newChild, full_name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Grade *</label>
-                <select
-                  value={newChild.grade}
-                  onChange={(e) => setNewChild({ ...newChild, grade: e.target.value })}
-                  required
-                >
-                  <option value="">Select grade</option>
-                  {[1, 2, 3, 4, 5, 6].map(g => (
-                    <option key={g} value={g}>Grade {g}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Date of Birth (Optional)</label>
-                <input
-                  type="date"
-                  value={newChild.dob}
-                  onChange={(e) => setNewChild({ ...newChild, dob: e.target.value })}
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={() => setShowAddChild(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-submit">
-                  Add Child
-                </button>
-              </div>
-            </form>
+          )}
+          <button className="btn btn-ghost-light btn-lg" onClick={handleStart}>Begin Activity →</button>
+        </div>
+        <div className="ah-right">
+          <div className="art-rings">
+            <div className="ring ring-1"></div><div className="ring ring-2"></div><div className="ring ring-3"></div>
+            <div className="ring-center">W</div>
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="lesson-card">
+        <div className="lc-icon" style={{ background: 'var(--purple-light)' }}><BookIcon /></div>
+        <div className="lc-meta">
+          <div className="lc-eyebrow">Reading — Task 1</div>
+          <div className="lc-name">Word Adventure</div>
+          <div className="lc-desc">Fun, adaptive stories to build reading fluency</div>
+        </div>
+        <div className="lc-right"><div className="count-badge">1</div></div>
+      </div>
+
+      <div className="diagnostic-card">
+        <div>
+          <div className="dc-eyebrow">Diagnostic screening</div>
+          <div className="dc-title">Dyslexia Assessment</div>
+          <p className="dc-desc">A structured four-task evaluation to assess reading level and identify areas requiring specialist support. Unlocked after Word Adventure.</p>
+        </div>
+        <button className="btn btn-outline" onClick={handleScreening}>Start Screening →</button>
+      </div>
+
+      <div className="lesson-card locked-card">
+        <div className="lc-icon" style={{ background: 'var(--purple-faint)' }}><LockIcon /></div>
+        <div className="lc-meta">
+          <div className="lc-eyebrow">Coming soon</div>
+          <div className="lc-name">Letter Tracing</div>
+          <div className="lc-desc">Handwriting & phonics exercises</div>
+          <div className="lock-note"><LockIcon /> Not yet available</div>
+        </div>
+      </div>
+
+      <div className="coming-card"><div className="coming-line"></div><div><div className="coming-title">More activities in development</div><div className="coming-sub">Number recall, audio exercises, sentence building — coming soon.</div></div></div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// CHAT TAB
+// ─────────────────────────────────────────────────────────────
+function ChatTab({ user }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const bottomRef = useRef(null);
+  const pollRef = useRef(null);
+
+  const loadMessages = useCallback(async () => {
+    try { setMessages(await fetchMessages()); } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadMessages(); pollRef.current = setInterval(loadMessages, 5000); return () => clearInterval(pollRef.current); }, [loadMessages]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+    setSending(true); setInput('');
+    try { const msg = await sendMessage(text); setMessages(prev => [...prev, msg]); } catch { setInput(text); }
+    finally { setSending(false); }
+  };
+  const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+
+  if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading conversation...</div></div>;
+
+  return (
+    <div className="pane active">
+      <div className="page-eyebrow">Steps 4 & 5 — Treatment & ongoing care</div>
+      <h1 className="page-title">Messages with your <em>Therapist</em></h1>
+      <p className="page-sub">Direct communication with Dr. Amara Nwosu, your assigned dyslexia specialist.</p>
+
+      <div className="journey-banner" style={{ marginBottom: '20px' }}>
+        <div className="jb-icon"><CheckIcon /></div>
+        <div className="jb-text"><div className="jb-title">Step 4: Confirm your treatment plan</div><div className="jb-desc">Based on your child's results, a 5-session programme is recommended. Reply below to confirm enrollment.</div></div>
+      </div>
+
+      <div className="chat-layout">
+        <div className="chat-window">
+          <div className="chat-topbar">
+            <div className="therapist-av">Dr</div>
+            <div><div className="therapist-name">Dr. Amara Nwosu</div><div className="therapist-role">Dyslexia Specialist</div></div>
+            <div className="online-badge"><div className="green-dot"></div>Online</div>
+          </div>
+          <div className="chat-messages" id="chat-messages">
+            {messages.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>No messages yet. Introduce yourself to your therapist.</div>
+            ) : (
+              messages.map((m) => {
+                const isParent = m.sender_role === 'parent';
+                return (
+                  <div key={m.id} className={`msg-wrap ${isParent ? 'right' : ''}`}>
+                    {!isParent && <div className="msg-av">Dr</div>}
+                    <div>
+                      <div className={`bubble ${isParent ? 'p' : 't'}`}>{m.content}</div>
+                      <div className={`msg-time ${isParent ? 'r' : ''}`}>{fmtTime(m.created_at)}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+            <div ref={bottomRef} />
+          </div>
+          <div className="chat-footer">
+            <textarea className="chat-inp" placeholder="Write a message to Dr. Nwosu..." rows="1" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey} />
+            <button className="send-btn" onClick={handleSend} disabled={!input.trim() || sending}><SendIcon /></button>
+          </div>
+        </div>
+
+        <div className="chat-info">
+          <div className="ci-head">Therapist details</div>
+          <div className="ci-row"><span className="ci-label">Name</span><span className="ci-val">Dr. Amara Nwosu</span></div>
+          <div className="ci-row"><span className="ci-label">Specialty</span><span className="ci-val">Dyslexia & literacy</span></div>
+          <div className="ci-row"><span className="ci-label">Plan</span><span className="ci-val">5 sessions</span></div>
+          <div className="ci-row"><span className="ci-label">Progress</span><span className="ci-val">Session 2 of 5</span></div>
+          <div style={{ marginTop: '14px' }}><button className="btn btn-primary" style={{ width: '100%' }}>Book next session</button></div>
+          <div style={{ marginTop: '8px' }}><button className="btn btn-outline" style={{ width: '100%' }} onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }))}>View full results</button></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// HOME TAB (Dashboard Overview)
+// ─────────────────────────────────────────────────────────────
+function HomeTab({ parentInfo, children }) {
+  const navigate = useNavigate();
+  const child = children[0];
+  const progressPercent = 42;
+
+  const handleStartActivity = () => { if (children.length > 0) navigate(`/adventure?childId=${children[0].id}`); else alert('Please add a child first.'); };
+  const handleViewResults = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }));
+  const handleMessage = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'chat' }));
+
+  return (
+    <div className="pane active">
+      <div className="page-eyebrow">Parent portal</div>
+      <h1 className="page-title">Good morning, <em>{parentInfo?.full_name?.split(' ')[0] || 'Parent'}</em></h1>
+      <p className="page-sub">Here's an overview of your child's journey and what's next.</p>
+
+      <div className="plan-banner">
+        <div className="pb-icon"><CheckIcon /></div>
+        <div style={{ flex: 1 }}>
+          <div className="pb-label">Active Treatment Plan</div>
+          <div className="pb-name">With Dr. Amara Nwosu — Dyslexia Specialist</div>
+          <div className="pb-bar"><div className="pb-fill" style={{ width: `${progressPercent}%` }}></div></div>
+          <div className="pb-prog">{progressPercent}% of programme completed — Session 2 of 5</div>
+        </div>
+        <div className="pb-actions">
+          <button className="btn btn-ghost-light" onClick={handleMessage}>Message Dr. Nwosu</button>
+          <button className="btn btn-ghost-light" onClick={handleViewResults}>View Results</button>
+        </div>
+      </div>
+
+      <div className="journey-banner">
+        <div className="jb-icon"><ActivitiesIcon /></div>
+        <div className="jb-text"><div className="jb-title">You are on Step 3 — Assessment Results</div><div className="jb-desc">Complete the Word Adventure activity to unlock the full dyslexia screening.</div></div>
+        <div className="jb-action"><button className="btn btn-primary btn-sm" onClick={handleStartActivity}>Start Activity →</button></div>
+      </div>
+
+      <div className="quick-actions">
+        <div className="qa-card" onClick={handleStartActivity}><div className="qa-icon" style={{ background: 'var(--purple-light)' }}><ActivitiesIcon /></div><div className="qa-name">Start Activity</div><div className="qa-sub">3 assigned by therapist</div></div>
+        <div className="qa-card" onClick={handleViewResults}><div className="qa-icon" style={{ background: 'var(--mint)' }}><ResultsIcon /></div><div className="qa-name">Latest Score</div><div className="qa-sub">78% — Mild risk level</div></div>
+        <div className="qa-card" onClick={handleMessage}><div className="qa-icon" style={{ background: 'var(--amber-light)' }}><ChatIcon /></div><div className="qa-name">1 New Message</div><div className="qa-sub">From Dr. Nwosu</div></div>
+      </div>
+
+      <div className="two-col">
+        <div className="card">
+          <div className="card-header"><span className="card-title">Registered child</span><button className="btn btn-ghost btn-sm" onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'profile' }))}>+ Add child</button></div>
+          {children.length === 0 ? <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>No children registered yet.</div> : (
+            <div className="child-row">
+              <div className="cr-av">{children[0]?.full_name?.charAt(0).toUpperCase() || 'C'}</div>
+              <div><div className="cr-name">{children[0]?.full_name}</div><div className="cr-meta">Age {children[0]?.dob ? new Date().getFullYear() - new Date(children[0].dob).getFullYear() : '—'} • Active treatment plan</div><div className="year-pill">Year {children[0]?.grade}</div></div>
+            </div>
+          )}
+        </div>
+        <div className="card">
+          <div className="card-header"><span className="card-title">Your journey progress</span></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="journey-step-item"><div className="step-indicator done"><CheckIcon /></div><span>Profile registered & child added</span></div>
+            <div className="journey-step-item"><div className="step-indicator done"><CheckIcon /></div><span>Word Adventure activity completed</span></div>
+            <div className="journey-step-item"><div className="step-indicator current"><span>3</span></div><span>Assessment completed — 78% score</span></div>
+            <div className="journey-step-item"><div className="step-indicator upcoming"><span>4</span></div><span>Sign up for treatment plan</span></div>
+            <div className="journey-step-item"><div className="step-indicator upcoming"><span>5</span></div><span>Ongoing therapy & monitoring</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────
+const ParentDashboard = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('home');
+  const [user] = useState(getCurrentUser());
+  const [parentInfo, setParentInfo] = useState(null);
+  const [children, setChildren] = useState([]);
+  const [loadingInit, setLoadingInit] = useState(true);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [infoRes, childRes] = await Promise.all([apiFetch('/api/parents/me'), apiFetch('/api/children')]);
+      const [infoData, childData] = await Promise.all([infoRes.json(), childRes.json()]);
+      if (infoRes.ok) setParentInfo(infoData);
+      if (childRes.ok) setChildren(childData);
+    } catch (err) { console.error(err); }
+    finally { setLoadingInit(false); }
+  }, []);
+
+  useEffect(() => { fetchAll(); const handler = (e) => setActiveTab(e.detail); window.addEventListener('switchTab', handler); return () => window.removeEventListener('switchTab', handler); }, [fetchAll]);
+
+  const handleLogout = async () => { try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); navigate('/auth'); };
+
+  const displayName = parentInfo?.full_name || user?.name || 'Parent';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  if (loadingInit) return <div className="loading-state"><div className="spinner"></div><div>Loading your portal...</div></div>;
+
+  const TABS = [
+    { key: 'home', label: 'Home', icon: HomeIcon },
+    { key: 'profile', label: 'Profile', icon: ProfileIcon },
+    { key: 'results', label: 'Results', icon: ResultsIcon },
+    { key: 'activities', label: 'Activities', icon: ActivitiesIcon },
+    { key: 'chat', label: 'Messages', icon: ChatIcon },
+  ];
+
+  return (
+    <div className="pd">
+      <nav className="topnav">
+        <div className="brand"><div className="brand-dot"><BookIcon /></div><span className="brand-name">Lexi<em>Care</em></span></div>
+        <div className="nav-tabs">{TABS.map(tab => (
+          <button key={tab.key} className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}>
+            <tab.icon /> {tab.label}
+          </button>
+        ))}</div>
+        <div className="nav-right">
+          <button className="notif-btn"><BellIcon /><div className="notif-dot"></div></button>
+          <div className="user-chip"><div className="user-av">{initial}</div><span className="user-name">{displayName}</span></div>
+          <button className="user-chip" onClick={handleLogout}><LogoutIcon /><span>Sign out</span></button>
+        </div>
+      </nav>
+
+      <div className="journey-strip">
+        <div className="journey-step"><div className="jstep done"><div className="jstep-num"><CheckIcon /></div><div><div className="jstep-label">Register</div><div className="jstep-sub">Profile & child</div></div></div><div className="jconnector done"></div></div>
+        <div className="journey-step"><div className="jstep done"><div className="jstep-num"><CheckIcon /></div><div><div className="jstep-label">First task</div><div className="jstep-sub">Complete activities</div></div></div><div className="jconnector done"></div></div>
+        <div className="journey-step"><div className={`jstep ${activeTab === 'results' ? 'active' : ''}`}><div className="jstep-num">3</div><div><div className="jstep-label">Assessment</div><div className="jstep-sub">View results</div></div></div><div className="jconnector"></div></div>
+        <div className="journey-step"><div className={`jstep ${activeTab === 'chat' ? 'active' : ''}`}><div className="jstep-num">4</div><div><div className="jstep-label">Treatment plan</div><div className="jstep-sub">Sign up with therapist</div></div></div><div className="jconnector"></div></div>
+        <div className="journey-step"><div className="jstep"><div className="jstep-num">5</div><div><div className="jstep-label">Ongoing care</div><div className="jstep-sub">Chat & monitor</div></div></div></div>
+      </div>
+
+      <div className="layout">
+        <aside className="sidebar">
+          <div className="sidebar-section">Main</div>
+          {TABS.filter(t => t.key === 'home' || t.key === 'profile').map(tab => (
+            <button key={tab.key} className={`slink ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}><tab.icon /> {tab.label}</button>
+          ))}
+          <div className="sidebar-section">Progress</div>
+          <button className={`slink ${activeTab === 'results' ? 'active' : ''}`} onClick={() => setActiveTab('results')}><ResultsIcon /> Assessment Results<span className="slink-badge">2</span></button>
+          <button className={`slink ${activeTab === 'activities' ? 'active' : ''}`} onClick={() => setActiveTab('activities')}><ActivitiesIcon /> Activities<span className="slink-badge gold">3</span></button>
+          <div className="sidebar-section">Care</div>
+          <button className={`slink ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><ChatIcon /> Messages<span className="slink-badge">1</span></button>
+          {children.length > 0 && (
+            <div className="child-summary"><div className="cs-label">Active child</div><div className="cs-name">{children[0]?.full_name}</div><div className="cs-meta">Year {children[0]?.grade} • Age {children[0]?.dob ? new Date().getFullYear() - new Date(children[0].dob).getFullYear() : '—'}</div><div className="cs-bar"><div className="cs-bar-fill"></div></div><div className="cs-prog">42% treatment complete</div></div>
+          )}
+        </aside>
+
+        <main className="main">
+          {activeTab === 'home' && <HomeTab parentInfo={parentInfo} children={children} />}
+          {activeTab === 'profile' && <ProfileTab user={user} parentInfo={parentInfo} children={children} onChildrenChange={fetchAll} />}
+          {activeTab === 'results' && <ResultsTab />}
+          {activeTab === 'activities' && <ActivitiesTab children={children} />}
+          {activeTab === 'chat' && <ChatTab user={user} />}
+        </main>
+      </div>
     </div>
   );
 };

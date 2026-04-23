@@ -1,7 +1,7 @@
 // routes/auth.js
 // ─────────────────────────────────────────────────────────────
 //  Handles all stateful auth actions:
-//    POST /api/auth/login            ← moved here from server.js
+//    POST /api/auth/login            ← handles both parent & therapist
 //    POST /api/auth/logout
 //    POST /api/auth/refresh
 //    POST /api/auth/forgot-password
@@ -307,7 +307,8 @@ router.post('/forgot-password', async (req, res) => {
             [resetToken, userId, userRole, expiresAt]
         );
 
-        await logAudit(userId, userRole, 'password_reset_request', getClientInfo(req).ip, getClientInfo(req).userAgent);
+        const { ip, userAgent } = getClientInfo(req);
+        await logAudit(userId, userRole, 'password_reset_request', ip, userAgent);
 
         // TODO: In production, email this link to the user.
         // For development, return the token directly so you can test.

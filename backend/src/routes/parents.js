@@ -41,8 +41,6 @@ router.post('/register', async (req, res) => {
             name:  full_name.trim(),
         });
 
-        // FIX: always return 'userId' (not 'parentId') to match
-        //      saveUserSession() in api.js and the unified login shape
         res.status(201).json({
             token,
             userId:   result.insertId,
@@ -86,7 +84,6 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
 
-        // Update login stats
         const ipAddress = req.ip || req.socket?.remoteAddress || 'unknown';
         pool.query(
             'UPDATE Parent SET login_count = login_count + 1, last_login = NOW(), last_ip = ? WHERE id = ?',
@@ -100,7 +97,6 @@ router.post('/login', async (req, res) => {
             name:  parent.full_name,
         });
 
-        // FIX: unified shape — always 'userId', never 'parentId'
         res.json({
             token,
             userId:             parent.id,
@@ -139,6 +135,26 @@ router.get('/me', requireParent, async (req, res) => {
     }
 });
 
+// ⚠️ NEW ROUTE ── GET /api/parents/me/results ───────────────────
+// Returns all assessment summaries for the logged-in parent
+router.get('/me/results', requireParent, async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT f.*, s.created_at AS session_started_at
+             FROM full_assessment_summary f
+             JOIN child_info_sessions s ON s.session_uuid = f.session_uuid
+             WHERE f.parent_id = ?
+             ORDER BY f.completed_at DESC`,
+            [req.user.id]
+        );
+        
+        res.json({ success: true, results: rows });
+    } catch (err) {
+        console.error('GET /parents/me/results error:', err);
+        res.status(500).json({ error: 'Failed to fetch results' });
+    }
+});
+
 // ── GET /api/parents/:id ──────────────────────────────────────
 router.get('/:id', requireAuth, async (req, res) => {
     try {
@@ -170,7 +186,6 @@ router.put('/:id', requireParent, async (req, res) => {
             return res.status(400).json({ error: 'full_name is required' });
         }
 
-        // Parents can only update their own profile
         if (parseInt(req.params.id) !== req.user.id) {
             return res.status(403).json({ error: 'Access denied' });
         }

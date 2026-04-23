@@ -234,13 +234,39 @@ export default function TaskThree() {
     setIsComplete(true);
   };
 
-  const handlePause = () => {
-    if(isComplete) return;
-    savedTimeRef.current = timeRemaining;
-    setIsPaused(true);
-    if(timerRef.current){ clearInterval(timerRef.current); timerRef.current=null; }
-    saveLocal(currentIndex, results);
-  };
+ const handlePause = async () => {
+  if(isComplete) return;
+  
+  // Save to localStorage first
+  savedTimeRef.current = timeRemaining;
+  setIsPaused(true);
+  if(timerRef.current){ clearInterval(timerRef.current); timerRef.current=null; }
+  saveLocal(currentIndex, results);
+  
+  // Save partial progress to database
+  if (results.length > 0) {
+    const totalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+    const correct = results.filter(r => r.is_correct).length;
+    const incorrect = results.filter(r => !r.is_correct && !r.is_timeout).length;
+    const timeout = results.filter(r => r.is_timeout).length;
+    const pct = Math.round((correct / results.length) * 100);
+    
+    const partialData = {
+      total_comparisons: comparisons.length,
+      correct_count: correct,
+      incorrect_count: incorrect,
+      timeout_count: timeout,
+      percentage: pct,
+      performance_level: 'In Progress',
+      total_time_seconds: totalTime,
+      avg_time_per_comparison: results.length > 0 ? Math.round(totalTime / results.length) : 0,
+      comparison_details: results,
+    };
+    
+    await saveResultsToDB(partialData, true);
+    console.log('📝 Partial progress saved on pause');
+  }
+};
   const handleResume = () => { if(isComplete) return; setIsPaused(false); resumeTimer(savedTimeRef.current); };
   const handleQuit   = () => { if(timerRef.current) clearInterval(timerRef.current); saveLocal(currentIndex, results); navigate('/adventure'); };
   const handleBack   = () => { if(timerRef.current) clearInterval(timerRef.current); navigate('/adventure'); };
@@ -335,7 +361,7 @@ export default function TaskThree() {
           </div>
           <div className="header-right">
             <div className={`timer ${showTimeWarning && timeRemaining <= 5 ? 'warning' : ''}`}>
-              ⏱️ {formatTime(timeRemaining)}
+               {formatTime(timeRemaining)}
             </div>
           </div>
         </div>

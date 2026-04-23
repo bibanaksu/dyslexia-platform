@@ -1,4 +1,4 @@
-﻿// Auth.jsx - Complete working version
+﻿// Auth.jsx - Fixed version (password min = 8 to match backend)
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { registerParent, login, saveUserSession } from '../../services/api';
@@ -63,7 +63,7 @@ const EyeOffIcon = () => (
 
 export function Auth() {
   const navigate = useNavigate();
-  
+
   const [isSignIn, setIsSignIn] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -76,11 +76,11 @@ export function Auth() {
   const [loading, setLoading] = useState(false);
 
   const resetForm = () => {
-    setEmail(''); 
-    setPassword(''); 
+    setEmail('');
+    setPassword('');
     setConfirmPassword('');
-    setFullName(''); 
-    setPhone(''); 
+    setFullName('');
+    setPhone('');
     setError('');
   };
 
@@ -91,19 +91,18 @@ export function Auth() {
 
     try {
       if (isSignIn) {
-        // LOGIN
         const data = await login(email, password);
         saveUserSession(data);
         navigate(data.role === 'therapist' ? '/dashboard' : '/parent-dashboard');
       } else {
-        // SIGNUP
         if (password !== confirmPassword) {
           throw new Error('Passwords do not match');
         }
-        if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
+        // FIX: was 6, backend requires 8
+        if (password.length < 8) {
+          throw new Error('Password must be at least 8 characters');
         }
-        
+
         const data = await registerParent(fullName, email, phone, password);
         saveUserSession(data);
         navigate('/parent-dashboard');
@@ -126,9 +125,7 @@ export function Auth() {
             src="/assets/authnt.png"
             alt="Child reading"
             className="Auth__illustration-img"
-            onError={(e) => {
-              e.target.style.display = 'none';
-            }}
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
         </div>
       </div>
@@ -137,9 +134,10 @@ export function Auth() {
         <div className="Auth__form-container">
           <div className="Auth__header">
             <h1>{isSignIn ? 'Welcome Back!' : 'Create an Account'}</h1>
-            <p>{isSignIn
-              ? 'Sign in to continue your journey.'
-              : 'Start your journey with intelligent dyslexia support tools.'}
+            <p>
+              {isSignIn
+                ? 'Sign in to continue your journey.'
+                : 'Start your journey with intelligent dyslexia support tools.'}
             </p>
           </div>
 
@@ -160,11 +158,7 @@ export function Auth() {
             </button>
           </div>
 
-          {error && (
-            <div className="error-message">
-              {error}
-            </div>
-          )}
+          {error && <div className="error-message">{error}</div>}
 
           <form onSubmit={handleSubmit} className="Auth__form">
             {!isSignIn && (
@@ -172,13 +166,13 @@ export function Auth() {
                 <label>Full Name</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><UserIcon /></span>
-                  <input 
-                    type="text" 
-                    className="Auth__input" 
+                  <input
+                    type="text"
+                    className="Auth__input"
                     placeholder="John Doe"
-                    value={fullName} 
+                    value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    required 
+                    required
                   />
                 </div>
               </div>
@@ -188,13 +182,13 @@ export function Auth() {
               <label>Email Address</label>
               <div className="Auth__input-wrapper">
                 <span className="Auth__input-icon"><MailIcon /></span>
-                <input 
-                  type="email" 
-                  className="Auth__input" 
+                <input
+                  type="email"
+                  className="Auth__input"
                   placeholder="name@example.com"
-                  value={email} 
-                  onChange={(e) => setEmail(e.target.value)} 
-                  required 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
               </div>
             </div>
@@ -204,12 +198,12 @@ export function Auth() {
                 <label>Phone Number (Optional)</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><PhoneIcon /></span>
-                  <input 
-                    type="tel" 
-                    className="Auth__input" 
+                  <input
+                    type="tel"
+                    className="Auth__input"
                     placeholder="+213 000-0000"
-                    value={phone} 
-                    onChange={(e) => setPhone(e.target.value)} 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
               </div>
@@ -219,21 +213,25 @@ export function Auth() {
               <label>Password</label>
               <div className="Auth__input-wrapper">
                 <span className="Auth__input-icon"><LockIcon /></span>
-                <input 
-                  type={showPassword ? 'text' : 'password'} 
+                <input
+                  type={showPassword ? 'text' : 'password'}
                   className="Auth__input"
-                  placeholder="••••••••" 
+                  placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                 />
-                <button type="button" className="Auth__input-toggle" onClick={() => setShowPassword(!showPassword)}>
+                <button
+                  type="button"
+                  className="Auth__input-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
               {!isSignIn && (
                 <div className="Auth__password-hint">
-                  Must be at least 6 characters
+                  Must be at least 8 characters
                 </div>
               )}
             </div>
@@ -243,15 +241,19 @@ export function Auth() {
                 <label>Confirm Password</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><LockIcon /></span>
-                  <input 
-                    type={showConfirmPassword ? 'text' : 'password'} 
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
                     className="Auth__input"
-                    placeholder="••••••••" 
+                    placeholder="••••••••"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)} 
-                    required 
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
                   />
-                  <button type="button" className="Auth__input-toggle" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <button
+                    type="button"
+                    className="Auth__input-toggle"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
                     {showConfirmPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
@@ -260,7 +262,10 @@ export function Auth() {
 
             {isSignIn && (
               <div style={{ textAlign: 'right', marginTop: '-8px', marginBottom: '8px' }}>
-                <a href="/forgot-password" style={{ fontSize: '13px', color: '#16a34a', textDecoration: 'none' }}>
+                <a
+                  href="/forgot-password"
+                  style={{ fontSize: '13px', color: '#3d5a4c', textDecoration: 'none', fontWeight: 600 }}
+                >
                   Forgot password?
                 </a>
               </div>
@@ -275,7 +280,11 @@ export function Auth() {
           <div className="Auth__divider"><span>Or continue with</span></div>
 
           <div className="Auth__social">
-            <button type="button" className="Auth__social-btn" onClick={() => alert('Google login coming soon!')}>
+            <button
+              type="button"
+              className="Auth__social-btn"
+              onClick={() => alert('Google login coming soon!')}
+            >
               <GoogleIcon />
               <span>Google</span>
             </button>

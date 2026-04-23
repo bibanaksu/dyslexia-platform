@@ -432,7 +432,7 @@ export default function EnhancedVoiceReading() {
       <div className="task-nav">
         <button className="nav-back-btn" onClick={handleBack}>← Back</button>
         <span className="nav-title">🎙️ Story Reader</span>
-        <div className={`timer ${showTimeWarning ? 'warning' : ''}`}>⏱️ {formatTime(timeRemaining)}</div>
+        <div className={`timer ${showTimeWarning ? 'warning' : ''}`}>{formatTime(timeRemaining)}</div>
       </div>
 
       <div className="enhanced-reading-content">
