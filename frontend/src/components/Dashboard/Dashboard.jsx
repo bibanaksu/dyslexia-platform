@@ -1,316 +1,286 @@
 import { useState, useEffect } from 'react';
 import './Dashboard.css';
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
-const token = () => localStorage.getItem("token");
+const token = () => localStorage.getItem('token');
 const authHeaders = () => ({
-  "Content-Type": "application/json",
+  'Content-Type': 'application/json',
   Authorization: `Bearer ${token()}`,
 });
 
 async function apiFetch(path, opts = {}) {
-  const res = await fetch(`${API_URL}${path}`, {
-    headers: authHeaders(),
-    ...opts,
-  });
+  const res = await fetch(`${API_URL}${path}`, { headers: authHeaders(), ...opts });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
+// ─── Risk level config ───────────────────────────────────────────────────────
+const RISK_CONFIG = {
+  Normal:   { bg: '#e6f5ee', color: '#1a6b40', label: 'Normal' },
+  Mild:     { bg: '#fef6e4', color: '#8a5a0a', label: 'Mild' },
+  Moderate: { bg: '#fff0e8', color: '#8a3a10', label: 'Moderate' },
+  Severe:   { bg: '#feeaea', color: '#8a1f1f', label: 'Severe' },
+};
+
+const riskFromScore = (s) => {
+  if (s == null) return null;
+  if (s >= 85) return 'Normal';
+  if (s >= 70) return 'Mild';
+  if (s >= 50) return 'Moderate';
+  return 'Severe';
+};
+
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
 // ─── mini components ─────────────────────────────────────────────────────────
-function StatusBadge({ status }) {
-  const map = {
-    "ON TRACK": { bg: "#e6f9f0", color: "#1db87a", label: "ON TRACK" },
-    "NEEDS ATTENTION": { bg: "#fff0f0", color: "#e84848", label: "NEEDS ATTENTION" },
-    "ASSESSMENT READY": { bg: "#eef4ff", color: "#4a7cf6", label: "ASSESSMENT READY" },
-  };
-  const s = map[status] || map["ON TRACK"];
+function RiskBadge({ riskLevel }) {
+  const cfg = RISK_CONFIG[riskLevel];
+  if (!cfg) return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#f0f0f0', color: '#888' }}>NO DATA</span>;
   return (
-    <span
-      style={{
-        background: s.bg,
-        color: s.color,
-        fontSize: 10,
-        fontWeight: 700,
-        padding: "3px 8px",
-        borderRadius: 6,
-        letterSpacing: 0.3,
-        whiteSpace: "nowrap",
-      }}
-    >
-      {s.label}
+    <span style={{ background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
+      {cfg.label}
     </span>
   );
 }
 
-function Avatar({ name, src }) {
-  const initials = name
-    ?.split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-  return src ? (
-    <img src={src} alt={name} className="dashboard__avatar-img" />
-  ) : (
-    <div className="dashboard__avatar">
-      {initials}
+function StatusBadge({ status }) {
+  const map = {
+    'ON TRACK':      { bg: '#e6f9f0', color: '#1db87a' },
+    'NEEDS SUPPORT': { bg: '#fff3e0', color: '#f59e0b' },
+    'AT RISK':       { bg: '#fff0f0', color: '#e84848' },
+    'NO DATA':       { bg: '#f0f0f0', color: '#999' },
+  };
+  const s = map[status] || map['NO DATA'];
+  return <span style={{ background: s.bg, color: s.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>{status}</span>;
+}
+
+function Avatar({ name }) {
+  const initials = name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  return <div className="dashboard__avatar">{initials}</div>;
+}
+
+function MiniScoreBar({ value, color = '#4a7cf6' }) {
+  return (
+    <div style={{ background: '#f0f0f0', borderRadius: 4, height: 6, width: 80, overflow: 'hidden' }}>
+      <div style={{ background: color, height: '100%', width: `${Math.min(value ?? 0, 100)}%`, borderRadius: 4, transition: 'width 0.6s ease' }} />
     </div>
   );
 }
 
-// ─── static mock data (used as fallback / seed) ──────────────────────────────
+// ─── Assessment Detail Modal ─────────────────────────────────────────────────
+function AssessmentDetailModal({ student, assessments, onClose }) {
+  if (!student) return null;
+  return (
+    <div className="dashboard__modal-overlay" onClick={onClose}>
+      <div className="dashboard__modal" style={{ maxWidth: 580, width: '92%' }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <h3 className="dashboard__modal-title" style={{ margin: 0 }}>
+            Assessment History — {student.child_name || student.name}
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#666', lineHeight: 1 }}>×</button>
+        </div>
+
+        {assessments.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '30px 0', color: '#999', fontSize: 13 }}>No assessment records yet.</div>
+        ) : (
+          assessments.map((a, i) => {
+            const riskConf = RISK_CONFIG[a.risk_level];
+            return (
+              <div key={a.session_uuid || i} style={{ border: '1px solid #eee', borderRadius: 12, padding: '16px 20px', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1E2D25' }}>Session {assessments.length - i}</div>
+                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Year {a.child_grade} · {fmtDate(a.completed_at || a.session_started_at)}</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 800, fontSize: 22, color: riskConf?.color || '#888' }}>{a.overall_score != null ? `${a.overall_score}%` : '—'}</div>
+                    <RiskBadge riskLevel={a.risk_level} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {[
+                    { label: 'Word Explorer', score: a.task1_score },
+                    { label: 'Story Reader', score: a.task2_score },
+                    { label: 'Letter Detective', score: a.task3_score },
+                    { label: 'Number Memory', score: a.task4_score },
+                  ].map(({ label, score }) => (
+                    <div key={label} style={{ background: '#f8f9fa', borderRadius: 8, padding: '8px 12px' }}>
+                      <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>{label}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <MiniScoreBar value={score} color={riskConf?.color || '#4a7cf6'} />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#333' }}>{score != null ? `${score}%` : 'N/A'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {a.scoring_method && (
+                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 10, textAlign: 'right' }}>Method: {a.scoring_method === 'weighted' ? 'Weighted average' : 'Simple average'}</div>
+                )}
+              </div>
+            );
+          })
+        )}
+        <div className="dashboard__modal-actions">
+          <button onClick={onClose} className="dashboard__modal-cancel">Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── static mock data ────────────────────────────────────────────────────────
 const MOCK_STUDENTS = [
-  {
-    id: 1,
-    name: "Leo Henderson",
-    grade: "Grade 3",
-    age: 8,
-    status: "ON TRACK",
-    phonologicalScore: 84,
-    scoreDelta: 5,
-    fluency: 72,
-    fluencyMax: 100,
-    trend: [40, 52, 48, 60, 62, 70, 75],
-  },
-  {
-    id: 2,
-    name: "Sarah Miller",
-    grade: "Grade 4",
-    age: 9,
-    status: "NEEDS ATTENTION",
-    phonologicalScore: 62,
-    scoreDelta: -2,
-    fluency: 45,
-    fluencyMax: 100,
-    trend: [55, 58, 50, 48, 45, 43, 42],
-  },
-  {
-    id: 3,
-    name: "Jamie Watson",
-    grade: "Grade 2",
-    age: 7,
-    status: "ASSESSMENT READY",
-    phonologicalScore: 78,
-    scoreDelta: 12,
-    fluency: 58,
-    fluencyMax: 100,
-    trend: [30, 38, 45, 50, 55, 62, 66],
-  },
+  { id: 1, name: 'Leo Henderson', grade: 'Grade 3', age: 8, status: 'ON TRACK', phonologicalScore: 84, assessmentCount: 1 },
+  { id: 2, name: 'Sarah Miller', grade: 'Grade 4', age: 9, status: 'AT RISK', phonologicalScore: 42, assessmentCount: 1 },
+  { id: 3, name: 'Jamie Watson', grade: 'Grade 2', age: 7, status: 'NO DATA', phonologicalScore: null, assessmentCount: 0 },
 ];
 
 const MOCK_ACTIVITY = [
-  {
-    id: 1,
-    dot: "#4a7cf6",
-    title: 'Leo H. completed "Vowel Sounds Mastery"',
-    sub: "Score: 92% • Duration: 12 mins • Today at 10:45 AM",
-  },
-  {
-    id: 2,
-    dot: "#f59e0b",
-    title: 'Sarah M. struggled with "Blending Level 2"',
-    sub: "System flagged high error rate (45%) • 2 hours ago",
-  },
-  {
-    id: 3,
-    dot: "#10b981",
-    title: "Jamie W. achieved a new reading record",
-    sub: "62 words per minute • Yesterday at 4:30 PM",
-  },
+  { id: 1, dot: '#4a7cf6', title: 'Leo H. completed "Vowel Sounds Mastery"', sub: 'Score: 92% • Duration: 12 mins • Today at 10:45 AM' },
+  { id: 2, dot: '#f59e0b', title: 'Sarah M. struggled with "Blending Level 2"', sub: 'System flagged high error rate (45%) • 2 hours ago' },
 ];
 
 const MOCK_NOTES = [
-  {
-    id: 1,
-    date: "Dec 12, 2023",
-    text: "Follow up with Sarah's parents regarding the updated intervention plan.",
-  },
-  {
-    id: 2,
-    date: "Dec 11, 2023",
-    text: "Prepare assessment materials for Leo's mid-term review.",
-  },
+  { id: 1, date: 'Dec 12, 2023', text: 'Follow up with Sarah\'s parents regarding the updated intervention plan.' },
 ];
 
 const NAV = [
-  { id: "dashboard", label: "Dashboard", icon: "⊞" },
-  { id: "students", label: "Students", icon: "👥" },
-  { id: "activities", label: "Activity Library", icon: "📋" },
-  { id: "reports", label: "Reports", icon: "📊" },
-  { id: "settings", label: "Settings", icon: "⚙" },
-  { id: "audit", label: "Security Log", icon: "🔐" },  // ← ADDED AUDIT LOG
+  { id: 'dashboard', label: 'Dashboard', icon: '⊞' },
+  { id: 'students',  label: 'Students',  icon: '👥' },
+  { id: 'reports',   label: 'Reports',   icon: '📊' },
+  { id: 'settings',  label: 'Settings',  icon: '⚙' },
+  { id: 'audit',     label: 'Security Log', icon: '🔐' },
 ];
 
 export default function Dashboard() {
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState('dashboard');
   const [students, setStudents] = useState(MOCK_STUDENTS);
   const [activity, setActivity] = useState(MOCK_ACTIVITY);
   const [notes, setNotes] = useState(MOCK_NOTES);
-  const [newNote, setNewNote] = useState("");
-  const [search, setSearch] = useState("");
+  const [newNote, setNewNote] = useState('');
+  const [search, setSearch] = useState('');
   const [showAddStudent, setShowAddStudent] = useState(false);
-  const [addForm, setAddForm] = useState({ name: "", grade: "", age: "" });
+  const [addForm, setAddForm] = useState({ name: '', grade: '', age: '' });
 
-  // Logout function
+  // Assessment summaries keyed by child name (from full_assessment_summary)
+  const [assessmentMap, setAssessmentMap] = useState({}); // { childName: [summary, ...] }
+  const [selectedStudent, setSelectedStudent] = useState(null);
+
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("userId");
-    window.location.href = "/";
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userId');
+    window.location.href = '/';
   };
 
-  // Try to load real data from backend
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  useEffect(() => { loadDashboardData(); }, []);
 
   async function loadDashboardData() {
     try {
-      const [childrenRes, activityRes] = await Promise.all([
-        apiFetch("/api/dashboard/students"),
-        apiFetch("/api/dashboard/activity"),
+      // Load students AND all assessment summaries in parallel
+      const [childrenRes, activityRes, summariesRes] = await Promise.allSettled([
+        apiFetch('/api/dashboard/students'),
+        apiFetch('/api/dashboard/activity'),
+        apiFetch('/api/dashboard/assessment-summaries'),  // new endpoint
       ]);
-      if (childrenRes?.students?.length) setStudents(childrenRes.students);
-      if (activityRes?.activity?.length) setActivity(activityRes.activity);
+
+      if (childrenRes.status === 'fulfilled' && childrenRes.value?.students?.length) {
+        setStudents(childrenRes.value.students);
+      }
+      if (activityRes.status === 'fulfilled' && activityRes.value?.activity?.length) {
+        setActivity(activityRes.value.activity);
+      }
+      if (summariesRes.status === 'fulfilled' && summariesRes.value?.summaries) {
+        // Group summaries by child_name (or child_id)
+        const map = {};
+        for (const s of summariesRes.value.summaries) {
+          const key = s.child_name || 'Unknown';
+          if (!map[key]) map[key] = [];
+          map[key].push(s);
+        }
+        setAssessmentMap(map);
+      }
     } catch {
-      // fall back to mock data — backend may not be running yet
+      // fall back to mock data
     }
   }
 
-  // Handle navigation clicks
+  // Merge assessment data into student rows
+  const enrichedStudents = students.map((s) => {
+    const summaries = assessmentMap[s.name] || [];
+    const latest = summaries[0]; // already ordered DESC
+    return {
+      ...s,
+      riskLevel: latest?.risk_level || null,
+      overallScore: latest?.overall_score ?? s.phonologicalScore,
+      assessmentCount: latest ? summaries.length : (s.assessmentCount || 0),
+      lastAssessmentDate: latest?.completed_at || s.lastAssessmentDate || null,
+      summaries,
+    };
+  });
+
   const handleNavigation = (id) => {
-    if (id === "audit") {
-      window.location.href = "/audit-log";
-    } else {
-      setActivePage(id);
-    }
+    if (id === 'audit') { window.location.href = '/audit-log'; }
+    else { setActivePage(id); }
   };
 
-  const filtered = students.filter((s) =>
+  const filtered = enrichedStudents.filter((s) =>
     s.name.toLowerCase().includes(search.toLowerCase())
   );
 
   const stats = [
-    {
-      label: "Total Students",
-      value: students.length,
-      badge: "+2 this week",
-      badgeColor: "#1db87a",
-      icon: "👤",
-      iconBg: "#e0f0ff",
-    },
-    {
-      label: "Pending Reviews",
-      value: students.filter((s) => s.status === "NEEDS ATTENTION").length + 10,
-      badge: `${students.filter((s) => s.status === "NEEDS ATTENTION").length + 2} urgent`,
-      badgeColor: "#e84848",
-      icon: "📋",
-      iconBg: "#fff3e0",
-    },
-    {
-      label: "Avg. Improvement",
-      value: "18.4%",
-      badge: null,
-      icon: "📈",
-      iconBg: "#e6fff4",
-    },
-    {
-      label: "Sessions Today",
-      value: 6,
-      badge: null,
-      icon: "📅",
-      iconBg: "#f0ebff",
-    },
+    { label: 'Total Students', value: students.length, badge: null, icon: '👤', iconBg: '#e0f0ff' },
+    { label: 'Assessments Completed', value: Object.values(assessmentMap).flat().length, badge: null, icon: '📋', iconBg: '#fff3e0' },
+    { label: 'At Risk', value: enrichedStudents.filter(s => s.riskLevel === 'Severe' || s.riskLevel === 'Moderate').length, badge: null, icon: '⚠️', iconBg: '#ffeaea' },
+    { label: 'Normal Range', value: enrichedStudents.filter(s => s.riskLevel === 'Normal').length, badge: null, icon: '✅', iconBg: '#e6fff4' },
   ];
 
-  function handleAddStudent(e) {
-    e.preventDefault();
-    const s = {
-      id: Date.now(),
-      name: addForm.name,
-      grade: addForm.grade,
-      age: parseInt(addForm.age),
-      status: "ON TRACK",
-      phonologicalScore: 75,
-      scoreDelta: 0,
-      fluency: 50,
-      fluencyMax: 100,
-      trend: [40, 45, 50, 55, 58, 62, 65],
-    };
-    setStudents((prev) => [...prev, s]);
-    setAddForm({ name: "", grade: "", age: "" });
-    setShowAddStudent(false);
-    // Try to save to backend
-    apiFetch("/api/dashboard/students", {
-      method: "POST",
-      body: JSON.stringify({ name: s.name, grade: s.grade, age: s.age }),
-    }).catch(() => {});
-  }
-
-  function handleAddNote(e) {
+  async function handleAddNote(e) {
     e.preventDefault();
     if (!newNote.trim()) return;
-    const n = {
-      id: Date.now(),
-      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      text: newNote,
-    };
-    setNotes((prev) => [n, ...prev]);
-    setNewNote("");
-    apiFetch("/api/dashboard/notes", {
-      method: "POST",
-      body: JSON.stringify({ text: n.text }),
-    }).catch(() => {});
+    try {
+      const data = await apiFetch('/api/dashboard/notes', { method: 'POST', body: JSON.stringify({ text: newNote }) });
+      setNotes((prev) => [data.note, ...prev]);
+    } catch {
+      setNotes((prev) => [{ id: Date.now(), date: 'Today', text: newNote }, ...prev]);
+    }
+    setNewNote('');
   }
 
-  function MiniBar({ value = 0, color = "#4a7cf6" }) {
-    return (
-      <div className="dashboard__fluency-bar">
-        <div 
-          className="dashboard__fluency-fill" 
-          style={{ width: `${value}%`, background: color }}
-        />
-      </div>
-    );
-  }
-
-  function MiniBarChart({ trend = [] }) {
-    const bars = trend.length ? trend : [30, 50, 40, 60, 55, 70, 65];
-    const max = Math.max(...bars);
-    return (
-      <div className="dashboard__trend">
-        {bars.map((v, i) => (
-          <div
-            key={i}
-            className={`dashboard__trend-bar ${i === bars.length - 1 ? 'dashboard__trend-bar--latest' : ''}`}
-            style={{ height: `${(v / max) * 100}%` }}
-          />
-        ))}
-      </div>
-    );
+  async function handleAddStudent(e) {
+    e.preventDefault();
+    try {
+      const data = await apiFetch('/api/dashboard/students', {
+        method: 'POST',
+        body: JSON.stringify({ name: addForm.name, grade: addForm.grade, age: addForm.age }),
+      });
+      setStudents((prev) => [...prev, data.student]);
+    } catch {
+      setStudents((prev) => [...prev, { id: Date.now(), name: addForm.name, grade: addForm.grade, age: parseInt(addForm.age), status: 'NO DATA', phonologicalScore: null, assessmentCount: 0 }]);
+    }
+    setAddForm({ name: '', grade: '', age: '' });
+    setShowAddStudent(false);
   }
 
   return (
     <div className="dashboard">
-      {/* Sidebar */}
       <aside className="dashboard__sidebar">
         <div className="dashboard__logo">
-          <div className="dashboard__logo-icon">📍</div>
-          <span className="dashboard__logo-text">LexiSupport</span>
+          <div className="dashboard__logo-icon">L</div>
+          <span className="dashboard__logo-text">LexiCare</span>
         </div>
 
         <nav className="dashboard__nav">
-          {NAV.map((n) => (
+          {NAV.map((item) => (
             <button
-              key={n.id}
-              onClick={() => handleNavigation(n.id)}
-              className={`dashboard__nav-item ${activePage === n.id ? 'dashboard__nav-item--active' : ''}`}
+              key={item.id}
+              onClick={() => handleNavigation(item.id)}
+              className={`dashboard__nav-item ${activePage === item.id ? 'dashboard__nav-item--active' : ''}`}
             >
-              <span className="dashboard__nav-icon">{n.icon}</span>
-              {n.label}
+              <span className="dashboard__nav-icon">{item.icon}</span>
+              <span>{item.label}</span>
             </button>
           ))}
         </nav>
@@ -318,40 +288,28 @@ export default function Dashboard() {
         <div className="dashboard__user">
           <div className="dashboard__user-label">LOGGED IN AS</div>
           <div className="dashboard__user-details">
-            <div className="dashboard__user-avatar">SC</div>
+            <div className="dashboard__user-avatar">T</div>
             <div>
-              <div className="dashboard__user-name">Dr. Sarah Chen</div>
+              <div className="dashboard__user-name">Therapist</div>
               <div className="dashboard__user-role">Clinical Specialist</div>
             </div>
           </div>
-          <button onClick={handleLogout} className="dashboard__logout-btn">
-            Logout
-          </button>
+          <button onClick={handleLogout} className="dashboard__logout-btn">Logout</button>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="dashboard__main">
         <header className="dashboard__header">
           <div className="dashboard__breadcrumb">
-            <span>Dashboard</span>
-            <span>›</span>
+            <span>Dashboard</span><span>›</span>
             <span className="dashboard__breadcrumb-current">Student Overview</span>
           </div>
           <div className="dashboard__actions">
             <div className="dashboard__search">
               <span className="dashboard__search-icon">🔍</span>
-              <input
-                placeholder="Search students…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="dashboard__search-input"
-              />
+              <input placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} className="dashboard__search-input" />
             </div>
-            <div className="dashboard__notification">
-              🔔
-              <span className="dashboard__notification-badge"></span>
-            </div>
+            <button onClick={loadDashboardData} style={{ background: 'none', border: '1px solid #ddd', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#555' }}>↻ Refresh</button>
           </div>
         </header>
 
@@ -361,17 +319,7 @@ export default function Dashboard() {
             {stats.map((s) => (
               <div key={s.label} className="dashboard__stat-card">
                 <div className="dashboard__stat-header">
-                  <div className="dashboard__stat-icon" style={{ background: s.iconBg }}>
-                    {s.icon}
-                  </div>
-                  {s.badge && (
-                    <span
-                      className="dashboard__stat-badge"
-                      style={{ color: s.badgeColor, background: s.badgeColor + "18" }}
-                    >
-                      {s.badge}
-                    </span>
-                  )}
+                  <div className="dashboard__stat-icon" style={{ background: s.iconBg }}>{s.icon}</div>
                 </div>
                 <div className="dashboard__stat-label">{s.label}</div>
                 <div className="dashboard__stat-value">{s.value}</div>
@@ -382,92 +330,107 @@ export default function Dashboard() {
           {/* Student Progress Table */}
           <div className="dashboard__table-container">
             <div className="dashboard__table-header">
-              <h2 className="dashboard__table-title">Student Progress Tracking</h2>
+              <h2 className="dashboard__table-title">Student Assessment Results</h2>
               <div className="dashboard__table-actions">
-                <button className="dashboard__filter-btn">⚙ Filter</button>
-                <button
-                  onClick={() => setShowAddStudent(true)}
-                  className="dashboard__add-btn"
-                >
-                  + Add Student
-                </button>
+                <button onClick={() => setShowAddStudent(true)} className="dashboard__add-btn">+ Add Student</button>
               </div>
             </div>
 
             <div className="dashboard__table">
               <div className="dashboard__col-headers">
                 <div>STUDENT</div>
-                <div>STATUS</div>
-                <div>PHONOLOGICAL SCORE</div>
-                <div>FLUENCY</div>
-                <div>PERFORMANCE TREND</div>
+                <div>RISK LEVEL</div>
+                <div>OVERALL SCORE</div>
+                <div>TASK BREAKDOWN</div>
+                <div>LAST ASSESSMENT</div>
                 <div>ACTIONS</div>
               </div>
 
-              {filtered.map((s, i) => (
-                <div key={s.id} className="dashboard__row">
-                  <div className="dashboard__student-info">
-                    <Avatar name={s.name} />
-                    <div className="dashboard__student-details">
-                      <div className="dashboard__student-name">{s.name}</div>
-                      <div className="dashboard__student-meta">
-                        {s.grade} • Age {s.age}
+              {filtered.map((s) => {
+                const riskConf = RISK_CONFIG[s.riskLevel];
+                const latest = s.summaries?.[0];
+                const scoreColor = riskConf?.color || '#aaa';
+
+                return (
+                  <div key={s.id} className="dashboard__row">
+                    {/* Student */}
+                    <div className="dashboard__student-info">
+                      <Avatar name={s.name} />
+                      <div className="dashboard__student-details">
+                        <div className="dashboard__student-name">{s.name}</div>
+                        <div className="dashboard__student-meta">{s.grade}{s.age ? ` • Age ${s.age}` : ''}</div>
+                        {s.assessmentCount > 0 && <div style={{ fontSize: 10, color: '#aaa' }}>{s.assessmentCount} session{s.assessmentCount !== 1 ? 's' : ''}</div>}
                       </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <StatusBadge status={s.status} />
-                  </div>
+                    {/* Risk */}
+                    <div>
+                      {s.riskLevel ? <RiskBadge riskLevel={s.riskLevel} /> : <StatusBadge status={s.status || 'NO DATA'} />}
+                    </div>
 
-                  <div>
-                    <span className="dashboard__score">
-                      {s.phonologicalScore}%{" "}
-                      <span
-                        className={`dashboard__score-delta ${
-                          s.scoreDelta >= 0 ? 'dashboard__score-delta--positive' : 'dashboard__score-delta--negative'
-                        }`}
+                    {/* Overall Score */}
+                    <div>
+                      {s.overallScore != null ? (
+                        <span style={{ fontWeight: 800, fontSize: 18, color: scoreColor }}>{s.overallScore}%</span>
+                      ) : (
+                        <span style={{ color: '#bbb', fontSize: 13 }}>—</span>
+                      )}
+                    </div>
+
+                    {/* Task Breakdown mini bars */}
+                    <div>
+                      {latest ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {[
+                            { key: 'task1_score', label: 'T1' },
+                            { key: 'task2_score', label: 'T2' },
+                            { key: 'task3_score', label: 'T3' },
+                            { key: 'task4_score', label: 'T4' },
+                          ].map(({ key, label }) => (
+                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{ fontSize: 10, color: '#aaa', width: 14 }}>{label}</span>
+                              <MiniScoreBar value={latest[key]} color={scoreColor} />
+                              <span style={{ fontSize: 10, color: '#666', width: 26 }}>{latest[key] != null ? `${latest[key]}%` : '—'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#bbb', fontSize: 12 }}>No data</span>
+                      )}
+                    </div>
+
+                    {/* Last Assessment */}
+                    <div style={{ fontSize: 12, color: '#666' }}>
+                      {s.lastAssessmentDate ? fmtDate(s.lastAssessmentDate) : <span style={{ color: '#bbb' }}>—</span>}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="dashboard__actions-group">
+                      <button
+                        className="dashboard__review-btn"
+                        onClick={() => setSelectedStudent(s)}
+                        disabled={!s.summaries?.length}
+                        style={{ opacity: s.summaries?.length ? 1 : 0.4 }}
                       >
-                        {s.scoreDelta >= 0 ? "↑" : "↓"}
-                        {Math.abs(s.scoreDelta)}%
-                      </span>
-                    </span>
+                        View Results
+                      </button>
+                    </div>
                   </div>
+                );
+              })}
 
-                  <div className="dashboard__fluency">
-                    <MiniBar
-                      value={(s.fluency / s.fluencyMax) * 100}
-                      color={s.status === "NEEDS ATTENTION" ? "#f59e0b" : "#4a7cf6"}
-                    />
-                    <div className="dashboard__fluency-value">{s.fluency} wpm</div>
-                  </div>
-
-                  <div>
-                    <MiniBarChart trend={s.trend} />
-                  </div>
-
-                  <div className="dashboard__actions-group">
-                    <button className="dashboard__assign-btn">Assign</button>
-                    <button className="dashboard__review-btn">Review</button>
-                  </div>
-                </div>
-              ))}
+              {filtered.length === 0 && (
+                <div style={{ padding: '32px', textAlign: 'center', color: '#aaa', fontSize: 13 }}>No students found.</div>
+              )}
             </div>
 
             <div className="dashboard__table-footer">
-              <span>
-                Showing {filtered.length} of {students.length} students
-              </span>
-              <div className="dashboard__pagination">
-                <button className="dashboard__page-btn">‹</button>
-                <button className="dashboard__page-btn">›</button>
-              </div>
+              <span>Showing {filtered.length} of {students.length} students</span>
             </div>
           </div>
 
           {/* Bottom Row */}
           <div className="dashboard__bottom-grid">
-            {/* Recent Activity */}
             <div className="dashboard__activity-card">
               <h3 className="dashboard__card-title">Recent Student Activity</h3>
               <div className="dashboard__activity-list">
@@ -481,10 +444,8 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-              <button className="dashboard__view-all">View All Activity</button>
             </div>
 
-            {/* Therapist Notes */}
             <div className="dashboard__notes-card">
               <h3 className="dashboard__card-title">Therapist Notes</h3>
               <div className="dashboard__notes-list">
@@ -503,11 +464,7 @@ export default function Dashboard() {
                     onChange={(e) => setNewNote(e.target.value)}
                     className="dashboard__note-input"
                   />
-                  {newNote && (
-                    <button type="submit" className="dashboard__note-save">
-                      Save
-                    </button>
-                  )}
+                  {newNote && <button type="submit" className="dashboard__note-save">Save</button>}
                 </div>
               </form>
             </div>
@@ -522,9 +479,9 @@ export default function Dashboard() {
             <h3 className="dashboard__modal-title">Add New Student</h3>
             <form onSubmit={handleAddStudent}>
               {[
-                { label: "Full Name", key: "name", type: "text", placeholder: "e.g. Emily Johnson" },
-                { label: "Grade", key: "grade", type: "text", placeholder: "e.g. Grade 3" },
-                { label: "Age", key: "age", type: "number", placeholder: "e.g. 8" },
+                { label: 'Full Name', key: 'name', type: 'text', placeholder: 'e.g. Emily Johnson' },
+                { label: 'Grade', key: 'grade', type: 'text', placeholder: 'e.g. Grade 3' },
+                { label: 'Age', key: 'age', type: 'number', placeholder: 'e.g. 8' },
               ].map((f) => (
                 <div key={f.key} className="dashboard__form-group">
                   <label className="dashboard__form-label">{f.label}</label>
@@ -539,20 +496,21 @@ export default function Dashboard() {
                 </div>
               ))}
               <div className="dashboard__modal-actions">
-                <button
-                  type="button"
-                  onClick={() => setShowAddStudent(false)}
-                  className="dashboard__modal-cancel"
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="dashboard__modal-submit">
-                  Add Student
-                </button>
+                <button type="button" onClick={() => setShowAddStudent(false)} className="dashboard__modal-cancel">Cancel</button>
+                <button type="submit" className="dashboard__modal-submit">Add Student</button>
               </div>
             </form>
           </div>
         </div>
+      )}
+
+      {/* Assessment Detail Modal */}
+      {selectedStudent && (
+        <AssessmentDetailModal
+          student={selectedStudent}
+          assessments={selectedStudent.summaries || []}
+          onClose={() => setSelectedStudent(null)}
+        />
       )}
     </div>
   );
