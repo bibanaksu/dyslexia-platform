@@ -6,7 +6,6 @@ const { verifyToken } = require('../middleware/auth');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dyslexia_jwt_secret_change_in_production';
 
-// ── Optional auth (allows both logged-in and guest users) ──
 function optionalAuth(req, res, next) {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
@@ -23,30 +22,23 @@ function optionalAuth(req, res, next) {
 
 function calculateRiskLevel(yesCount, totalQuestions) {
     const pct = (yesCount / totalQuestions) * 100;
-    if (pct <= 25) return 'LOW';
-    if (pct <= 60) return 'MODERATE';
-    return 'HIGH';
+    if (pct <= 25) return 'Low Risk';
+    if (pct <= 60) return 'Moderate Risk';
+    return 'High Risk';
 }
 
-// =============================================================
 // GET /api/quiz/questions
-// =============================================================
 router.get('/questions', async (req, res) => {
     try {
-        console.log('📋 Fetching quiz questions...');
-
         const [questions] = await pool.query(
             `SELECT id, question_text, display_order
              FROM quiz_questions
              WHERE is_active = TRUE
              ORDER BY display_order ASC`
         );
-
-        console.log(`✅ Found ${questions.length} questions`);
         return res.json({ success: true, questions });
-
     } catch (err) {
-        console.error('❌ Error fetching questions:', err.message);
+        console.error('Error fetching questions:', err.message);
         return res.status(500).json({
             success: false,
             error: 'Failed to fetch questions: ' + err.message,
@@ -54,41 +46,43 @@ router.get('/questions', async (req, res) => {
     }
 });
 
-// =============================================================
-// POST /api/quiz/submit  — saves to parent_screening table
-// =============================================================
+// POST /api/quiz/submit - WITH child_session_id
 router.post('/submit', optionalAuth, async (req, res) => {
     try {
         console.log('📝 Quiz submission received');
 
-        const { answers, childFullName, childGrade, riskLevel } = req.body;
+        const { child_session_id, answers, riskLevel } = req.body;
 
+        if (!child_session_id) {
+            return res.status(400).json({ error: 'child_session_id is required' });
+        }
         if (!answers || typeof answers !== 'object') {
             return res.status(400).json({ error: 'answers object is required' });
         }
-        if (!childFullName || !childGrade) {
-            return res.status(400).json({ error: 'Child full name and grade are required' });
+
+        // Get child info from session
+        const [[session]] = await pool.query(
+            'SELECT child_name, child_grade FROM child_session WHERE id = ?',
+            [child_session_id]
+        );
+
+        if (!session) {
+            return res.status(404).json({ error: 'Child session not found' });
         }
 
-        const totalQuestions   = Object.keys(answers).length;
-        const yesCount         = Object.values(answers).filter(Boolean).length;
-        const calculatedRisk   = riskLevel || calculateRiskLevel(yesCount, totalQuestions);
-        const riskScore        = parseFloat(((yesCount / totalQuestions) * 100).toFixed(2));
-        const parent_id        = req.user?.id || null;
+        const totalQuestions = Object.keys(answers).length;
+        const yesCount = Object.values(answers).filter(Boolean).length;
+        const calculatedRisk = riskLevel || calculateRiskLevel(yesCount, totalQuestions);
+        const riskScore = parseFloat(((yesCount / totalQuestions) * 100).toFixed(2));
+        const parent_id = req.user?.id || null;
 
-        console.log(`Child: ${childFullName} | Grade: ${childGrade}`);
-        console.log(`Yes: ${yesCount}/${totalQuestions} | Risk: ${calculatedRisk}`);
-
-        // ── Insert into parent_screening ──────────────────────
         const [insertResult] = await pool.query(
             `INSERT INTO parent_screening
-               (parent_id, child_full_name, child_grade, answers,
-                total_yes_count, risk_level, risk_score)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+               (child_session_id, parent_id, answers, total_yes_count, risk_level, risk_score)
+             VALUES (?, ?, ?, ?, ?, ?)`,
             [
+                child_session_id,
                 parent_id,
-                childFullName.trim(),
-                childGrade,
                 JSON.stringify(answers),
                 yesCount,
                 calculatedRisk,
@@ -96,30 +90,14 @@ router.post('/submit', optionalAuth, async (req, res) => {
             ]
         );
 
-        // ── If logged-in parent, update their assessment status ─
-        if (parent_id) {
-            await pool.query(
-                `UPDATE parent
-                 SET assessment_completed = TRUE,
-                     assessment_date      = NOW(),
-                     can_access_activities = TRUE
-                 WHERE id = ?`,
-                [parent_id]
-            );
-        }
-
-        console.log(`✅ Quiz saved — ID: ${insertResult.insertId}`);
-
         return res.status(201).json({
-            success:        true,
-            screeningId:    insertResult.insertId,
-            riskLevel:      calculatedRisk,
+            success: true,
+            screeningId: insertResult.insertId,
+            riskLevel: calculatedRisk,
             riskScore,
-            totalYesCount:  yesCount,
+            totalYesCount: yesCount,
             totalQuestions,
-            message: parent_id
-                ? 'Quiz results saved to your account'
-                : 'Quiz results saved',
+            message: 'Quiz results saved',
         });
 
     } catch (err) {
@@ -128,31 +106,60 @@ router.post('/submit', optionalAuth, async (req, res) => {
     }
 });
 
-// =============================================================
-// GET /api/quiz/results  — logged-in parent's own results
-// =============================================================
+// GET /api/quiz/results
 router.get('/results', verifyToken, async (req, res) => {
     try {
         const [screenings] = await pool.query(
-            `SELECT id, child_full_name, child_grade, total_yes_count,
-                    risk_level, risk_score, answers, completed_at
-             FROM parent_screening
-             WHERE parent_id = ?
-             ORDER BY completed_at DESC`,
+            `SELECT ps.*, cs.child_name, cs.child_grade
+             FROM parent_screening ps
+             JOIN child_session cs ON ps.child_session_id = cs.id
+             WHERE ps.parent_id = ?
+             ORDER BY ps.created_at DESC`,
             [req.user.id]
         );
 
-        return res.json({ success: true, screenings });
+        for (const s of screenings) {
+            if (s.answers) s.answers = typeof s.answers === 'string' ? JSON.parse(s.answers) : s.answers;
+        }
 
+        return res.json({ success: true, screenings });
     } catch (err) {
         console.error('Error fetching results:', err.message);
         return res.status(500).json({ error: 'Failed to fetch results' });
     }
 });
 
-// =============================================================
-// GET /api/quiz/all-submissions  — therapist only
-// =============================================================
+// GET /api/quiz/session/:child_session_id
+router.get('/session/:child_session_id', async (req, res) => {
+    try {
+        const { child_session_id } = req.params;
+        const [screenings] = await pool.query(
+            `SELECT * FROM parent_screening
+             WHERE child_session_id = ?
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [child_session_id]
+        );
+
+        if (screenings.length === 0) {
+            return res.json({ success: true, screening: null });
+        }
+
+        const screening = screenings[0];
+        if (screening.answers) {
+            screening.answers = typeof screening.answers === 'string' 
+                ? JSON.parse(screening.answers) 
+                : screening.answers;
+        }
+
+        return res.json({ success: true, screening });
+    } catch (err) {
+        console.error('Error fetching session quiz:', err.message);
+        return res.status(500).json({ error: 'Failed to fetch quiz' });
+    }
+});
+
+// GET /api/quiz/all-submissions (therapist only)
 router.get('/all-submissions', verifyToken, async (req, res) => {
     try {
         if (req.user.role !== 'therapist') {
@@ -160,13 +167,15 @@ router.get('/all-submissions', verifyToken, async (req, res) => {
         }
 
         const [submissions] = await pool.query(
-            `SELECT ps.*,
-                    p.full_name   AS parent_name,
-                    p.email       AS parent_email,
-                    p.phone       AS parent_phone
+            `SELECT ps.*, 
+                    p.full_name AS parent_name,
+                    p.email AS parent_email,
+                    cs.child_name,
+                    cs.child_grade
              FROM parent_screening ps
              LEFT JOIN parent p ON ps.parent_id = p.id
-             ORDER BY ps.completed_at DESC`
+             LEFT JOIN child_session cs ON ps.child_session_id = cs.id
+             ORDER BY ps.created_at DESC`
         );
 
         for (const sub of submissions) {
@@ -174,16 +183,13 @@ router.get('/all-submissions', verifyToken, async (req, res) => {
         }
 
         return res.json({ success: true, submissions });
-
     } catch (err) {
         console.error('Error fetching submissions:', err.message);
         return res.status(500).json({ error: 'Failed to fetch submissions' });
     }
 });
 
-// =============================================================
-// GET /api/quiz/stats  — therapist only
-// =============================================================
+// GET /api/quiz/stats (therapist only)
 router.get('/stats', verifyToken, async (req, res) => {
     try {
         if (req.user.role !== 'therapist') {
@@ -192,18 +198,16 @@ router.get('/stats', verifyToken, async (req, res) => {
 
         const [[stats]] = await pool.query(
             `SELECT
-                COUNT(*)                                              AS total_submissions,
-                SUM(CASE WHEN risk_level = 'LOW'      THEN 1 ELSE 0 END) AS low_risk,
-                SUM(CASE WHEN risk_level = 'MODERATE' THEN 1 ELSE 0 END) AS moderate_risk,
-                SUM(CASE WHEN risk_level = 'HIGH'     THEN 1 ELSE 0 END) AS high_risk,
-                ROUND(AVG(risk_score), 2)                            AS avg_risk_score,
-                COUNT(DISTINCT parent_id)                            AS unique_parents,
-                COUNT(DISTINCT child_full_name)                      AS unique_children
+                COUNT(*) AS total_submissions,
+                SUM(CASE WHEN risk_level = 'Low Risk' THEN 1 ELSE 0 END) AS low_risk,
+                SUM(CASE WHEN risk_level = 'Moderate Risk' THEN 1 ELSE 0 END) AS moderate_risk,
+                SUM(CASE WHEN risk_level = 'High Risk' THEN 1 ELSE 0 END) AS high_risk,
+                ROUND(AVG(risk_score), 2) AS avg_risk_score,
+                COUNT(DISTINCT parent_id) AS unique_parents
              FROM parent_screening`
         );
 
         return res.json({ success: true, stats });
-
     } catch (err) {
         console.error('Error fetching stats:', err.message);
         return res.status(500).json({ error: 'Failed to fetch stats' });

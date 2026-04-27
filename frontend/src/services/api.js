@@ -1,31 +1,33 @@
 // services/api.js
-// ─────────────────────────────────────────────────────────────
-//  All API calls go through `apiFetch` which automatically
-//  retries once with a refreshed access token if it gets a 401.
-// ─────────────────────────────────────────────────────────────
+const BASE_URL = 'http://localhost:5000';
 
-const BASE_URL = 'http://localhost:5000'; 
-// ── Session helpers ───────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Session helpers
+// ─────────────────────────────────────────────────────────────
 export function saveUserSession(data) {
-    localStorage.setItem('token',    data.token);
-    localStorage.setItem('userRole', data.role);
-    localStorage.setItem('userId',   String(data.userId ?? ''));
-    localStorage.setItem('userName', data.name ?? '');
+    if (data.token) localStorage.setItem('token', data.token);
+    if (data.role) localStorage.setItem('userRole', data.role);
+    if (data.userId) localStorage.setItem('userId', String(data.userId));
+    if (data.name) localStorage.setItem('userName', data.name);
+    // Also store in old format for compatibility
+    if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+    }
+    console.log('✅ Session saved. Token present:', !!data.token);
 }
 
 export function clearUserSession() {
-    ['token', 'userRole', 'userId', 'userName'].forEach(k =>
-        localStorage.removeItem(k)
-    );
+    const keys = ['token', 'userRole', 'userId', 'userName', 'user', 'child_session_id'];
+    keys.forEach(k => localStorage.removeItem(k));
+    console.log('🔒 Session cleared');
 }
 
 export function getCurrentUser() {
     return {
-        token:  localStorage.getItem('token'),
-        role:   localStorage.getItem('userRole'),
+        token: localStorage.getItem('token'),
+        role: localStorage.getItem('userRole'),
         userId: localStorage.getItem('userId'),
-        name:   localStorage.getItem('userName'),
+        name: localStorage.getItem('userName'),
     };
 }
 
@@ -37,12 +39,13 @@ export function getAuthHeaders() {
     const token = localStorage.getItem('token');
     return {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
 }
 
-// ── Core fetch wrapper with auto-refresh ──────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Core fetch wrapper with auto-refresh
+// ─────────────────────────────────────────────────────────────
 let isRefreshing = false;
 let refreshSubscribers = [];
 
@@ -56,11 +59,11 @@ function addRefreshSubscriber(cb) {
 }
 
 export async function apiFetch(path, options = {}, _retry = false) {
-    // Don't attempt refresh on auth endpoints to avoid loops
-    const isAuthEndpoint = path.includes('/auth/login') || 
-                          path.includes('/auth/refresh') || 
-                          path.includes('/auth/logout');
-    
+    const isAuthEndpoint = path.includes('/auth/login') ||
+                          path.includes('/auth/refresh') ||
+                          path.includes('/auth/logout') ||
+                          path.includes('/parents/register');
+
     const headers = {
         ...getAuthHeaders(),
         ...(options.headers || {}),
@@ -73,45 +76,44 @@ export async function apiFetch(path, options = {}, _retry = false) {
             credentials: 'include',
         });
 
-        // Handle 401 - Unauthorized
         if (res.status === 401 && !_retry && !isAuthEndpoint) {
-            // If we're not already refreshing, start the refresh process
+            console.log('🔄 401 detected, attempting token refresh...');
+
             if (!isRefreshing) {
                 isRefreshing = true;
-                
+
                 try {
                     const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
                         method: 'POST',
                         credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
                     });
 
                     if (refreshRes.ok) {
                         const data = await refreshRes.json();
                         if (data.token) {
+                            console.log('✅ Token refreshed successfully');
                             localStorage.setItem('token', data.token);
                             isRefreshing = false;
                             onRefreshed(data.token);
-                            // Retry the original request with new token
                             return apiFetch(path, options, true);
                         } else {
                             throw new Error('No token in refresh response');
                         }
                     } else {
-                        throw new Error('Refresh failed with status: ' + refreshRes.status);
+                        throw new Error(`Refresh failed with status ${refreshRes.status}`);
                     }
                 } catch (refreshError) {
-                    console.error('Token refresh failed:', refreshError);
+                    console.error('❌ Token refresh failed:', refreshError);
                     isRefreshing = false;
                     clearUserSession();
-                    // Use setTimeout to avoid race conditions with navigation
                     setTimeout(() => {
                         window.location.href = '/auth';
                     }, 100);
                     throw new Error('Session expired. Please login again.');
                 }
             }
-            
-            // If refresh is in progress, queue this request
+
             return new Promise((resolve, reject) => {
                 addRefreshSubscriber((token) => {
                     const newOptions = {
@@ -126,26 +128,27 @@ export async function apiFetch(path, options = {}, _retry = false) {
                 });
             });
         }
-        
+
         return res;
     } catch (error) {
-        // Network errors or other fetch failures
         console.error(`API Fetch error for ${path}:`, error);
         throw error;
     }
 }
 
-// ── Auth endpoints ────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// AUTH ENDPOINTS
+// ─────────────────────────────────────────────────────────────
 export async function login(email, password) {
     const res = await fetch(`${BASE_URL}/api/auth/login`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body:        JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
+    if (data.token) saveUserSession(data);
     return data;
 }
 
@@ -162,9 +165,9 @@ export async function logout() {
 
 export async function forgotPassword(email) {
     const res = await fetch(`${BASE_URL}/api/auth/forgot-password`, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email }),
+        body: JSON.stringify({ email }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Request failed');
@@ -173,31 +176,101 @@ export async function forgotPassword(email) {
 
 export async function resetPassword(token, newPassword) {
     const res = await fetch(`${BASE_URL}/api/auth/reset-password`, {
-        method:  'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ token, newPassword }),
+        body: JSON.stringify({ token, newPassword }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Reset failed');
     return data;
 }
 
-// ── Parent endpoints ──────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// CHILD SESSION
+// ─────────────────────────────────────────────────────────────
+export async function saveChildSession(sessionData) {
+    const user = getCurrentUser();
+    const token = localStorage.getItem('token');
+    let guestId = localStorage.getItem('guest_id');
+    if (!guestId && !user.token) {
+        guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('guest_id', guestId);
+    }
+    const payload = {
+        sessionUUID: sessionData.sessionUUID,
+        childName: sessionData.childName,
+        childGrade: sessionData.childGrade,
+        childAge: sessionData.childAge || null,
+        parentId: sessionData.parentId || (user.role === 'parent' ? user.userId : null),
+        guestId: sessionData.guestId || guestId,
+    };
+    const res = await fetch(`${BASE_URL}/api/child-info/session`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to save child session');
+    }
+    const data = await res.json();
+    if (data.sessionId) {
+        localStorage.setItem('child_session_id', data.sessionId);
+    } else if (data.sessionUUID) {
+        localStorage.setItem('child_session_id', data.sessionUUID);
+    }
+    return data;
+}
 
-export async function registerParent(fullName, email, phone, password) {
+export function getCurrentChildSessionId() {
+    return localStorage.getItem('child_session_id');
+}
+
+export function clearChildSession() {
+    localStorage.removeItem('child_session_id');
+}
+
+// ─────────────────────────────────────────────────────────────
+// PARENT ENDPOINTS
+// ─────────────────────────────────────────────────────────────
+export async function registerParent(fullName, email, phone, password, child_session_id, child_name) {
     const res = await fetch(`${BASE_URL}/api/parents/register`, {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body:        JSON.stringify({ full_name: fullName, email, phone, password }),
+        body: JSON.stringify({
+            full_name: fullName,
+            email,
+            phone,
+            password,
+            child_session_id,
+            child_name,
+        }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
+    if (data.token) saveUserSession(data);
+    return data;
+}
+
+export async function addChildToParent(childName, childGrade) {
+    const res = await apiFetch('/api/parents/add-child', {
+        method: 'POST',
+        body: JSON.stringify({
+            child_name: childName,
+            child_grade: childGrade,
+        }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to add child');
     return data;
 }
 
 export async function fetchChildren() {
-    const res  = await apiFetch('/api/children');
+    const res = await apiFetch('/api/children');
     if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to fetch children');
@@ -207,9 +280,9 @@ export async function fetchChildren() {
 }
 
 export async function addChild(childData) {
-    const res  = await apiFetch('/api/children', {
+    const res = await apiFetch('/api/children', {
         method: 'POST',
-        body:   JSON.stringify(childData),
+        body: JSON.stringify(childData),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to add child');
@@ -217,16 +290,14 @@ export async function addChild(childData) {
 }
 
 export async function updateParentProfile(id, profileData) {
-    const res  = await apiFetch(`/api/parents/${id}`, {
+    const res = await apiFetch(`/api/parents/${id}`, {
         method: 'PUT',
-        body:   JSON.stringify(profileData),
+        body: JSON.stringify(profileData),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to update profile');
     return data;
 }
-
-// ── Parent info endpoints ─────────────────────────────────────
 
 export async function fetchParentInfo() {
     const res = await apiFetch('/api/parents/me');
@@ -238,10 +309,11 @@ export async function fetchParentInfo() {
     return data;
 }
 
-// ── Assessment results ────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// ASSESSMENT RESULTS
+// ─────────────────────────────────────────────────────────────
 export async function fetchMyResults() {
-    const res  = await apiFetch('/api/parents/me/results');
+    const res = await apiFetch('/api/parents/me/results');
     if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to fetch results');
@@ -250,18 +322,8 @@ export async function fetchMyResults() {
     return data.results || [];
 }
 
-export async function fetchChildAssessments(childId) {
-    const res  = await apiFetch(`/api/children/${childId}/assessments`);
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch assessments');
-    }
-    const data = await res.json();
-    return data.assessments;
-}
-
-export async function fetchAssessmentSummary(sessionUUID) {
-    const res = await apiFetch(`/api/assessment/summary/${sessionUUID}`);
+export async function fetchAssessmentSummary(childSessionId) {
+    const res = await apiFetch(`/api/assessment/summary/${childSessionId}`);
     if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to fetch assessment summary');
@@ -270,90 +332,20 @@ export async function fetchAssessmentSummary(sessionUUID) {
     return data;
 }
 
-// ── Messages / Chat ───────────────────────────────────────────
-
-export async function fetchMessages(parentId) {
-    const query = parentId ? `?parentId=${parentId}` : '';
-    const res   = await apiFetch(`/api/messages${query}`);
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch messages');
-    }
-    const data = await res.json();
-    return data.messages || [];
-}
-
-export async function sendMessage(content, therapistId = null) {
-    const res  = await apiFetch('/api/messages', {
-        method: 'POST',
-        body:   JSON.stringify({ content, therapistId }),
-    });
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to send message');
-    }
-    const data = await res.json();
-    return data.message;
-}
-
-export async function fetchUnreadCount() {
-    const res  = await apiFetch('/api/messages/unread-count');
-    if (!res.ok) return 0;
-    const data = await res.json();
-    return data.count || 0;
-}
-
-// ── Therapist / Dashboard endpoints ──────────────────────────
-
-export async function fetchStudents() {
-    const res  = await apiFetch('/api/dashboard/students');
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch students');
-    }
-    const data = await res.json();
-    return data.students;
-}
-
-export async function fetchAuditLog() {
-    const res  = await apiFetch('/api/dashboard/audit-log');
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch audit log');
-    }
-    const data = await res.json();
-    return data.auditLog;
-}
-
-export async function fetchNotes() {
-    const res  = await apiFetch('/api/dashboard/notes');
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch notes');
-    }
-    const data = await res.json();
-    return data.notes;
-}
-
-export async function addNote(text) {
-    const res  = await apiFetch('/api/dashboard/notes', {
-        method: 'POST',
-        body:   JSON.stringify({ text }),
-    });
-    if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save note');
-    }
-    const data = await res.json();
-    return data.note;
-}
-
-// ── Task submission endpoints ─────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// TASK SUBMISSION ENDPOINTS
+// ─────────────────────────────────────────────────────────────
 export async function submitTask1(taskData) {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+        throw new Error('No active child session. Please start a new assessment.');
+    }
     const res = await apiFetch('/api/task1/submit', {
         method: 'POST',
-        body: JSON.stringify(taskData),
+        body: JSON.stringify({
+            child_session_id: childSessionId,
+            ...taskData,
+        }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -364,9 +356,16 @@ export async function submitTask1(taskData) {
 }
 
 export async function submitTask2(taskData) {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+        throw new Error('No active child session. Please start a new assessment.');
+    }
     const res = await apiFetch('/api/assessments/task2/submit', {
         method: 'POST',
-        body: JSON.stringify(taskData),
+        body: JSON.stringify({
+            child_session_id: childSessionId,
+            ...taskData,
+        }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -377,9 +376,16 @@ export async function submitTask2(taskData) {
 }
 
 export async function submitTask3(taskData) {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+        throw new Error('No active child session. Please start a new assessment.');
+    }
     const res = await apiFetch('/api/task3/submit', {
         method: 'POST',
-        body: JSON.stringify(taskData),
+        body: JSON.stringify({
+            child_session_id: childSessionId,
+            ...taskData,
+        }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -390,9 +396,16 @@ export async function submitTask3(taskData) {
 }
 
 export async function submitTask4(taskData) {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+        throw new Error('No active child session. Please start a new assessment.');
+    }
     const res = await apiFetch('/api/task4/submit', {
         method: 'POST',
-        body: JSON.stringify(taskData),
+        body: JSON.stringify({
+            child_session_id: childSessionId,
+            ...taskData,
+        }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -402,73 +415,9 @@ export async function submitTask4(taskData) {
     return data;
 }
 
-// ── Child session helpers ─────────────────────────────────────
-// ✅ FIXED VERSION - Now properly handles parentId and guestId
-
-export async function saveChildSession(sessionData) {
-    // Get user info if logged in
-    const user = getCurrentUser();
-    const token = localStorage.getItem('token');
-    
-    // Get or create guest ID for non-authenticated users
-    let guestId = localStorage.getItem('guest_id');
-    if (!guestId && !user.token) {
-        guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('guest_id', guestId);
-    }
-    
-    // Build the payload with proper IDs
-    const payload = {
-        sessionUUID: sessionData.sessionUUID,
-        childName: sessionData.childName,
-        childGrade: sessionData.childGrade,
-        childAge: sessionData.childAge || null,
-        parentId: sessionData.parentId || (user.role === 'parent' ? user.userId : null),
-        guestId: sessionData.guestId || guestId,
-    };
-    
-    console.log('Saving child session to DB:', payload);
-    
-    try {
-        const res = await fetch(`${BASE_URL}/api/child-info/session`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify(payload),
-        });
-        
-        if (!res.ok) {
-            const errorData = await res.json();
-            console.error('Server error response:', errorData);
-            throw new Error(errorData.error || 'Failed to save child session');
-        }
-        
-        const data = await res.json();
-        console.log('Child session saved successfully:', data);
-        return data;
-    } catch (error) {
-        console.error('Save child session error:', error);
-        throw error;
-    }
-}
-
-// Optional: Add a function to verify session was saved
-export async function getChildSession(sessionUUID) {
-    try {
-        const res = await apiFetch(`/api/child-info/session/${sessionUUID}`);
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.session;
-    } catch (error) {
-        console.error('Get child session error:', error);
-        return null;
-    }
-}
-
-// ── Quiz endpoints ────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// QUIZ ENDPOINTS
+// ─────────────────────────────────────────────────────────────
 export async function fetchQuizQuestions() {
     const res = await fetch(`${BASE_URL}/api/quiz/questions`);
     if (!res.ok) {
@@ -480,6 +429,10 @@ export async function fetchQuizQuestions() {
 }
 
 export async function submitQuiz(quizData) {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+        throw new Error('No active child session. Please start a new assessment.');
+    }
     const token = localStorage.getItem('token');
     const res = await fetch(`${BASE_URL}/api/quiz/submit`, {
         method: 'POST',
@@ -487,7 +440,10 @@ export async function submitQuiz(quizData) {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(quizData),
+        body: JSON.stringify({
+            child_session_id: childSessionId,
+            ...quizData,
+        }),
     });
     if (!res.ok) {
         const data = await res.json();
@@ -495,4 +451,84 @@ export async function submitQuiz(quizData) {
     }
     const data = await res.json();
     return data;
+}
+
+// ─────────────────────────────────────────────────────────────
+// MESSAGES - FIXED VERSION (works with ParentDashboard)
+// ─────────────────────────────────────────────────────────────
+export async function fetchMessages() {
+    // Backend uses token to identify parent – no parameter needed
+    const res = await apiFetch('/api/messages');
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch messages');
+    }
+    const data = await res.json();
+    return data.messages || [];
+}
+
+export async function sendMessage(content, therapistId = null, childId = null) {
+    const res = await apiFetch('/api/messages', {
+        method: 'POST',
+        body: JSON.stringify({ content, therapistId, child_id: childId }),
+    });
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to send message');
+    }
+    const data = await res.json();
+    return data.message;
+}
+
+export async function fetchUnreadCount() {
+    const res = await apiFetch('/api/messages/unread-count');
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return data.count || 0;
+}
+
+// ─────────────────────────────────────────────────────────────
+// THERAPIST / DASHBOARD ENDPOINTS
+// ─────────────────────────────────────────────────────────────
+export async function fetchStudents() {
+    const res = await apiFetch('/api/dashboard/students');
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch students');
+    }
+    const data = await res.json();
+    return data.students;
+}
+
+export async function fetchAuditLog() {
+    const res = await apiFetch('/api/dashboard/audit-log');
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch audit log');
+    }
+    const data = await res.json();
+    return data.auditLog;
+}
+
+export async function fetchNotes() {
+    const res = await apiFetch('/api/dashboard/notes');
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch notes');
+    }
+    const data = await res.json();
+    return data.notes;
+}
+
+export async function addNote(text) {
+    const res = await apiFetch('/api/dashboard/notes', {
+        method: 'POST',
+        body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to save note');
+    }
+    const data = await res.json();
+    return data.note;
 }

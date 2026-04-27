@@ -1,16 +1,12 @@
 // frontend/src/components/tasks/EnhancedVoiceReading.jsx
-// FIXES:
-//  1. Reads childFullName + sessionUUID correctly — no more "Guest User / NULL"
-//  2. savedIdRef: POST once → PATCH on every subsequent save (no duplicate rows)
-//  3. Navbar matches Task 1 & Task 3 style exactly
-//  4. Back button goes to /adventure without creating a new DB row
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./EnhancedVoiceReading.css";
-import { getChildInfo, getSessionUUID, getUserInfo, getGuestId } from "../../utils/childSession";
+import { getChildInfo, getUserInfo, getCurrentChildSessionId } from "../../utils/childSession";
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const TASK2_URL = `${API}/api/assessments/task2/submit`;
 
 const READING_PASSAGE = {
   title: "The Teacher",
@@ -91,10 +87,6 @@ export default function EnhancedVoiceReading() {
   const lastProcessedRef    = useRef(0);
   const timeRemainingRef    = useRef(180);
   const markedCompletedRef  = useRef(false);
-  // ── FIX: single DB row per session ──
-  const savedIdRef          = useRef(
-    localStorage.getItem('task2_saved_db_id') || null
-  );
 
   useEffect(() => { currentWordIndexRef.current = currentWordIndex; }, [currentWordIndex]);
   useEffect(() => { wordResultsRef.current      = wordResults;      }, [wordResults]);
@@ -136,73 +128,71 @@ export default function EnhancedVoiceReading() {
 
   const formatTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
-  // ── FIXED: buildPayload reads childFullName + sessionUUID ──
-  const buildPayload = useCallback((results, isPartial) => {
-    const user      = getUserInfo();
+  // ─── Build payload for task2_results (matches schema) ───
+  const buildPayload = useCallback((resultsObj, isPartial = false) => {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+      throw new Error('No active child session ID found');
+    }
+
+    const user = getUserInfo();
     const childInfo = getChildInfo();
-    const sessionUUID = getSessionUUID();
 
-    // Support both key names
-    const childName  = childInfo?.childFullName || childInfo?.childName || user?.name || 'Guest User';
-    const childGrade = childInfo?.childGrade    || user?.childGrade     || 'Not Specified';
-
-    const correctCount = Object.values(results.wordResults || wordResultsRef.current).filter(r => r?.correct).length;
+    const correctCount = Object.values(resultsObj.wordResults || wordResultsRef.current).filter(r => r?.correct).length;
+    const totalWordsRead = Object.keys(resultsObj.wordResults || wordResultsRef.current).length;
+    const incorrectCount = totalWordsRead - correctCount;
     const elapsed = startTimeRef.current
       ? Math.round((Date.now() - startTimeRef.current - totalPausedMsRef.current) / 1000) : 0;
+    const percentage = totalWordsRead > 0 ? Math.round((correctCount / totalWordsRead) * 100) : 0;
 
-    return {
-      sessionUUID,
-      childId:        user?.childId || null,
-      parentId:       user?.role === 'parent' ? user.id : null,
-      guestId:        getGuestId(),
-      childName,
-      childGrade,
-      passageTitle:   READING_PASSAGE.title,
-      totalWords:     allWords.length,
-      correctWords:   results.correctWords ?? correctCount,
-      errorCount:     results.errors       ?? (errorWordsRef.current?.length || 0),
-      timeUsedSeconds: results.time_used   ?? elapsed,
-      maxTimeSeconds:  180,
-      finishedEarly:   results.finishedEarly ?? false,
-      errorDetails:    results.error_details ?? errorWordsRef.current,
-      is_partial:      isPartial ? 1 : 0,
+    let performanceLevel = 'Building';
+    if (percentage >= 95) performanceLevel = 'Advanced';
+    else if (percentage >= 85) performanceLevel = 'Proficient';
+    else if (percentage >= 70) performanceLevel = 'Basic';
+
+    const payload = {
+      child_session_id:   parseInt(childSessionId, 10),
+      child_id:           user?.childId ? parseInt(user.childId, 10) : null,
+      total_words:        totalWordsRead,
+      correct_count:      correctCount,
+      incorrect_count:    incorrectCount,
+      timeout_count:      0,
+      percentage:         percentage,
+      performance_level:  performanceLevel,
+      total_time_seconds: elapsed,
+      avg_time_per_word:  totalWordsRead > 0 ? Math.round(elapsed / totalWordsRead) : 0,
+      word_details:       JSON.stringify(resultsObj.error_details || errorWordsRef.current),
     };
+    return payload;
   }, []);
 
-  // ── FIXED: POST once, PATCH after ──
+  // ─── Save results to database (always POST – ON DUPLICATE KEY UPDATE handles upsert) ───
   const saveResultsToDB = useCallback(async (results, isPartial = false) => {
     if (!isMountedRef.current) return;
     setSaving(true); setSaveError('');
-    const payload = buildPayload(results, isPartial);
-    const token   = localStorage.getItem('token');
-    const headers = { 'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {}) };
-
     try {
-      let res;
-      if (savedIdRef.current) {
-        // PATCH — update existing row
-        res = await axios.patch(`${API}/api/assessments/task2/submit/${savedIdRef.current}`, payload, { headers });
-      } else {
-        // POST — first save only
-        res = await axios.post(`${API}/api/assessments/task2/submit`, payload, { headers });
-        if (res.data?.resultId) {
-          savedIdRef.current = String(res.data.resultId);
-          localStorage.setItem('task2_saved_db_id', savedIdRef.current);
-        }
+      const payload = buildPayload(results, isPartial);
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const res = await axios.post(TASK2_URL, payload, { headers });
+      if (res.data?.resultId) {
+        console.log('✅ Task2 saved, id:', res.data.resultId);
       }
-      if (!res.data?.success && isMountedRef.current) setSaveError(res.data?.error || 'Save failed.');
-      else console.log('✅ Task2 saved, id:', savedIdRef.current);
     } catch (err) {
       console.error('Task2 save error:', err);
+      setSaveError('Network error – progress saved locally only.');
       if (isMountedRef.current) {
-        setSaveError('Network error — saved locally only.');
-        localStorage.setItem('task2_results_backup', JSON.stringify({ ...payload, savedAt: new Date().toISOString() }));
+        localStorage.setItem('task2_results_backup', JSON.stringify({ ...results, savedAt: new Date().toISOString() }));
       }
     } finally {
       if (isMountedRef.current) setSaving(false);
     }
   }, [buildPayload]);
 
+  // Process speech – same as before
   const processSpeech = useCallback(newAccumulated => {
     if (isCompleteRef.current || isPausedRef.current || isTimeUpRef.current) return;
     const cleanFull   = cleanText(newAccumulated);
@@ -284,7 +274,7 @@ export default function EnhancedVoiceReading() {
     setIsListening(false); isListeningRef.current = false;
     const elapsed = startTimeRef.current ? Math.round((Date.now()-startTimeRef.current-totalPausedMsRef.current)/1000) : 0;
     const cc = Object.values(wordResultsRef.current).filter(r=>r?.correct).length;
-    await saveResultsToDB({ correctWords:cc, errors:errorWordsRef.current.length, time_used:elapsed, error_details:errorWordsRef.current }, true);
+    await saveResultsToDB({ correctWords:cc, errors:errorWordsRef.current.length, time_used:elapsed, error_details:errorWordsRef.current, wordResults:wordResultsRef.current }, true);
   }, [saveResultsToDB]);
 
   const resumeListening = useCallback(() => {
@@ -293,7 +283,7 @@ export default function EnhancedVoiceReading() {
     startListening();
   }, [startListening]);
 
-  const finishAssessmentInternal = useCallback(() => {
+  const finishAssessmentInternal = useCallback(async () => {
     if (isCompleteRef.current) return;
     isCompleteRef.current = true;
     stopRecognition(); stopTimer();
@@ -301,21 +291,30 @@ export default function EnhancedVoiceReading() {
 
     const elapsed = startTimeRef.current ? Math.round((Date.now()-startTimeRef.current-totalPausedMsRef.current)/1000) : 0;
     const cc  = Object.values(wordResultsRef.current).filter(r=>r?.correct).length;
-    const pct = Math.round((cc/allWords.length)*100);
+    const pct = allWords.length > 0 ? Math.round((cc/allWords.length)*100) : 0;
 
     let fluency='Building', fColor='#f44336', rec='💪 You tried your best — that is what matters!';
     if(pct>=85){fluency='Excellent';fColor='#4CAF50';rec='🎉 Amazing reading! You are a superstar!';}
     else if(pct>=70){fluency='Good';fColor='#8BC34A';rec='👍 Great job! A few words to practice and you will be perfect!';}
     else if(pct>=50){fluency='Developing';fColor='#FF9800';rec='🌱 You are growing every day! Keep practicing!';}
 
-    const results = { total_words:allWords.length, correct_words:cc, correctWords:cc, errors:errorWordsRef.current.length,
-      percentage:pct, fluency_level:fluency, fluency_color:fColor, recommendation:rec,
-      error_details:errorWordsRef.current, time_used:elapsed, finishedEarly:pct===100||isTimeUpRef.current===false };
-
+    const results = {
+      total_words: allWords.length,
+      correct_words: cc,
+      errors: errorWordsRef.current.length,
+      percentage: pct,
+      fluency_level: fluency,
+      fluency_color: fColor,
+      recommendation: rec,
+      error_details: errorWordsRef.current,
+      time_used: elapsed,
+      finishedEarly: pct===100 || isTimeUpRef.current===false,
+      wordResults: wordResultsRef.current,
+    };
     localStorage.setItem('enhanced_voice_results', JSON.stringify(results));
     if (!markedCompletedRef.current) { markQuestCompleted(); markedCompletedRef.current=true; }
     if (isMountedRef.current) { setResultsData(results); setIsComplete(true); }
-    saveResultsToDB({ ...results, error_details:errorWordsRef.current }, false);
+    await saveResultsToDB(results, false);
   }, [saveResultsToDB]);
 
   const finishAssessment = useCallback(() => finishAssessmentInternal(), [finishAssessmentInternal]);
@@ -327,9 +326,6 @@ export default function EnhancedVoiceReading() {
     totalPausedMsRef.current=0; finalTranscriptRef.current=''; lastProcessedRef.current=0;
     currentWordIndexRef.current=0; wordResultsRef.current={}; errorWordsRef.current=[];
     timeRemainingRef.current=180; markedCompletedRef.current=false;
-    // ── Reset saved ID so next attempt is a fresh POST ──
-    savedIdRef.current=null;
-    localStorage.removeItem('task2_saved_db_id');
 
     setCurrentWordIndex(0); setWordResults({}); setErrorWords([]); setIsComplete(false);
     setIsTimeUp(false); setTranscript(''); setTimeRemaining(180); setShowTimeWarning(false);
@@ -339,117 +335,134 @@ export default function EnhancedVoiceReading() {
 
   const handleBack = useCallback(() => { stopRecognition(); stopTimer(); navigate('/adventure'); }, [navigate]);
 
-  // ════════════════════════════════════════════════════════
-  // RESULTS SCREEN
-  // ════════════════════════════════════════════════════════
-  if (isComplete) {
-    const r   = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
-    const pct = r.percentage || 0;
-    return (
-      <div className="task-one-container results-screen">
-        <div className="task-bg"/><div className="dark-overlay"/>
-        {/* ── Navbar matches Task 1 & 3 (updated to match Task 3 style) ── */}
-        <div className="task-nav">
-          <button className="nav-back-btn" onClick={handleBack}>← Back</button>
-          <span className="nav-title">🎙️ Story Reader</span>
-          <div style={{width:100}}/>
-        </div>
-        <div className="results-back-btn">
-          <button className="nav-back-btn" onClick={handleBack}>← Back to Adventure</button>
-        </div>
-        <div className="results-header-area">
-          <div className="trophy-icon">🎉</div>
-          <h1>Wonderful Reading!</h1>
-          <p>You read the passage — great effort! 🌟</p>
-        </div>
-        {saving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>💾 Saving…</div>}
-        {saveError&&!saving&&<div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
-        <div className="final-score-area">
-          <div className="score-circle-big">
-            <span className="score-number-big">{r.correct_words}/{r.total_words}</span>
-            <span className="score-label-small">Words Correct</span>
-          </div>
-          <div className="score-grade-area">
-            <div className="grade-circle-big" style={{background:pct>=80?'#7fb685':pct>=60?'#ff9a76':'#a8d0db'}}>{pct}%</div>
-            <p className="grade-label-text">{pct>=80?'🌟 Excellent!':pct>=60?'👍 Good Job!':'💪 Keep Practicing!'}</p>
-          </div>
-        </div>
-        <div className="category-breakdown-area">
-          <h2>📊 Your Reading Performance</h2>
-          <div className="breakdown-grid-area">
-            <div className="breakdown-card-item"><div className="breakdown-icon-item">📖</div><h3>Words Read</h3><div className="breakdown-score-item">{r.correct_words}/{r.total_words}</div></div>
-            <div className="breakdown-card-item"><div className="breakdown-icon-item">📝</div><h3>Let's Practice</h3><div className="breakdown-score-item">{r.errors}</div></div>
-            <div className="breakdown-card-item"><div className="breakdown-icon-item">⭐</div><h3>Your Level</h3><div className="breakdown-score-item" style={{color:r.fluency_color}}>{r.fluency_level}</div></div>
-          </div>
-        </div>
-        <div className="results-action-buttons">
-          <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ════════════════════════════════════════════════════════
-  // ERROR: no speech support
-  // ════════════════════════════════════════════════════════
-  if (!recognitionSupported) return (
+  // Results screen (unchanged)
+  // ─── RESULTS SCREEN with TaskOne‑style header ─────────────────
+if (isComplete) {
+  const r   = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
+  const pct = r.percentage || 0;
+  return (
     <div className="task-one-container results-screen">
       <div className="task-bg"/><div className="dark-overlay"/>
-      <div className="task-nav">
-        <button className="nav-back-btn" onClick={handleBack}>← Back</button>
-        <span className="nav-title">🎙️ Story Reader</span>
-        <div style={{width:100}}/>
-      </div>
-      <div className="results-header-area" style={{marginTop:'2rem'}}><div className="trophy-icon" style={{fontSize:'4rem'}}>😕</div><h1>Browser Not Supported</h1><p>Please use Google Chrome for voice reading.</p></div>
-      <div className="results-action-buttons"><button className="btn-home-page" onClick={handleBack}>← Go Back</button></div>
-    </div>
-  );
 
-  if (!micAllowed) return (
-    <div className="task-one-container results-screen">
-      <div className="task-bg"/><div className="dark-overlay"/>
-      <div className="task-nav">
-        <button className="nav-back-btn" onClick={handleBack}>← Back</button>
-        <span className="nav-title">🎙️ Story Reader</span>
-        <div style={{width:100}}/>
+      {/* TaskOne‑style header bar (instead of old .task-nav) */}
+      <div className="assessment-header-bar">
+        <div className="header-left">
+          <button className="nav-back-btn" onClick={handleBack}>
+            ← Back
+          </button>
+          <span className="category-name">🎙️ Story Reader</span>
+        </div>
+        <div className="header-center">
+          <div className="progress-display">✨ Results ✨</div>
+        </div>
+        <div className="header-right">
+          <div className="timer" style={{ background: '#3D5A4C' }}>
+            ✓ Completed
+          </div>
+        </div>
       </div>
-      <div className="results-header-area" style={{marginTop:'2rem'}}><div className="trophy-icon" style={{fontSize:'4rem'}}>🎤</div><h1>Microphone Required</h1><p>Please allow microphone access to use voice reading.</p></div>
+
+      <div className="results-header-area">
+        <div className="trophy-icon">🎉</div>
+        <h1>Wonderful Reading!</h1>
+        <p>You read the passage — great effort! 🌟</p>
+      </div>
+
+      {saving && <div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>💾 Saving…</div>}
+      {saveError && !saving && <div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
+
+      <div className="final-score-area">
+        <div className="score-circle-big">
+          <span className="score-number-big">{r.correct_words}/{r.total_words}</span>
+          <span className="score-label-small">Words Correct</span>
+        </div>
+        <div className="score-grade-area">
+          <div className="grade-circle-big" style={{background:pct>=80?'#7fb685':pct>=60?'#ff9a76':'#a8d0db'}}>
+            {pct}%
+          </div>
+          <p className="grade-label-text">
+            {pct>=80?'🌟 Excellent!':pct>=60?'👍 Good Job!':'💪 Keep Practicing!'}
+          </p>
+        </div>
+      </div>
+
+      <div className="category-breakdown-area">
+        <h2>📊 Your Reading Performance</h2>
+        <div className="breakdown-grid-area">
+          <div className="breakdown-card-item">
+            <div className="breakdown-icon-item">📖</div>
+            <h3>Words Read</h3>
+            <div className="breakdown-score-item">{r.correct_words}/{r.total_words}</div>
+          </div>
+          <div className="breakdown-card-item">
+            <div className="breakdown-icon-item">📝</div>
+            <h3>Let's Practice</h3>
+            <div className="breakdown-score-item">{r.errors}</div>
+          </div>
+          <div className="breakdown-card-item">
+            <div className="breakdown-icon-item">⭐</div>
+            <h3>Your Level</h3>
+            <div className="breakdown-score-item" style={{color:r.fluency_color}}>{r.fluency_level}</div>
+          </div>
+        </div>
+      </div>
+
       <div className="results-action-buttons">
-        <button className="btn-play-again" onClick={startListening}>🔄 Try Again</button>
-        <button className="btn-home-page"  onClick={handleBack}>← Go Back</button>
+        <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
       </div>
     </div>
   );
+}
 
-  // ════════════════════════════════════════════════════════
-  // MAIN READING SCREEN
-  // ════════════════════════════════════════════════════════
+  // ─── Main reading screen with TaskOne‑style header bar ───
+  const totalWords = allWords.length;
+  const completedWords = currentWordIndex; // number of words processed (read or attempted)
+  const progressPercent = totalWords ? (completedWords / totalWords) * 100 : 0;
+
   return (
     <div className="enhanced-voice-container reading-active">
       <div className="enhanced-bg"/><div className="enhanced-overlay"/>
 
-      {/* ── Navbar — updated to match Task 3 style exactly (like second TaskThree code) ── */}
-      <div className="task-nav">
-        <button className="nav-back-btn" onClick={handleBack}>← Back</button>
-        <span className="nav-title">🎙️ Story Reader</span>
-        <div className={`timer ${showTimeWarning ? 'warning' : ''}`}>{formatTime(timeRemaining)}</div>
+      {/* NEW HEADER BAR – exactly like Task One */}
+      <div className="assessment-header-bar">
+        <div className="header-left">
+          <button className="btn-pause" onClick={isListening ? pauseListening : resumeListening}>
+            {isListening ? "⏸️ Pause" : "▶️ Resume"}
+          </button>
+          <span className="category-name">🎙️ Story Reader</span>
+        </div>
+        <div className="header-center">
+          <div className="progress-display">
+            Word {completedWords} of {totalWords}
+          </div>
+        </div>
+        <div className="header-right">
+          <div className={`timer ${showTimeWarning ? 'warning' : ''}`}>
+             {formatTime(timeRemaining)}
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar (optional, matches TaskOne) */}
+      <div className="assessment-progress-bar">
+        <div className="assessment-progress-fill" style={{ width: `${progressPercent}%` }} />
       </div>
 
       <div className="enhanced-reading-content">
         <div className="current-word-section">
           <div className="enhanced-word-card">
             <div className="enhanced-word-text">
-              {currentWordIndex < allWords.length ? allWords[currentWordIndex] : '🏁'}
+              {currentWordIndex < allWords.length ? allWords[currentWordIndex] : ''}
             </div>
           </div>
 
-          {saving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,fontSize:'0.85rem',marginBottom:'0.5rem'}}>💾 Saving…</div>}
+          {saving && <div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,fontSize:'0.85rem',marginBottom:'0.5rem'}}>💾 Saving…</div>}
 
           <div className="mic-status-section">
             <div className={`mic-indicator ${isListening?'listening':''}`}>
               {isListening ? <><span>🎙️</span><span className="mic-text"> Listening… Keep reading!</span></> : <><span>⏸️</span><span className="mic-text"> Paused — press Resume</span></>}
             </div>
-            {transcript&&(
+            {transcript && (
               <div className="transcript-box">
                 <span className="transcript-label">I hear:</span>
                 <span className="transcript-text"> "{transcript}"</span>
@@ -458,23 +471,22 @@ export default function EnhancedVoiceReading() {
           </div>
 
           <div className="full-passage">
-            <h3>The Teacher</h3>
+            <h3>{READING_PASSAGE.title}</h3>
             <div className="passage-words">
               {allWords.map((word, idx) => {
                 let cls = 'passage-word';
-                if (idx===currentWordIndex && !wordResults[idx]) cls+=' current';
+                if (idx === currentWordIndex && !wordResults[idx]) cls += ' current';
                 if (wordResults[idx]) cls += wordResults[idx].correct ? ' done-correct' : ' done-wrong';
                 return <span key={idx} className={cls} ref={idx===currentWordIndex?currentWordRef:null}>{word} </span>;
               })}
             </div>
           </div>
 
-          <div className="word-controls">
-            {!isListening
-              ? <button className="word-ctrl-btn resume-word" onClick={resumeListening}>▶️ Resume</button>
-              : <button className="word-ctrl-btn pause-word"  onClick={pauseListening}>⏸️ Pause</button>
-            }
-            <button className="word-ctrl-btn finish-word" onClick={finishAssessment}>🏁 Finish</button>
+          {/* BIG FINISH BUTTON – styled like TaskOne's "CHECK WORD" button */}
+          <div className="big-action-button">
+            <button className="big-finish-btn" onClick={finishAssessment}>
+              🏁 Finish Reading
+            </button>
           </div>
         </div>
       </div>

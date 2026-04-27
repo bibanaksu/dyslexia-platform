@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+// frontend/src/components/AssessmentResults.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { getCurrentChildSessionId, getChildInfo } from '../../utils/childSession';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -27,15 +29,17 @@ const TASKS = [
   { key: 'task4', label: 'Number Memory',   sub: 'Working memory & sequencing',      num: '04' },
 ];
 
-/* ─── TASK WEIGHTS (Case 2 — adjustable) ─────────────────────── */
+/* ─── TASK WEIGHTS ───────────────────────────────────────────── */
 const TASK_WEIGHTS = {
   task1: 2,  // Word Explorer
   task2: 2,  // Story Reader
-  task3: 3,  // Letter Detective (phonological awareness — often key for dyslexia)
+  task3: 3,  // Letter Detective
   task4: 1,  // Number Memory
 };
 
-/* ─── NEW RISK CLASSIFICATION (based on new ranges) ──────────── */
+const USE_WEIGHTED_SCORE = true;
+
+/* ─── RISK CLASSIFICATION (new thresholds 85/70/50) ──────────── */
 const RISK = {
   'Normal':   { label: 'Normal Range',      accent: '#3D5A4C', bg: '#EAF1EC', text: 'No signs of dyslexia detected. Your child is performing within the expected range. Continue encouraging daily reading and language exploration.' },
   'Mild':     { label: 'Mild Difficulties', accent: '#8A6000', bg: '#FFF5E0', text: 'Slight difficulties observed. Monitor progress and consider light structured reading support. Early awareness is key.' },
@@ -43,7 +47,7 @@ const RISK = {
   'Severe':   { label: 'Severe Risk',       accent: '#8B2020', bg: '#FDECEA', text: 'Strong indicators of dyslexia. A specialist evaluation is urgently advised — early intensive intervention has the most significant positive impact.' },
 };
 
-/* ─── NEW CLASSIFY FUNCTION (based on 85/70/50 thresholds) ───── */
+/* ─── CLASSIFY & RECOMMEND (based on 85/70/50) ───────────────── */
 const classify = (s) => {
   if (s == null) return { label: 'Not Assessed', c: C.mist };
   const rounded = Math.round(s);
@@ -53,7 +57,6 @@ const classify = (s) => {
   return { label: 'Severe', c: '#8B2020' };
 };
 
-/* ─── RECOMMENDATION UPDATED for new ranges ──────────────────── */
 const recommend = (s) => {
   if (s == null) return 'Complete this task to receive a personalised recommendation.';
   const rounded = Math.round(s);
@@ -63,16 +66,7 @@ const recommend = (s) => {
   return 'Significant challenges detected. Immediate specialist evaluation and intensive intervention are strongly recommended.';
 };
 
-/* ─── data helpers ───────────────────────────────────────────── */
-const getInfo = () => { try { return JSON.parse(localStorage.getItem('child_info')||'null'); } catch { return null; } };
-const getUUID = () => localStorage.getItem('child_session_uuid') || null;
-
-/* ═══════════════════════════════════════════════════════════════
-   CALCULATE OVERALL SCORE
-═══════════════════════════════════════════════════════════════ */
-
-const USE_WEIGHTED_SCORE = true;
-
+/* ─── SCORING HELPERS ───────────────────────────────────────── */
 const calculateOverallScore = (scores) => {
   const tasksCompleted = Object.values(scores).filter(s => s != null);
   if (tasksCompleted.length === 0) return null;
@@ -83,7 +77,6 @@ const calculateOverallScore = (scores) => {
   } else {
     let totalWeightedScore = 0;
     let totalWeight = 0;
-    
     for (const [taskKey, weight] of Object.entries(TASK_WEIGHTS)) {
       const score = scores[taskKey];
       if (score != null) {
@@ -91,7 +84,6 @@ const calculateOverallScore = (scores) => {
         totalWeight += weight;
       }
     }
-    
     if (totalWeight === 0) return null;
     return Math.round(totalWeightedScore / totalWeight);
   }
@@ -105,14 +97,9 @@ const getRiskLevelFromScore = (score) => {
   return 'Severe';
 };
 
-/* ═══════════════════════════════════════════════════════════════
-   CHART COMPONENTS
-═══════════════════════════════════════════════════════════════ */
-
-/* Large half-arc gauge for overall score - HTML/CSS VERSION */
+/* ─── CHART COMPONENTS ───────────────────────────────────────── */
 function GaugeArc({ score, size = 220 }) {
   const [v, setV] = useState(0);
-  
   useEffect(() => {
     if (score == null) return;
     let c = 0;
@@ -130,8 +117,6 @@ function GaugeArc({ score, size = 220 }) {
   }, [score]);
 
   const roundedScore = score != null ? Math.round(score) : null;
-  
-  // Color based on score
   let barColor = '#D9CFBF';
   let textColor = '#8FA898';
   if (roundedScore >= 85) {
@@ -147,7 +132,7 @@ function GaugeArc({ score, size = 220 }) {
     barColor = '#8B2020';
     textColor = '#8B2020';
   }
-  
+
   const percentage = v;
   const circumference = 2 * Math.PI * 70;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -155,67 +140,25 @@ function GaugeArc({ score, size = 220 }) {
   return (
     <div style={{ textAlign: 'center', position: 'relative', width: size, margin: '0 auto' }}>
       <svg width={size} height={size * 0.65} viewBox="0 0 200 130">
-        {/* Background semi-circle */}
-        <path
-          d="M 30 110 A 70 70 0 0 1 170 110"
-          fill="none"
-          stroke="#D9CFBF"
-          strokeWidth="12"
-          strokeLinecap="round"
-        />
-        
-        {/* Foreground semi-circle (progress) */}
+        <path d="M 30 110 A 70 70 0 0 1 170 110" fill="none" stroke="#D9CFBF" strokeWidth="12" strokeLinecap="round" />
         {score != null && v > 0 && (
-          <path
-            d="M 30 110 A 70 70 0 0 1 170 110"
-            fill="none"
-            stroke={barColor}
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            style={{ transition: 'stroke-dashoffset 0.05s linear' }}
-          />
+          <path d="M 30 110 A 70 70 0 0 1 170 110" fill="none" stroke={barColor} strokeWidth="12" strokeLinecap="round"
+                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                style={{ transition: 'stroke-dashoffset 0.05s linear' }} />
         )}
-        
-        {/* Center text */}
-        <text
-          x="100"
-          y="85"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill={score != null ? textColor : '#8FA898'}
-          fontSize="36"
-          fontWeight="700"
-          fontFamily="'DM Serif Display', serif"
-        >
+        <text x="100" y="85" textAnchor="middle" dominantBaseline="middle" fill={score != null ? textColor : '#8FA898'}
+              fontSize="36" fontWeight="700" fontFamily="'DM Serif Display', serif">
           {roundedScore != null ? `${roundedScore}%` : '—'}
         </text>
-        
-        {/* Label */}
-        <text
-          x="100"
-          y="110"
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill="#8FA898"
-          fontSize="9"
-          fontWeight="600"
-          fontFamily="'Nunito', sans-serif"
-          letterSpacing="3"
-        >
-          OVERALL SCORE
-        </text>
+        <text x="100" y="110" textAnchor="middle" dominantBaseline="middle" fill="#8FA898" fontSize="9"
+              fontWeight="600" fontFamily="'Nunito', sans-serif" letterSpacing="3">OVERALL SCORE</text>
       </svg>
     </div>
   );
 }
 
-/* Thin animated ring for individual tasks */
-/* Thin animated ring for individual tasks */
 function Ring({ score, size = 72 }) {
   const [v, setV] = useState(0);
-  
   useEffect(() => {
     if (score == null) return;
     let c = 0;
@@ -231,64 +174,34 @@ function Ring({ score, size = 72 }) {
     }, 16);
     return () => clearInterval(id);
   }, [score]);
-  
+
   const center = size / 2;
   const radius = (size - 12) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (v / 100) * circumference;
   const { c: color } = classify(score);
   const displayScore = score != null ? Math.round(score) : null;
-  
+
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* Background circle */}
-        <circle
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke={C.beigeXdk}
-          strokeWidth={6}
-        />
-        {/* Progress circle */}
+        <circle cx={center} cy={center} r={radius} fill="none" stroke={C.beigeXdk} strokeWidth={6} />
         {score != null && (
-          <circle
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth={6}
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            transform={`rotate(-90 ${center} ${center})`}
-            style={{ transition: 'stroke-dashoffset 0.05s linear' }}
-          />
+          <circle cx={center} cy={center} r={radius} fill="none" stroke={color} strokeWidth={6}
+                  strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
+                  strokeLinecap="round" transform={`rotate(-90 ${center} ${center})`}
+                  style={{ transition: 'stroke-dashoffset 0.05s linear' }} />
         )}
       </svg>
-      {/* Center text */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
-          fontSize: size / 4.2,
-          fontWeight: 700,
-          fontFamily: "'DM Serif Display', serif",
-          color: score != null ? color : C.mist,
-        }}
-      >
+      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    textAlign: 'center', fontSize: size / 4.2, fontWeight: 700, fontFamily: "'DM Serif Display', serif",
+                    color: score != null ? color : C.mist }}>
         {displayScore != null ? `${displayScore}%` : '—'}
       </div>
     </div>
   );
 }
 
-/* Vertical bar chart */
 function BarChart({ scores, animate }) {
   return (
     <div style={{ display:'flex', alignItems:'flex-end', gap:'1rem', height:140 }}>
@@ -302,18 +215,11 @@ function BarChart({ scores, animate }) {
               {sc != null ? `${pct}%` : '—'}
             </span>
             <div style={{ width:'100%', height:110, background:C.beigeXdk, borderRadius:'6px 6px 0 0', display:'flex', alignItems:'flex-end', overflow:'hidden' }}>
-              <div style={{ 
-                width:'100%', 
-                background: c, 
-                borderRadius:'6px 6px 0 0',
-                height: animate ? `${pct}%` : '0%',
-                transition:'height 1.4s cubic-bezier(0.22,1,0.36,1)'
-              }} />
+              <div style={{ width:'100%', background: c, borderRadius:'6px 6px 0 0',
+                            height: animate ? `${pct}%` : '0%', transition:'height 1.4s cubic-bezier(0.22,1,0.36,1)' }} />
             </div>
             <span style={{ fontSize:'0.58rem', fontWeight:800, color:C.mist, letterSpacing:'0.06em', textAlign:'center', fontFamily:"'Nunito', sans-serif", lineHeight:1.2 }}>
-              {label.split(' ').map((w,i)=>(
-                <span key={i} style={{display:'block'}}>{w}</span>
-              ))}
+              {label.split(' ').map((w,i)=> <span key={i} style={{display:'block'}}>{w}</span>)}
             </span>
           </div>
         );
@@ -322,7 +228,6 @@ function BarChart({ scores, animate }) {
   );
 }
 
-/* Radar chart */
 function Radar({ scores }) {
   const cx=145, cy=140, r=100, keys=['task1','task2','task3','task4'];
   const labels=['Word\nExplorer','Story\nReader','Letter\nDetective','Number\nMemory'];
@@ -345,19 +250,6 @@ function Radar({ scores }) {
   );
 }
 
-/* Horizontal bar */
-function HBar({ score, animate }) {
-  const { c } = classify(score);
-  const pct = score != null ? Math.round(score) : 0;
-  return (
-    <div style={{ height:8, background:C.beigeXdk, borderRadius:8, overflow:'hidden' }}>
-      <div style={{ height:'100%', borderRadius:8, background:c,
-        width: animate ? `${pct}%` : '0%',
-        transition:'width 1.5s cubic-bezier(0.22,1,0.36,1)' }} />
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════════════ */
@@ -368,7 +260,42 @@ export default function AssessmentResults() {
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    const finalizeAndFetch = async () => {
+      const childSessionId = getCurrentChildSessionId();
+      if (!childSessionId) {
+        console.warn('No child_session_id found – using local data only');
+        buildLocal();
+        setLoading(false);
+        return;
+      }
+
+      // First, tell the backend to compute and save the summary
+      try {
+        await axios.post(`${API_URL}/api/assessment/finalize/${childSessionId}`);
+        console.log('✅ Summary saved to database');
+      } catch (err) {
+        console.warn('Could not save summary to backend:', err.message);
+      }
+
+      // Then fetch the summary (which will come from the DB or be computed again)
+      try {
+        const res = await axios.get(`${API_URL}/api/assessment/summary/${childSessionId}`);
+        if (res.data.success) {
+          setData(res.data);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend fetch failed – falling back to local storage', err);
+      }
+      buildLocal();
+      setLoading(false);
+    };
+
+    finalizeAndFetch();
+  }, []);
+
   useEffect(() => {
     if (data) {
       setTimeout(() => setVisible(true), 100);
@@ -376,65 +303,73 @@ export default function AssessmentResults() {
     }
   }, [data]);
 
-  const fetchData = async () => {
-    const uuid = getUUID();
-    if (!uuid) { buildLocal(); return; }
-    try {
-      const res = await axios.get(`${API_URL}/api/assessment/summary/${uuid}`, { timeout: 10000 });
-      if (res.data.success) { setData(res.data); setLoading(false); return; }
-    } catch { console.warn('Using local data'); }
-    buildLocal();
-  };
-
   const buildLocal = () => {
-    const ci = getInfo();
-    const gt = k => { try { return JSON.parse(localStorage.getItem(`${k}_results`)||'null'); } catch { return null; } };
-    const t1=gt('task1'), t2=JSON.parse(localStorage.getItem('enhanced_voice_results')||'null'), t3=gt('task3'), t4=gt('task4');
-    
+    const ci = getChildInfo();
+    const gt = (key) => {
+      try {
+        const raw = localStorage.getItem(`${key}_results`);
+        return raw ? JSON.parse(raw) : null;
+      } catch { return null; }
+    };
+    const t1 = gt('task1');
+    const t2 = JSON.parse(localStorage.getItem('enhanced_voice_results') || 'null');
+    const t3 = gt('task3');
+    const t4 = gt('task4');
+
     const scores = {
       task1: t1?.percentage ?? null,
       task2: t2?.percentage ?? null,
       task3: t3?.percentage ?? null,
-      task4: t4?.percentage ?? null
+      task4: t4?.percentage ?? null,
     };
-    
     const overall = calculateOverallScore(scores);
     const riskLevel = getRiskLevelFromScore(overall);
     const tasksCompleted = Object.values(scores).filter(s => s != null).length;
-    
+
     setData({
-      session:{ childName:ci?.childFullName||ci?.childName||'Your Child', childGrade:ci?.childGrade||'—', createdAt:new Date().toISOString() },
-      tasks:{ task1:t1?{score:t1.percentage,level:t1.performance_level}:null, task2:t2?{score:t2.percentage,level:t2.fluency_level}:null, task3:t3?{score:t3.percentage,level:t3.performance_level}:null, task4:t4?{score:t4.percentage,level:t4.performance_level}:null },
-      summary:{ overallScore:overall, riskLevel:riskLevel, tasksCompleted:tasksCompleted },
+      session: {
+        childName: ci?.childFullName || ci?.childName || 'Your Child',
+        childGrade: ci?.childGrade || '—',
+        createdAt: new Date().toISOString(),
+      },
+      tasks: {
+        task1: t1 ? { score: t1.percentage, level: t1.performance_level } : null,
+        task2: t2 ? { score: t2.percentage, level: t2.fluency_level } : null,
+        task3: t3 ? { score: t3.percentage, level: t3.performance_level } : null,
+        task4: t4 ? { score: t4.percentage, level: t4.performance_level } : null,
+      },
+      summary: { overallScore: overall, riskLevel, tasksCompleted },
     });
-    setLoading(false);
   };
 
   /* ── Loading ── */
-  if (loading) return (
-    <div style={{ minHeight:'100vh', background:C.beige, display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div style={{ textAlign:'center' }}>
-        <div style={{ width:48, height:48, margin:'0 auto', border:`4px solid ${C.beigeXdk}`, borderTop:`4px solid ${C.forest}`, borderRadius:'50%', animation:'spin 0.9s linear infinite' }} />
-        <p style={{ color:C.mist, fontFamily:"'Nunito', sans-serif", marginTop:'1.5rem', fontWeight:600 }}>Preparing your report…</p>
+  if (loading) {
+    return (
+      <div style={{ minHeight:'100vh', background:C.beige, display:'flex', alignItems:'center', justifyContent:'center' }}>
+        <div style={{ textAlign:'center' }}>
+          <div style={{ width:48, height:48, margin:'0 auto', border:`4px solid ${C.beigeXdk}`, borderTop:`4px solid ${C.forest}`, borderRadius:'50%', animation:'spin 0.9s linear infinite' }} />
+          <p style={{ color:C.mist, fontFamily:"'Nunito', sans-serif", marginTop:'1.5rem', fontWeight:600 }}>Preparing your report…</p>
+        </div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
+    );
+  }
 
+  if (!data) return null;
   const { session, tasks, summary } = data;
   const risk = summary.riskLevel ? RISK[summary.riskLevel] : null;
   const scores = { task1:tasks.task1?.score??null, task2:tasks.task2?.score??null, task3:tasks.task3?.score??null, task4:tasks.task4?.score??null };
-  const date = new Date(session.createdAt).toLocaleDateString('en-US',{ year:'numeric', month:'long', day:'numeric' });
+  const date = session.createdAt ? new Date(session.createdAt).toLocaleDateString('en-US',{ year:'numeric', month:'long', day:'numeric' }) : '';
 
   return (
     <div style={{ minHeight:'100vh', background:C.beige, fontFamily:"'Nunito', sans-serif", color:C.ink, opacity:visible?1:0, transition:'opacity 0.8s ease' }}>
       <style>{GLOBAL_CSS}</style>
 
-      {/* ══ NAV ══════════════════════════════════════════════════ */}
+      {/* NAV */}
       <nav className="no-print" style={{ position:'sticky', top:0, zIndex:100, background:C.forest, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'0.85rem 2.5rem' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'0.85rem' }}>
-          <div style={{ width:36, height:36, background:C.gold, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'0.8rem', color:C.ink, letterSpacing:'0.03em', fontFamily:"'DM Serif Display', serif" }}>DS</div>
-          <span style={{ color:C.beige, fontFamily:"'DM Serif Display', serif", fontSize:'1.1rem', fontWeight:400, letterSpacing:'0.02em' }}>Dyslexia Support</span>
+          <div style={{ width:36, height:36, background:C.gold, borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:'0.8rem', color:C.ink, fontFamily:"'DM Serif Display', serif" }}>DS</div>
+          <span style={{ color:C.beige, fontFamily:"'DM Serif Display', serif", fontSize:'1.1rem', fontWeight:400 }}>Dyslexia Support</span>
         </div>
         <div style={{ display:'flex', gap:'0.75rem' }}>
           <button className="btn-ghost-nav" onClick={()=>navigate('/adventure')}>Back</button>
@@ -442,7 +377,7 @@ export default function AssessmentResults() {
         </div>
       </nav>
 
-      {/* ══ HERO BAND ══════════════════════════════════════════ */}
+      {/* HERO BAND */}
       <section style={{ background:`linear-gradient(135deg, ${C.forestDk} 0%, ${C.forest} 60%, ${C.forestLt} 100%)`, padding:'4rem 2.5rem 0', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:-80, right:-80, width:300, height:300, borderRadius:'50%', border:`1px solid rgba(255,255,255,0.06)` }} />
         <div style={{ position:'absolute', top:-40, right:-40, width:200, height:200, borderRadius:'50%', border:`1px solid rgba(255,255,255,0.06)` }} />
@@ -453,15 +388,15 @@ export default function AssessmentResults() {
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'2rem', alignItems:'flex-end', flexWrap:'wrap' }}>
             <div>
-              <h1 style={{ fontFamily:"'DM Serif Display', serif", fontSize:'clamp(2.4rem,6vw,4rem)', fontWeight:400, color:C.white, margin:'0 0 1.25rem', lineHeight:1.1, letterSpacing:'-0.01em' }}>
+              <h1 style={{ fontFamily:"'DM Serif Display', serif", fontSize:'clamp(2.4rem,6vw,4rem)', fontWeight:400, color:C.white, margin:'0 0 1.25rem', lineHeight:1.1 }}>
                 {session.childName}
-                <span style={{ display:'block', color:`rgba(255,255,255,0.45)`, fontSize:'clamp(1rem,2.5vw,1.4rem)', fontWeight:400, marginTop:'0.4rem', fontFamily:"'Nunito', sans-serif", letterSpacing:'0' }}>
+                <span style={{ display:'block', color:`rgba(255,255,255,0.45)`, fontSize:'clamp(1rem,2.5vw,1.4rem)', fontWeight:400, marginTop:'0.4rem', fontFamily:"'Nunito', sans-serif" }}>
                   Grade {session.childGrade} &nbsp;·&nbsp; {date}
                 </span>
               </h1>
               <div style={{ display:'flex', gap:'0.75rem', flexWrap:'wrap', marginBottom:'2.5rem' }}>
                 {[`${summary.tasksCompleted} of 4 Tasks Completed`, summary.riskLevel || 'Pending Review'].map((chip,i)=>(
-                  <span key={i} style={{ background:`rgba(255,255,255,0.1)`, border:`1px solid rgba(255,255,255,0.18)`, color:'rgba(255,255,255,0.85)', fontSize:'0.78rem', fontWeight:700, padding:'0.3rem 0.9rem', borderRadius:100, backdropFilter:'blur(6px)', letterSpacing:'0.03em' }}>{chip}</span>
+                  <span key={i} style={{ background:`rgba(255,255,255,0.1)`, border:`1px solid rgba(255,255,255,0.18)`, color:'rgba(255,255,255,0.85)', fontSize:'0.78rem', fontWeight:700, padding:'0.3rem 0.9rem', borderRadius:100, backdropFilter:'blur(6px)' }}>{chip}</span>
                 ))}
               </div>
             </div>
@@ -474,7 +409,7 @@ export default function AssessmentResults() {
 
       <div style={{ maxWidth:1100, margin:'0 auto', padding:'2.5rem 2.5rem 6rem' }}>
 
-        {/* ══ RISK BANNER ═══════════════════════════════════════ */}
+        {/* RISK BANNER */}
         {risk && (
           <div style={{ background:risk.bg, border:`1.5px solid ${risk.accent}30`, borderRadius:'1rem', padding:'1.5rem 2rem', display:'flex', alignItems:'center', gap:'1.5rem', marginBottom:'3rem', flexWrap:'wrap' }}>
             <div style={{ width:52, height:52, borderRadius:'50%', background:risk.accent, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -493,15 +428,13 @@ export default function AssessmentResults() {
           </div>
         )}
 
-        {/* ══ SECTION 1 — TASK RESULTS ═══════════════════════════ */}
+        {/* SECTION 1 — TASK RESULTS */}
         <Band n="01" title="Individual Task Results" />
-
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:'1.25rem', marginBottom:'1rem' }}>
           {TASKS.map(({ key, label, sub, num }) => {
             const t = tasks[key];
             const sc = t?.score ?? null;
             const { label:clsLabel, c } = classify(sc);
-            const displayScore = sc != null ? Math.round(sc) : null;
             return (
               <div key={key} className="task-card" style={{ background:C.white, borderRadius:'1rem', overflow:'hidden', boxShadow:'0 2px 20px rgba(30,45,37,0.08)' }}>
                 <div style={{ height:4, background:`linear-gradient(90deg, ${C.forest}, ${C.forestLt})` }} />
@@ -524,9 +457,8 @@ export default function AssessmentResults() {
           })}
         </div>
 
-        {/* ══ SECTION 2 — CHARTS ═════════════════════════════════ */}
+        {/* SECTION 2 — CHARTS */}
         <Band n="02" title="Performance Analysis" />
-
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem', marginBottom:'1.25rem' }}>
           <div style={{ background:C.white, borderRadius:'1rem', padding:'2rem', boxShadow:'0 2px 20px rgba(30,45,37,0.08)' }}>
             <ChartHead title="Score Comparison" sub="Performance across all four assessment domains" />
@@ -535,41 +467,33 @@ export default function AssessmentResults() {
               {[0,25,50,75,100].map(n=><span key={n} style={{ fontSize:'0.62rem', color:C.mist, fontWeight:700 }}>{n}%</span>)}
             </div>
           </div>
-
           <div style={{ background:C.white, borderRadius:'1rem', padding:'2rem', boxShadow:'0 2px 20px rgba(30,45,37,0.08)' }}>
             <ChartHead title="Skills Radar" sub="Holistic view of strengths and areas for growth" />
             <div style={{ marginTop:'0.5rem' }}><Radar scores={scores} /></div>
           </div>
         </div>
 
-        {/* ══ SECTION 3 — SCORING METHOD NOTE ════════════════════ */}
+        {/* SECTION 3 — SCORING METHODOLOGY */}
         <Band n="03" title="Scoring Methodology" />
-
         <div style={{ background:C.white, borderRadius:'1rem', padding:'1.5rem 2rem', marginBottom:'2rem', boxShadow:'0 2px 20px rgba(30,45,37,0.08)' }}>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1.5rem' }}>
             <div>
-              <div style={{ fontFamily:"'DM Serif Display', serif", fontSize:'1rem', color:C.forest, marginBottom:'0.5rem' }}>
-                📊 Calculation Method
-              </div>
+              <div style={{ fontFamily:"'DM Serif Display', serif", fontSize:'1rem', color:C.forest, marginBottom:'0.5rem' }}>📊 Calculation Method</div>
               <p style={{ fontSize:'0.8rem', color:C.mist, lineHeight:1.6, margin:0 }}>
-                {USE_WEIGHTED_SCORE 
+                {USE_WEIGHTED_SCORE
                   ? `Weighted average using task-specific weights. Some tasks (e.g., Letter Detective) are weighted higher due to their diagnostic importance for dyslexia.`
                   : `Simple average of all completed tasks — each assessment contributes equally to the final score.`}
               </p>
               {USE_WEIGHTED_SCORE && (
                 <div style={{ marginTop:'0.75rem', fontSize:'0.7rem', color:C.mist }}>
                   <strong>Weights:</strong><br />
-                  Word Explorer: {TASK_WEIGHTS.task1} &nbsp;|&nbsp;
-                  Story Reader: {TASK_WEIGHTS.task2} &nbsp;|&nbsp;
-                  Letter Detective: {TASK_WEIGHTS.task3} &nbsp;|&nbsp;
-                  Number Memory: {TASK_WEIGHTS.task4}
+                  Word Explorer: {TASK_WEIGHTS.task1} &nbsp;|&nbsp; Story Reader: {TASK_WEIGHTS.task2} &nbsp;|&nbsp;
+                  Letter Detective: {TASK_WEIGHTS.task3} &nbsp;|&nbsp; Number Memory: {TASK_WEIGHTS.task4}
                 </div>
               )}
             </div>
             <div>
-              <div style={{ fontFamily:"'DM Serif Display', serif", fontSize:'1rem', color:C.forest, marginBottom:'0.5rem' }}>
-                📈 Interpretation Scale
-              </div>
+              <div style={{ fontFamily:"'DM Serif Display', serif", fontSize:'1rem', color:C.forest, marginBottom:'0.5rem' }}>📈 Interpretation Scale</div>
               <div style={{ display:'flex', flexDirection:'column', gap:'0.3rem', fontSize:'0.7rem' }}>
                 <div><span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:C.forest, marginRight:'0.5rem' }} /> 85–100% — Normal (no signs)</div>
                 <div><span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#8A6000', marginRight:'0.5rem' }} /> 70–84% — Mild (monitor)</div>
@@ -580,31 +504,20 @@ export default function AssessmentResults() {
           </div>
         </div>
 
-        {/* ══ CTA ════════════════════════════════════════════════ */}
+        {/* CTA */}
         <div style={{ marginTop:'3rem', borderRadius:'1.25rem', overflow:'hidden', background:`linear-gradient(135deg, ${C.forestDk} 0%, ${C.forest} 100%)`, position:'relative' }}>
           <div style={{ position:'absolute', right:-60, top:-60, width:240, height:240, borderRadius:'50%', border:'1px solid rgba(255,184,77,0.12)' }} />
           <div style={{ position:'absolute', right:-20, top:-20, width:140, height:140, borderRadius:'50%', border:'1px solid rgba(255,184,77,0.12)' }} />
           <div style={{ position:'absolute', left:-40, bottom:-40, width:180, height:180, borderRadius:'50%', border:'1px solid rgba(255,255,255,0.05)' }} />
-
-          <div style={{ position:'relative', display:'grid', gridTemplateColumns:'1.8fr 1fr', gap:'3rem', padding:'3.5rem', alignItems:'center', flexWrap:'wrap' }}>
+          <div style={{ position:'relative', display:'grid', gridTemplateColumns:'1.8fr 1fr', gap:'3rem', padding:'3.5rem', alignItems:'center' }}>
             <div>
               <p style={{ margin:'0 0 0.5rem', fontSize:'0.68rem', fontWeight:800, letterSpacing:'0.22em', color:C.gold, textTransform:'uppercase' }}>Next Steps for {session.childName}</p>
-              <h2 style={{ margin:'0 0 1.25rem', fontFamily:"'DM Serif Display', serif", fontSize:'2rem', fontWeight:400, color:C.white, lineHeight:1.25 }}>
-                Turn These Results Into a Personalised Plan
-              </h2>
-              <p style={{ margin:'0 0 1.75rem', fontSize:'0.87rem', color:'rgba(255,255,255,0.72)', lineHeight:1.8 }}>
-                Our certified specialists use assessments like this to design a customised intervention programme —
-                targeting exactly the areas where your child needs support, while building on their existing strengths.
-              </p>
+              <h2 style={{ margin:'0 0 1.25rem', fontFamily:"'DM Serif Display', serif", fontSize:'2rem', fontWeight:400, color:C.white, lineHeight:1.25 }}>Turn These Results Into a Personalised Plan</h2>
+              <p style={{ margin:'0 0 1.75rem', fontSize:'0.87rem', color:'rgba(255,255,255,0.72)', lineHeight:1.8 }}>Our certified specialists use assessments like this to design a customised intervention programme — targeting exactly the areas where your child needs support, while building on their existing strengths.</p>
               <ul style={{ listStyle:'none', margin:0, padding:0, display:'flex', flexDirection:'column', gap:'0.65rem' }}>
-                {[
-                  'One-on-one sessions with a certified dyslexia specialist',
-                  'Custom exercises built directly from these results',
-                  'Weekly parent progress reports and guidance',
-                  'School coordination and educator support',
-                ].map((item,i)=>(
+                {['One-on-one sessions with a certified dyslexia specialist','Custom exercises built directly from these results','Weekly parent progress reports and guidance','School coordination and educator support'].map((item,i)=>(
                   <li key={i} style={{ display:'flex', alignItems:'flex-start', gap:'0.75rem', fontSize:'0.85rem', color:'rgba(255,255,255,0.78)', lineHeight:1.6 }}>
-                    <span style={{ color:C.gold, fontWeight:900, fontSize:'1rem', flexShrink:0, marginTop:'-0.05rem' }}>&#10003;</span>
+                    <span style={{ color:C.gold, fontWeight:900, fontSize:'1rem', flexShrink:0, marginTop:'-0.05rem' }}>✓</span>
                     {item}
                   </li>
                 ))}
@@ -615,15 +528,15 @@ export default function AssessmentResults() {
               <p style={{ margin:'0 0 0.6rem', fontFamily:"'DM Serif Display', serif", fontSize:'1.35rem', color:C.white, lineHeight:1.3 }}>Ready to take the next step?</p>
               <p style={{ margin:'0 0 1.75rem', fontSize:'0.8rem', color:'rgba(255,255,255,0.6)', lineHeight:1.65 }}>A specialist will review these results with you within 48 hours of signing up.</p>
               <button className="btn-cta" onClick={()=>navigate('/auth')}
-  style={{ width:'100%', background:`linear-gradient(135deg, ${C.gold}, ${C.goldDk})`, color:C.ink, border:'none', padding:'1rem', borderRadius:8, cursor:'pointer', fontWeight:800, fontSize:'0.95rem', fontFamily:"'Nunito', sans-serif", marginBottom:'0.85rem' }}>
-  Create Your Account
-</button>
+                style={{ width:'100%', background:`linear-gradient(135deg, ${C.gold}, ${C.goldDk})`, color:C.ink, border:'none', padding:'1rem', borderRadius:8, cursor:'pointer', fontWeight:800, fontSize:'0.95rem', fontFamily:"'Nunito', sans-serif", marginBottom:'0.85rem' }}>
+                Create Your Account
+              </button>
               <p style={{ margin:0, fontSize:'0.68rem', color:'rgba(255,255,255,0.35)' }}>No commitment required &nbsp;·&nbsp; Cancel anytime</p>
             </div>
           </div>
         </div>
 
-        {/* ══ FOOTER ══════════════════════════════════════════════ */}
+        {/* FOOTER */}
         <footer style={{ marginTop:'4rem', paddingTop:'2rem', borderTop:`1px solid ${C.beigeXdk}` }}>
           <div style={{ display:'flex', justifyContent:'space-between', flexWrap:'wrap', gap:'0.5rem', fontSize:'0.75rem', color:C.mist, fontWeight:600, marginBottom:'0.75rem' }}>
             <span>Dyslexia Support Platform &nbsp;·&nbsp; Screening Report &nbsp;·&nbsp; {date}</span>
@@ -697,9 +610,6 @@ const GLOBAL_CSS = `
 
   .task-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
   .task-card:hover { transform: translateY(-4px); box-shadow: 0 12px 36px rgba(30,45,37,0.14) !important; }
-
-  .rec-row { transition: background 0.15s ease; }
-  .rec-row:hover { background: #EDF5EF !important; }
 
   .btn-cta { transition: opacity 0.2s ease, transform 0.2s ease; }
   .btn-cta:hover { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,184,77,0.35) !important; }

@@ -312,3 +312,324 @@
     font-size: 0.9rem;
   }
 }
+/* EnhancedVoiceReading.css – TaskOne Style Header + Big Buttons */
+
+.enhanced-voice-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  font-family: 'Nunito', sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Background */
+.enhanced-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/assets/task1.png');
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+.enhanced-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
+/* ── HEADER BAR (exactly like Task One) ───────────────────── */
+.assessment-header-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 2rem;
+  margin: 0.8rem 1.5rem 0.5rem 1.5rem;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header-left, .header-center, .header-right {
+  flex: 1;
+}
+
+.header-center {
+  text-align: center;
+}
+
+.header-right {
+  text-align: right;
+}
+
+.category-name {
+  color: #3D5A4C;
+  font-weight: 800;
+  font-size: 1rem;
+  margin-left: 1rem;
+}
+
+.btn-pause {
+  background: #FFE9AD;
+  color: #3D5A4C;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+.btn-pause:hover {
+  background: #FFD700;
+  transform: scale(1.05);
+}
+
+.progress-display {
+  font-weight: 700;
+  color: #3D5A4C;
+}
+
+.timer {
+  background: #FFB84D;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  font-weight: 800;
+  font-size: 1rem;
+  display: inline-block;
+  font-family: monospace;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.timer.warning {
+  background: #f44336;
+  animation: pulse 1s infinite;
+}
+
+/* Progress bar (optional) */
+.assessment-progress-bar {
+  position: relative;
+  z-index: 10;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 3px;
+  margin: 0 1.5rem 0.5rem 1.5rem;
+  overflow: hidden;
+}
+
+.assessment-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3D5A4C, #5FB9B0);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* ── Scrollable content ───────────────────────────────────── */
+.enhanced-reading-content {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 2rem 1rem;
+  scrollbar-width: thin;
+}
+
+.enhanced-reading-content::-webkit-scrollbar {
+  width: 8px;
+}
+.enhanced-reading-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+.enhanced-reading-content::-webkit-scrollbar-thumb {
+  background: rgba(61, 90, 76, 0.5);
+  border-radius: 4px;
+}
+
+/* Word card */
+.current-word-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.enhanced-word-card {
+  position: relative;
+  background: white;
+  padding: 2rem 3rem;
+  border-radius: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  min-width: 280px;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.enhanced-word-text {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #3D5A4C;
+  letter-spacing: 2px;
+}
+
+/* Microphone status */
+.mic-status-section {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 2rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mic-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.mic-indicator.listening {
+  color: #4CAF50;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.transcript-box {
+  margin-top: 0.8rem;
+  padding: 0.5rem;
+  background: #f5f5f5;
+  border-radius: 1rem;
+}
+.transcript-label {
+  color: #888;
+  font-size: 0.8rem;
+}
+.transcript-text {
+  color: #3D5A4C;
+  font-weight: 600;
+  font-style: italic;
+  margin-left: 0.5rem;
+}
+
+/* Full passage */
+.full-passage {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.full-passage h3 {
+  color: #3D5A4C;
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+.passage-words {
+  line-height: 1.8;
+  font-size: 1rem;
+  color: #333;
+}
+.passage-word {
+  display: inline-block;
+  padding: 0.1rem 0.2rem;
+  border-radius: 0.3rem;
+  transition: all 0.2s;
+}
+.passage-word.current {
+  background: #FFE9AD;
+  box-shadow: 0 0 0 2px #FFB84D;
+  font-weight: 700;
+}
+.passage-word.done-correct {
+  background: #C8E6C9;
+  color: #2E7D32;
+  font-weight: 500;
+}
+.passage-word.done-wrong {
+  background: #FFE0B2;
+  color: #E65100;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+/* BIG FINISH BUTTON (styled like TaskOne's CHECK WORD button) */
+.big-action-button {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0 1.5rem;
+}
+.big-finish-btn {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+  border: none;
+  padding: 1rem 2.5rem;
+  border-radius: 3rem;
+  font-size: 1.3rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #b71c1c;
+  transition: all 0.2s;
+  font-family: 'Nunito', sans-serif;
+}
+.big-finish-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 0 #b71c1c;
+}
+.big-finish-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #b71c1c;
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .enhanced-word-text {
+    font-size: 2.5rem;
+  }
+  .enhanced-word-card {
+    padding: 1.5rem 2rem;
+  }
+  .assessment-header-bar {
+    padding: 0.6rem 1rem;
+    margin: 0.5rem 1rem;
+  }
+  .btn-pause {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  .progress-display, .timer {
+    font-size: 0.8rem;
+  }
+  .big-finish-btn {
+    padding: 0.8rem 1.8rem;
+    font-size: 1rem;
+  }
+  .passage-words {
+    font-size: 0.9rem;
+  }
+  .enhanced-reading-content {
+    padding: 0 1rem;
+  }
+}

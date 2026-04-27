@@ -1,517 +1,1040 @@
-import { useState, useEffect } from 'react';
-import './Dashboard.css';
+// TherapistDashboard.jsx — Dr. Sarah Mohamed | LexiCare Platform
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './Dashboard.css';   
+const BASE_URL = 'http://localhost:5000';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-// ─── helpers ────────────────────────────────────────────────────────────────
-const token = () => localStorage.getItem('token');
-const authHeaders = () => ({
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${token()}`,
-});
-
-async function apiFetch(path, opts = {}) {
-  const res = await fetch(`${API_URL}${path}`, { headers: authHeaders(), ...opts });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+function apiFetch(path, options = {}) {
+  const token = localStorage.getItem('token');
+  return fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
+    credentials: 'include',
+  });
 }
 
-// ─── Risk level config ───────────────────────────────────────────────────────
-const RISK_CONFIG = {
-  Normal:   { bg: '#e6f5ee', color: '#1a6b40', label: 'Normal' },
-  Mild:     { bg: '#fef6e4', color: '#8a5a0a', label: 'Mild' },
-  Moderate: { bg: '#fff0e8', color: '#8a3a10', label: 'Moderate' },
-  Severe:   { bg: '#feeaea', color: '#8a1f1f', label: 'Severe' },
+// ─── RISK CONFIG ──────────────────────────────────────────────
+const RISK = {
+  Normal:   { label: 'Normal',   color: '#1a6b40', bg: '#e6f5ee', dot: '#22c55e' },
+  Mild:     { label: 'Mild',     color: '#92610a', bg: '#fef6e4', dot: '#f59e0b' },
+  Moderate: { label: 'Moderate', color: '#9a3d12', bg: '#fff0e8', dot: '#f97316' },
+  Severe:   { label: 'Severe',   color: '#8b1f1f', bg: '#feeaea', dot: '#ef4444' },
 };
-
-const riskFromScore = (s) => {
-  if (s == null) return null;
+const getRisk = (s) => {
+  if (s == null) return RISK.Normal;
+  if (s >= 85) return RISK.Normal;
+  if (s >= 70) return RISK.Mild;
+  if (s >= 50) return RISK.Moderate;
+  return RISK.Severe;
+};
+const getRiskLabel = (s) => {
+  if (s == null) return 'Normal';
   if (s >= 85) return 'Normal';
   if (s >= 70) return 'Mild';
   if (s >= 50) return 'Moderate';
   return 'Severe';
 };
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) : '';
 
-const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+// ─── ICONS ────────────────────────────────────────────────────
+const Ico = ({ d, size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+const Icons = {
+  home:      'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  patients:  'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  chat:      'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  notes:     'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8',
+  activity:  'M22 12h-4l-3 9L9 3l-3 9H2',
+  logout:    'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  send:      'M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z',
+  plus:      'M12 5v14M5 12h14',
+  check:     'M20 6L9 17l-5-5',
+  chevron:   'M6 9l6 6 6-6',
+  user:      'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  bell:      'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
+  clock:     'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zM12 6v6l4 2',
+  star:      'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+  trash:     'M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2',
+  assign:    'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
+  search:    'M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z',
+  brain:     'M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2zM14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2z',
+};
 
-// ─── mini components ─────────────────────────────────────────────────────────
-function RiskBadge({ riskLevel }) {
-  const cfg = RISK_CONFIG[riskLevel];
-  if (!cfg) return <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: '#f0f0f0', color: '#888' }}>NO DATA</span>;
+// ─── SCORE BAR ────────────────────────────────────────────────
+function ScoreBar({ label, score, weight }) {
+  const risk = getRisk(score);
   return (
-    <span style={{ background: cfg.bg, color: cfg.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>
-      {cfg.label}
-    </span>
-  );
-}
-
-function StatusBadge({ status }) {
-  const map = {
-    'ON TRACK':      { bg: '#e6f9f0', color: '#1db87a' },
-    'NEEDS SUPPORT': { bg: '#fff3e0', color: '#f59e0b' },
-    'AT RISK':       { bg: '#fff0f0', color: '#e84848' },
-    'NO DATA':       { bg: '#f0f0f0', color: '#999' },
-  };
-  const s = map[status] || map['NO DATA'];
-  return <span style={{ background: s.bg, color: s.color, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 6, letterSpacing: 0.3, whiteSpace: 'nowrap' }}>{status}</span>;
-}
-
-function Avatar({ name }) {
-  const initials = name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  return <div className="dashboard__avatar">{initials}</div>;
-}
-
-function MiniScoreBar({ value, color = '#4a7cf6' }) {
-  return (
-    <div style={{ background: '#f0f0f0', borderRadius: 4, height: 6, width: 80, overflow: 'hidden' }}>
-      <div style={{ background: color, height: '100%', width: `${Math.min(value ?? 0, 100)}%`, borderRadius: 4, transition: 'width 0.6s ease' }} />
+    <div className="td-bar-row">
+      <div className="td-bar-hdr">
+        <span>{label}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+          {weight && <span className="td-weight-pill">×{weight}</span>}
+          <span style={{ color: risk.color, fontWeight: 700 }}>{score != null ? `${Math.round(score)}%` : 'N/A'}</span>
+        </div>
+      </div>
+      <div className="td-bar-track">
+        <div className="td-bar-fill" style={{
+          width: `${score ?? 0}%`,
+          background: `linear-gradient(90deg, ${risk.color}cc, ${risk.color})`,
+        }} />
+      </div>
     </div>
   );
 }
 
-// ─── Assessment Detail Modal ─────────────────────────────────────────────────
-function AssessmentDetailModal({ student, assessments, onClose }) {
-  if (!student) return null;
+// ─── STAT CARD ────────────────────────────────────────────────
+function StatCard({ icon, value, label, sub, accent }) {
   return (
-    <div className="dashboard__modal-overlay" onClick={onClose}>
-      <div className="dashboard__modal" style={{ maxWidth: 580, width: '92%' }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 className="dashboard__modal-title" style={{ margin: 0 }}>
-            Assessment History — {student.child_name || student.name}
-          </h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#666', lineHeight: 1 }}>×</button>
-        </div>
+    <div className="td-stat" style={{ '--accent': accent || 'var(--teal)' }}>
+      <div className="td-stat-icon"><Ico d={icon} size={20} /></div>
+      <div className="td-stat-val">{value}</div>
+      <div className="td-stat-lbl">{label}</div>
+      {sub && <div className="td-stat-sub">{sub}</div>}
+    </div>
+  );
+}
 
-        {assessments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 0', color: '#999', fontSize: 13 }}>No assessment records yet.</div>
-        ) : (
-          assessments.map((a, i) => {
-            const riskConf = RISK_CONFIG[a.risk_level];
+// ─── RISK BADGE ───────────────────────────────────────────────
+function RiskBadge({ score }) {
+  const label = getRiskLabel(score);
+  const risk = RISK[label] || RISK.Normal;
+  return (
+    <span className="td-risk-badge" style={{ background: risk.bg, color: risk.color }}>
+      <span style={{ width:6, height:6, borderRadius:'50%', background: risk.dot, display:'inline-block', marginRight:5 }} />
+      {label}
+    </span>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// HOME TAB
+// ══════════════════════════════════════════════════════════════
+function HomeTab({ patients, onViewPatient }) {
+  const completed = patients.filter(p => p.overall_score != null);
+  const severe    = completed.filter(p => p.overall_score < 50).length;
+  const moderate  = completed.filter(p => p.overall_score >= 50 && p.overall_score < 70).length;
+  const normal    = completed.filter(p => p.overall_score >= 85).length;
+  const avgScore  = completed.length
+    ? Math.round(completed.reduce((a, p) => a + p.overall_score, 0) / completed.length)
+    : 0;
+
+  const recent = [...completed].sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at)).slice(0, 5);
+
+  return (
+    <div className="td-pane">
+      <div className="td-page-eyebrow">Clinical Overview</div>
+      <h1 className="td-page-title">Good morning, <em>Dr. Sarah</em></h1>
+      <p className="td-page-sub">Here's your patient overview and today's activity summary.</p>
+
+      <div className="td-stats-grid">
+        <StatCard icon={Icons.patients} value={patients.length} label="Registered Patients" sub={`${completed.length} assessed`} accent="var(--teal)" />
+        <StatCard icon={Icons.activity} value={`${avgScore}%`} label="Average Score" sub="across all assessments" accent="var(--gold-dark)" />
+        <StatCard icon={Icons.brain}    value={severe}  label="Severe Cases"   sub="need immediate attention" accent="#c0392b" />
+        <StatCard icon={Icons.check}    value={normal}  label="Normal Range"   sub="performing well" accent="#1a6b40" />
+      </div>
+
+      {/* Risk distribution */}
+      <div className="td-card" style={{ marginBottom: 24 }}>
+        <div className="td-card-hdr"><span className="td-card-title">Risk Distribution</span></div>
+        <div className="td-risk-dist">
+          {['Normal','Mild','Moderate','Severe'].map(key => {
+            const risk = RISK[key];
+            const count = key === 'Normal' ? normal
+              : key === 'Mild' ? (completed.filter(p => p.overall_score >= 70 && p.overall_score < 85).length)
+              : key === 'Moderate' ? moderate
+              : severe;
+            const pct = completed.length ? Math.round((count / completed.length) * 100) : 0;
             return (
-              <div key={a.session_uuid || i} style={{ border: '1px solid #eee', borderRadius: 12, padding: '16px 20px', marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1E2D25' }}>Session {assessments.length - i}</div>
-                    <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Year {a.child_grade} · {fmtDate(a.completed_at || a.session_started_at)}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 800, fontSize: 22, color: riskConf?.color || '#888' }}>{a.overall_score != null ? `${a.overall_score}%` : '—'}</div>
-                    <RiskBadge riskLevel={a.risk_level} />
-                  </div>
+              <div key={key} className="td-dist-item">
+                <div className="td-dist-label" style={{ color: risk.color }}>{key}</div>
+                <div className="td-dist-bar-track">
+                  <div className="td-dist-bar-fill" style={{ width: `${pct}%`, background: risk.color }} />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div className="td-dist-count">{count} <span>({pct}%)</span></div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Recent assessments */}
+      <div className="td-card">
+        <div className="td-card-hdr">
+          <span className="td-card-title">Recent Assessments</span>
+        </div>
+        {recent.length === 0 ? (
+          <div className="td-empty">No assessments completed yet.</div>
+        ) : (
+          <table className="td-table">
+            <thead>
+              <tr>
+                <th>Child</th><th>Grade</th><th>Overall</th><th>Risk</th><th>Date</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map(p => (
+                <tr key={p.child_session_id || p.child_id}>
+                  <td>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <div className="td-av">{p.child_name?.charAt(0)}</div>
+                      <div>
+                        <div style={{ fontWeight:600 }}>{p.child_name}</div>
+                        <div style={{ fontSize:11, color:'var(--ink-soft)' }}>{p.parent_name || '—'}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>Year {p.grade}</td>
+                  <td style={{ fontWeight:700, color: getRisk(p.overall_score).color }}>
+                    {p.overall_score != null ? `${Math.round(p.overall_score)}%` : '—'}
+                  </td>
+                  <td><RiskBadge score={p.overall_score} /></td>
+                  <td>{fmtDate(p.completed_at)}</td>
+                  <td>
+                    <button className="td-btn-sm" onClick={() => onViewPatient(p)}>View</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// PATIENTS TAB
+// ══════════════════════════════════════════════════════════════
+function PatientsTab({ patients, onViewPatient }) {
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  const filtered = patients.filter(p => {
+    const q = search.toLowerCase();
+    const nameMatch = p.child_name?.toLowerCase().includes(q) || p.parent_name?.toLowerCase().includes(q);
+    if (!nameMatch) return false;
+    if (filter === 'all') return true;
+    return getRiskLabel(p.overall_score).toLowerCase() === filter;
+  });
+
+  return (
+    <div className="td-pane">
+      <div className="td-page-eyebrow">Patient Management</div>
+      <h1 className="td-page-title">All <em>Patients</em></h1>
+      <p className="td-page-sub">Children who have completed the full assessment screening.</p>
+
+      <div className="td-toolbar">
+        <div className="td-search-wrap">
+          <Ico d={Icons.search} size={16} />
+          <input className="td-search" placeholder="Search by child or parent name…"
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="td-filter-tabs">
+          {['all','normal','mild','moderate','severe'].map(f => (
+            <button key={f} className={`td-filter-tab ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(f)}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="td-patient-grid">
+        {filtered.length === 0 ? (
+          <div className="td-empty" style={{ gridColumn:'1/-1' }}>No patients found.</div>
+        ) : filtered.map(p => {
+          const risk = getRisk(p.overall_score);
+          const label = getRiskLabel(p.overall_score);
+          return (
+            <div key={p.child_session_id || p.child_id} className="td-patient-card"
+              onClick={() => onViewPatient(p)} style={{ '--risk-color': risk.color }}>
+              <div className="td-pc-top">
+                <div className="td-pc-av">{p.child_name?.charAt(0)}</div>
+                <div style={{ flex: 1 }}>
+                  <div className="td-pc-name">{p.child_name}</div>
+                  <div className="td-pc-meta">Year {p.grade} · Parent: {p.parent_name || '—'}</div>
+                </div>
+                <RiskBadge score={p.overall_score} />
+              </div>
+
+              <div className="td-pc-score-row">
+                <div className="td-pc-gauge">
+                  <svg viewBox="0 0 80 50" width="80" height="50">
+                    <path d="M 10 45 A 35 35 0 0 1 70 45" fill="none" stroke="#e2e8f0" strokeWidth="6" strokeLinecap="round" />
+                    <path d="M 10 45 A 35 35 0 0 1 70 45" fill="none" stroke={risk.color} strokeWidth="6"
+                      strokeLinecap="round" strokeDasharray="110"
+                      strokeDashoffset={110 - ((p.overall_score ?? 0) / 100) * 110} />
+                    <text x="40" y="44" textAnchor="middle" fontSize="11" fontWeight="700" fill={risk.color}>
+                      {p.overall_score != null ? `${Math.round(p.overall_score)}%` : '—'}
+                    </text>
+                  </svg>
+                </div>
+                <div className="td-pc-tasks">
                   {[
-                    { label: 'Word Explorer', score: a.task1_score },
-                    { label: 'Story Reader', score: a.task2_score },
-                    { label: 'Letter Detective', score: a.task3_score },
-                    { label: 'Number Memory', score: a.task4_score },
-                  ].map(({ label, score }) => (
-                    <div key={label} style={{ background: '#f8f9fa', borderRadius: 8, padding: '8px 12px' }}>
-                      <div style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>{label}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <MiniScoreBar value={score} color={riskConf?.color || '#4a7cf6'} />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: '#333' }}>{score != null ? `${score}%` : 'N/A'}</span>
+                    { k: 'task1_score', l: 'Word' },
+                    { k: 'task2_score', l: 'Story' },
+                    { k: 'task3_score', l: 'Letter' },
+                    { k: 'task4_score', l: 'Memory' },
+                  ].map(({ k, l }) => (
+                    <div key={k} className="td-mini-task">
+                      <div className="td-mini-label">{l}</div>
+                      <div className="td-mini-bar-track">
+                        <div className="td-mini-bar-fill" style={{
+                          width: `${p[k] ?? 0}%`,
+                          background: getRisk(p[k]).color,
+                        }} />
+                      </div>
+                      <div className="td-mini-val" style={{ color: getRisk(p[k]).color }}>
+                        {p[k] != null ? `${Math.round(p[k])}%` : '—'}
                       </div>
                     </div>
                   ))}
                 </div>
-                {a.scoring_method && (
-                  <div style={{ fontSize: 11, color: '#aaa', marginTop: 10, textAlign: 'right' }}>Method: {a.scoring_method === 'weighted' ? 'Weighted average' : 'Simple average'}</div>
-                )}
               </div>
-            );
-          })
-        )}
-        <div className="dashboard__modal-actions">
-          <button onClick={onClose} className="dashboard__modal-cancel">Close</button>
+
+              <div className="td-pc-footer">
+                <span><Ico d={Icons.clock} size={12} /> {fmtDate(p.completed_at)}</span>
+                <button className="td-btn-sm" onClick={e => { e.stopPropagation(); onViewPatient(p); }}>
+                  Full Report →
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// PATIENT DETAIL PANEL (slide-in)
+// ══════════════════════════════════════════════════════════════
+function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [activities, setActivities] = useState([]);
+  const [showAssign, setShowAssign] = useState(false);
+
+  useEffect(() => {
+    if (!patient) return;
+    apiFetch(`/api/therapist/notes?childId=${patient.child_id}`)
+      .then(r => r.json()).then(d => setNotes(Array.isArray(d) ? d : [])).catch(() => {});
+    apiFetch(`/api/activities`)
+      .then(r => r.json()).then(d => setActivities(Array.isArray(d) ? d : [])).catch(() => {});
+  }, [patient]);
+
+  const addNote = async () => {
+    if (!newNote.trim()) return;
+    setSavingNote(true);
+    try {
+      const res = await apiFetch('/api/therapist/notes', {
+        method: 'POST',
+        body: JSON.stringify({ child_id: patient.child_id, note_text: newNote.trim() }),
+      });
+      const data = await res.json();
+      setNotes(prev => [data, ...prev]);
+      setNewNote('');
+    } catch {}
+    setSavingNote(false);
+  };
+
+  if (!patient) return null;
+
+  const risk = getRisk(patient.overall_score);
+  const tasks = [
+    { label: 'Word Explorer',    score: patient.task1_score, weight: 2, key: 'task1' },
+    { label: 'Story Reader',     score: patient.task2_score, weight: 2, key: 'task2' },
+    { label: 'Letter Detective', score: patient.task3_score, weight: 3, key: 'task3' },
+    { label: 'Number Memory',    score: patient.task4_score, weight: 1, key: 'task4' },
+  ];
+
+  return (
+    <div className="td-detail-overlay" onClick={onClose}>
+      <div className="td-detail-panel" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="td-detail-hdr" style={{ background: `linear-gradient(135deg, var(--forest-dk), var(--forest))` }}>
+          <button className="td-detail-close" onClick={onClose}>×</button>
+          <div className="td-detail-av">{patient.child_name?.charAt(0)}</div>
+          <div className="td-detail-info">
+            <div className="td-detail-name">{patient.child_name}</div>
+            <div className="td-detail-meta">Year {patient.grade} · Parent: {patient.parent_name || '—'}</div>
+            <RiskBadge score={patient.overall_score} />
+          </div>
+          <div className="td-detail-overall">
+            <div style={{ fontSize: 36, fontWeight: 800, color: '#fff' }}>
+              {patient.overall_score != null ? `${Math.round(patient.overall_score)}%` : '—'}
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>Overall Score</div>
+          </div>
+        </div>
+
+        <div className="td-detail-body">
+          {/* Task Scores */}
+          <div className="td-detail-section">
+            <div className="td-detail-section-title">Assessment Results</div>
+            {tasks.map(t => <ScoreBar key={t.key} label={t.label} score={t.score} weight={t.weight} />)}
+          </div>
+
+          {/* Session Info */}
+          <div className="td-detail-section">
+            <div className="td-detail-section-title">Session Information</div>
+            <div className="td-info-grid">
+              <div className="td-info-item"><span>Completed</span><strong>{fmtDate(patient.completed_at)}</strong></div>
+              <div className="td-info-item"><span>Session ID</span><strong>#{patient.child_session_id}</strong></div>
+              <div className="td-info-item"><span>Child ID</span><strong>#{patient.child_id}</strong></div>
+              <div className="td-info-item"><span>Parent</span><strong>{patient.parent_name || '—'}</strong></div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="td-detail-section">
+            <div className="td-detail-section-title">Clinical Notes</div>
+            <div className="td-note-input-row">
+              <textarea
+                className="td-note-input"
+                placeholder="Add a clinical note about this child…"
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                rows={2}
+              />
+              <button className="td-btn-primary" onClick={addNote} disabled={savingNote || !newNote.trim()}>
+                {savingNote ? '…' : 'Add'}
+              </button>
+            </div>
+            <div className="td-notes-list">
+              {notes.length === 0 ? (
+                <div className="td-empty-sm">No notes yet.</div>
+              ) : notes.map((n, i) => (
+                <div key={i} className="td-note-item">
+                  <div className="td-note-text">{n.note_text}</div>
+                  <div className="td-note-date">{fmtDate(n.created_at)}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Assign Activity */}
+          <div className="td-detail-section">
+            <div className="td-detail-section-title">Assign Activity</div>
+            <div className="td-activities-list">
+              {activities.map(act => (
+                <div key={act.id} className="td-act-item">
+                  <div>
+                    <div className="td-act-name">{act.name}</div>
+                    <div className="td-act-desc">{act.description}</div>
+                    <span className="td-act-level">Level {act.difficulty_level}</span>
+                  </div>
+                  <button className="td-btn-assign"
+                    onClick={() => onAssignActivity(patient.child_id, act.id)}>
+                    <Ico d={Icons.assign} size={14} /> Assign
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="td-detail-actions">
+            <button className="td-btn-primary" style={{ flex: 1 }}
+              onClick={() => onOpenChat(patient)}>
+              <Ico d={Icons.chat} size={15} /> Message Parent
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── static mock data ────────────────────────────────────────────────────────
-const MOCK_STUDENTS = [
-  { id: 1, name: 'Leo Henderson', grade: 'Grade 3', age: 8, status: 'ON TRACK', phonologicalScore: 84, assessmentCount: 1 },
-  { id: 2, name: 'Sarah Miller', grade: 'Grade 4', age: 9, status: 'AT RISK', phonologicalScore: 42, assessmentCount: 1 },
-  { id: 3, name: 'Jamie Watson', grade: 'Grade 2', age: 7, status: 'NO DATA', phonologicalScore: null, assessmentCount: 0 },
-];
+// ══════════════════════════════════════════════════════════════
+// CHAT TAB
+// ══════════════════════════════════════════════════════════════
+function ChatTab({ patients, defaultParent }) {
+  const [conversations, setConversations] = useState([]);
+  const [activeParentId, setActiveParentId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const bottomRef = useRef(null);
+  const pollRef = useRef(null);
 
-const MOCK_ACTIVITY = [
-  { id: 1, dot: '#4a7cf6', title: 'Leo H. completed "Vowel Sounds Mastery"', sub: 'Score: 92% • Duration: 12 mins • Today at 10:45 AM' },
-  { id: 2, dot: '#f59e0b', title: 'Sarah M. struggled with "Blending Level 2"', sub: 'System flagged high error rate (45%) • 2 hours ago' },
-];
-
-const MOCK_NOTES = [
-  { id: 1, date: 'Dec 12, 2023', text: 'Follow up with Sarah\'s parents regarding the updated intervention plan.' },
-];
-
-const NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: '⊞' },
-  { id: 'students',  label: 'Students',  icon: '👥' },
-  { id: 'reports',   label: 'Reports',   icon: '📊' },
-  { id: 'settings',  label: 'Settings',  icon: '⚙' },
-  { id: 'audit',     label: 'Security Log', icon: '🔐' },
-];
-
-export default function Dashboard() {
-  const [activePage, setActivePage] = useState('dashboard');
-  const [students, setStudents] = useState(MOCK_STUDENTS);
-  const [activity, setActivity] = useState(MOCK_ACTIVITY);
-  const [notes, setNotes] = useState(MOCK_NOTES);
-  const [newNote, setNewNote] = useState('');
-  const [search, setSearch] = useState('');
-  const [showAddStudent, setShowAddStudent] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', grade: '', age: '' });
-
-  // Assessment summaries keyed by child name (from full_assessment_summary)
-  const [assessmentMap, setAssessmentMap] = useState({}); // { childName: [summary, ...] }
-  const [selectedStudent, setSelectedStudent] = useState(null);
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userId');
-    window.location.href = '/';
-  };
-
-  useEffect(() => { loadDashboardData(); }, []);
-
-  async function loadDashboardData() {
-    try {
-      // Load students AND all assessment summaries in parallel
-      const [childrenRes, activityRes, summariesRes] = await Promise.allSettled([
-        apiFetch('/api/dashboard/students'),
-        apiFetch('/api/dashboard/activity'),
-        apiFetch('/api/dashboard/assessment-summaries'),  // new endpoint
-      ]);
-
-      if (childrenRes.status === 'fulfilled' && childrenRes.value?.students?.length) {
-        setStudents(childrenRes.value.students);
+  // Build unique parent list from patients
+  useEffect(() => {
+    const parentMap = {};
+    patients.forEach(p => {
+      if (p.parent_id && !parentMap[p.parent_id]) {
+        parentMap[p.parent_id] = {
+          parent_id: p.parent_id,
+          parent_name: p.parent_name || 'Unknown Parent',
+          child_name: p.child_name,
+          child_id: p.child_id,
+        };
       }
-      if (activityRes.status === 'fulfilled' && activityRes.value?.activity?.length) {
-        setActivity(activityRes.value.activity);
-      }
-      if (summariesRes.status === 'fulfilled' && summariesRes.value?.summaries) {
-        // Group summaries by child_name (or child_id)
-        const map = {};
-        for (const s of summariesRes.value.summaries) {
-          const key = s.child_name || 'Unknown';
-          if (!map[key]) map[key] = [];
-          map[key].push(s);
-        }
-        setAssessmentMap(map);
-      }
-    } catch {
-      // fall back to mock data
-    }
-  }
+    });
+    setConversations(Object.values(parentMap));
+  }, [patients]);
 
-  // Merge assessment data into student rows
-  const enrichedStudents = students.map((s) => {
-    const summaries = assessmentMap[s.name] || [];
-    const latest = summaries[0]; // already ordered DESC
-    return {
-      ...s,
-      riskLevel: latest?.risk_level || null,
-      overallScore: latest?.overall_score ?? s.phonologicalScore,
-      assessmentCount: latest ? summaries.length : (s.assessmentCount || 0),
-      lastAssessmentDate: latest?.completed_at || s.lastAssessmentDate || null,
-      summaries,
-    };
-  });
+  // Set default from patient detail
+  useEffect(() => {
+    if (defaultParent?.parent_id) setActiveParentId(defaultParent.parent_id);
+  }, [defaultParent]);
 
-  const handleNavigation = (id) => {
-    if (id === 'audit') { window.location.href = '/audit-log'; }
-    else { setActivePage(id); }
-  };
-
-  const filtered = enrichedStudents.filter((s) =>
-    s.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const stats = [
-    { label: 'Total Students', value: students.length, badge: null, icon: '👤', iconBg: '#e0f0ff' },
-    { label: 'Assessments Completed', value: Object.values(assessmentMap).flat().length, badge: null, icon: '📋', iconBg: '#fff3e0' },
-    { label: 'At Risk', value: enrichedStudents.filter(s => s.riskLevel === 'Severe' || s.riskLevel === 'Moderate').length, badge: null, icon: '⚠️', iconBg: '#ffeaea' },
-    { label: 'Normal Range', value: enrichedStudents.filter(s => s.riskLevel === 'Normal').length, badge: null, icon: '✅', iconBg: '#e6fff4' },
-  ];
-
-  async function handleAddNote(e) {
-    e.preventDefault();
-    if (!newNote.trim()) return;
+  const loadMessages = useCallback(async () => {
+    if (!activeParentId) return;
+    setLoadingMsgs(true);
     try {
-      const data = await apiFetch('/api/dashboard/notes', { method: 'POST', body: JSON.stringify({ text: newNote }) });
-      setNotes((prev) => [data.note, ...prev]);
-    } catch {
-      setNotes((prev) => [{ id: Date.now(), date: 'Today', text: newNote }, ...prev]);
-    }
-    setNewNote('');
-  }
+      const res = await apiFetch(`/api/messages?parentId=${activeParentId}`);
+      const data = await res.json();
+      setMessages(data.messages || []);
+    } catch {}
+    setLoadingMsgs(false);
+  }, [activeParentId]);
 
-  async function handleAddStudent(e) {
-    e.preventDefault();
+  useEffect(() => {
+    loadMessages();
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(loadMessages, 4000);
+    return () => clearInterval(pollRef.current);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || sending || !activeParentId) return;
+    setSending(true);
+    setInput('');
     try {
-      const data = await apiFetch('/api/dashboard/students', {
+      const conv = conversations.find(c => c.parent_id === activeParentId);
+      await apiFetch('/api/messages', {
         method: 'POST',
-        body: JSON.stringify({ name: addForm.name, grade: addForm.grade, age: addForm.age }),
+        body: JSON.stringify({ content: text, parentId: activeParentId, child_id: conv?.child_id || null }),
       });
-      setStudents((prev) => [...prev, data.student]);
-    } catch {
-      setStudents((prev) => [...prev, { id: Date.now(), name: addForm.name, grade: addForm.grade, age: parseInt(addForm.age), status: 'NO DATA', phonologicalScore: null, assessmentCount: 0 }]);
-    }
-    setAddForm({ name: '', grade: '', age: '' });
-    setShowAddStudent(false);
-  }
+      await loadMessages();
+    } catch { setInput(text); }
+    setSending(false);
+  };
+
+  const activeConv = conversations.find(c => c.parent_id === activeParentId);
 
   return (
-    <div className="dashboard">
-      <aside className="dashboard__sidebar">
-        <div className="dashboard__logo">
-          <div className="dashboard__logo-icon">L</div>
-          <span className="dashboard__logo-text">LexiCare</span>
-        </div>
+    <div className="td-pane">
+      <div className="td-page-eyebrow">Communication</div>
+      <h1 className="td-page-title">Parent <em>Messages</em></h1>
+      <p className="td-page-sub">Communicate directly with parents about their child's progress.</p>
 
-        <nav className="dashboard__nav">
-          {NAV.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavigation(item.id)}
-              className={`dashboard__nav-item ${activePage === item.id ? 'dashboard__nav-item--active' : ''}`}
-            >
-              <span className="dashboard__nav-icon">{item.icon}</span>
-              <span>{item.label}</span>
-            </button>
+      <div className="td-chat-layout">
+        {/* Conversation list */}
+        <div className="td-conv-list">
+          <div className="td-conv-head">Conversations</div>
+          {conversations.length === 0 ? (
+            <div className="td-empty-sm" style={{ padding: '20px 16px' }}>No conversations yet.</div>
+          ) : conversations.map(c => (
+            <div key={c.parent_id}
+              className={`td-conv-item ${activeParentId === c.parent_id ? 'active' : ''}`}
+              onClick={() => setActiveParentId(c.parent_id)}>
+              <div className="td-conv-av">{c.parent_name?.charAt(0)}</div>
+              <div>
+                <div className="td-conv-name">{c.parent_name}</div>
+                <div className="td-conv-child">re: {c.child_name}</div>
+              </div>
+            </div>
           ))}
-        </nav>
-
-        <div className="dashboard__user">
-          <div className="dashboard__user-label">LOGGED IN AS</div>
-          <div className="dashboard__user-details">
-            <div className="dashboard__user-avatar">T</div>
-            <div>
-              <div className="dashboard__user-name">Therapist</div>
-              <div className="dashboard__user-role">Clinical Specialist</div>
-            </div>
-          </div>
-          <button onClick={handleLogout} className="dashboard__logout-btn">Logout</button>
         </div>
-      </aside>
 
-      <main className="dashboard__main">
-        <header className="dashboard__header">
-          <div className="dashboard__breadcrumb">
-            <span>Dashboard</span><span>›</span>
-            <span className="dashboard__breadcrumb-current">Student Overview</span>
-          </div>
-          <div className="dashboard__actions">
-            <div className="dashboard__search">
-              <span className="dashboard__search-icon">🔍</span>
-              <input placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} className="dashboard__search-input" />
+        {/* Messages panel */}
+        <div className="td-chat-panel">
+          {!activeParentId ? (
+            <div className="td-chat-empty">
+              <Ico d={Icons.chat} size={40} />
+              <p>Select a conversation to begin</p>
             </div>
-            <button onClick={loadDashboardData} style={{ background: 'none', border: '1px solid #ddd', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 13, color: '#555' }}>↻ Refresh</button>
-          </div>
-        </header>
-
-        <div className="dashboard__content">
-          {/* Stats Row */}
-          <div className="dashboard__stats-grid">
-            {stats.map((s) => (
-              <div key={s.label} className="dashboard__stat-card">
-                <div className="dashboard__stat-header">
-                  <div className="dashboard__stat-icon" style={{ background: s.iconBg }}>{s.icon}</div>
+          ) : (
+            <>
+              <div className="td-chat-topbar">
+                <div className="td-chat-av">{activeConv?.parent_name?.charAt(0)}</div>
+                <div>
+                  <div className="td-chat-name">{activeConv?.parent_name}</div>
+                  <div className="td-chat-sub">Parent of {activeConv?.child_name}</div>
                 </div>
-                <div className="dashboard__stat-label">{s.label}</div>
-                <div className="dashboard__stat-value">{s.value}</div>
+              </div>
+
+              <div className="td-chat-messages">
+                {loadingMsgs && messages.length === 0 ? (
+                  <div className="td-empty-sm">Loading…</div>
+                ) : messages.length === 0 ? (
+                  <div className="td-chat-start">Start the conversation with {activeConv?.parent_name}.</div>
+                ) : messages.map(m => {
+                  const isMe = m.sender_role === 'therapist';
+                  return (
+                    <div key={m.id} className={`td-msg-wrap ${isMe ? 'right' : ''}`}>
+                      {!isMe && <div className="td-msg-av">{activeConv?.parent_name?.charAt(0)}</div>}
+                      <div>
+                        <div className={`td-bubble ${isMe ? 'therapist' : 'parent'}`}>{m.content}</div>
+                        <div className={`td-msg-time ${isMe ? 'r' : ''}`}>{fmtTime(m.created_at)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={bottomRef} />
+              </div>
+
+              <div className="td-chat-footer">
+                <textarea className="td-chat-inp" rows={1}
+                  placeholder="Write a message…"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                />
+                <button className="td-send-btn" onClick={handleSend} disabled={!input.trim() || sending}>
+                  <Ico d={Icons.send} size={16} />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTES TAB
+// ══════════════════════════════════════════════════════════════
+function NotesTab({ patients }) {
+  const [notes, setNotes] = useState([]);
+  const [noteText, setNoteText] = useState('');
+  const [selectedChild, setSelectedChild] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/api/therapist/notes')
+      .then(r => r.json())
+      .then(d => setNotes(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addNote = async () => {
+    if (!noteText.trim()) return;
+    setSaving(true);
+    try {
+      const res = await apiFetch('/api/therapist/notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          child_id: selectedChild ? parseInt(selectedChild) : null,
+          note_text: noteText.trim(),
+        }),
+      });
+      const data = await res.json();
+      setNotes(prev => [data, ...prev]);
+      setNoteText('');
+    } catch {}
+    setSaving(false);
+  };
+
+  const deleteNote = async (id) => {
+    try {
+      await apiFetch(`/api/therapist/notes/${id}`, { method: 'DELETE' });
+      setNotes(prev => prev.filter(n => n.id !== id));
+    } catch {}
+  };
+
+  // Unique children from patients
+  const childOptions = patients.filter(p => p.child_id);
+
+  return (
+    <div className="td-pane">
+      <div className="td-page-eyebrow">Clinical Documentation</div>
+      <h1 className="td-page-title">Clinical <em>Notes</em></h1>
+      <p className="td-page-sub">Private notes and observations about your patients.</p>
+
+      <div className="td-notes-layout">
+        {/* Note editor */}
+        <div className="td-note-editor">
+          <div className="td-card">
+            <div className="td-card-hdr"><span className="td-card-title">New Note</span></div>
+            <div style={{ padding: '0 20px 20px' }}>
+              <div className="td-field" style={{ marginBottom: 12 }}>
+                <label>Link to patient (optional)</label>
+                <select className="td-select" value={selectedChild} onChange={e => setSelectedChild(e.target.value)}>
+                  <option value="">General note (no patient)</option>
+                  {childOptions.map(p => (
+                    <option key={p.child_id} value={p.child_id}>{p.child_name} — Year {p.grade}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="td-field">
+                <label>Note content</label>
+                <textarea
+                  className="td-textarea"
+                  placeholder="Write your clinical observation, recommendation, or note…"
+                  value={noteText}
+                  onChange={e => setNoteText(e.target.value)}
+                  rows={6}
+                />
+              </div>
+              <button className="td-btn-primary" style={{ width: '100%', marginTop: 12 }}
+                onClick={addNote} disabled={saving || !noteText.trim()}>
+                {saving ? 'Saving…' : '+ Save Note'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes list */}
+        <div className="td-notes-feed">
+          {loading ? <div className="td-empty">Loading notes…</div>
+          : notes.length === 0 ? <div className="td-empty">No notes yet. Add your first note.</div>
+          : notes.map((n, i) => {
+            const child = patients.find(p => p.child_id === n.child_id);
+            return (
+              <div key={n.id || i} className="td-note-card">
+                <div className="td-note-card-hdr">
+                  <div>
+                    {child && (
+                      <span className="td-note-tag">{child.child_name}</span>
+                    )}
+                    <div className="td-note-card-date">{fmtDate(n.created_at)}</div>
+                  </div>
+                  <button className="td-btn-icon" onClick={() => deleteNote(n.id)}>
+                    <Ico d={Icons.trash} size={14} />
+                  </button>
+                </div>
+                <div className="td-note-card-text">{n.note_text}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// ACTIVITIES TAB
+// ══════════════════════════════════════════════════════════════
+function ActivitiesTab({ patients }) {
+  const [activities, setActivities] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [selectedChild, setSelectedChild] = useState('');
+  const [selectedActivity, setSelectedActivity] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    apiFetch('/api/activities').then(r => r.json()).then(d => setActivities(Array.isArray(d) ? d : [])).catch(() => {});
+    apiFetch('/api/therapist/assignments').then(r => r.json()).then(d => setAssignments(Array.isArray(d) ? d : [])).catch(() => {});
+  }, []);
+
+  const assign = async () => {
+    if (!selectedChild || !selectedActivity) return;
+    setAssigning(true);
+    setMsg('');
+    try {
+      await apiFetch('/api/therapist/assignments', {
+        method: 'POST',
+        body: JSON.stringify({ child_id: parseInt(selectedChild), activity_id: parseInt(selectedActivity) }),
+      });
+      setMsg('Activity assigned successfully!');
+      const res = await apiFetch('/api/therapist/assignments');
+      const data = await res.json();
+      setAssignments(Array.isArray(data) ? data : []);
+    } catch { setMsg('Failed to assign activity.'); }
+    setAssigning(false);
+    setTimeout(() => setMsg(''), 3000);
+  };
+
+  const childOptions = patients.filter(p => p.child_id);
+  const DIFF_LABELS = { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' };
+
+  return (
+    <div className="td-pane">
+      <div className="td-page-eyebrow">Intervention Management</div>
+      <h1 className="td-page-title">Learning <em>Activities</em></h1>
+      <p className="td-page-sub">Assign targeted activities to children based on their assessment results.</p>
+
+      <div className="td-act-layout">
+        {/* Assign form */}
+        <div className="td-card" style={{ flex: '0 0 340px' }}>
+          <div className="td-card-hdr"><span className="td-card-title">Assign Activity</span></div>
+          <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="td-field">
+              <label>Select patient</label>
+              <select className="td-select" value={selectedChild} onChange={e => setSelectedChild(e.target.value)}>
+                <option value="">Choose a child…</option>
+                {childOptions.map(p => (
+                  <option key={p.child_id} value={p.child_id}>{p.child_name} — Year {p.grade}</option>
+                ))}
+              </select>
+            </div>
+            <div className="td-field">
+              <label>Select activity</label>
+              <select className="td-select" value={selectedActivity} onChange={e => setSelectedActivity(e.target.value)}>
+                <option value="">Choose an activity…</option>
+                {activities.map(a => (
+                  <option key={a.id} value={a.id}>{a.name} (Level {a.difficulty_level})</option>
+                ))}
+              </select>
+            </div>
+            {msg && <div className="td-msg-flash">{msg}</div>}
+            <button className="td-btn-primary" onClick={assign}
+              disabled={assigning || !selectedChild || !selectedActivity}>
+              {assigning ? 'Assigning…' : '+ Assign to Child'}
+            </button>
+          </div>
+
+          {/* Available activities */}
+          <div className="td-card-hdr" style={{ borderTop: '1px solid var(--border)' }}>
+            <span className="td-card-title">Available Activities</span>
+          </div>
+          <div style={{ padding: '0 20px 20px' }}>
+            {activities.map(a => (
+              <div key={a.id} className="td-avail-act">
+                <div className="td-avail-act-name">{a.name}</div>
+                <div className="td-avail-act-desc">{a.description}</div>
+                <span className="td-diff-pill" data-level={a.difficulty_level}>
+                  {DIFF_LABELS[a.difficulty_level] || 'Level ' + a.difficulty_level}
+                </span>
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Student Progress Table */}
-          <div className="dashboard__table-container">
-            <div className="dashboard__table-header">
-              <h2 className="dashboard__table-title">Student Assessment Results</h2>
-              <div className="dashboard__table-actions">
-                <button onClick={() => setShowAddStudent(true)} className="dashboard__add-btn">+ Add Student</button>
-              </div>
-            </div>
+        {/* Recent assignments */}
+        <div className="td-card" style={{ flex: 1 }}>
+          <div className="td-card-hdr"><span className="td-card-title">Recent Assignments</span></div>
+          {assignments.length === 0 ? (
+            <div className="td-empty">No assignments yet.</div>
+          ) : (
+            <table className="td-table">
+              <thead>
+                <tr><th>Child</th><th>Activity</th><th>Level</th><th>Status</th><th>Date</th></tr>
+              </thead>
+              <tbody>
+                {assignments.map((a, i) => (
+                  <tr key={i}>
+                    <td><div style={{ fontWeight:600 }}>{a.child_name || `Child #${a.child_id}`}</div></td>
+                    <td>{a.activity_name || `Activity #${a.activity_id}`}</td>
+                    <td><span className="td-diff-pill" data-level={a.difficulty_level}>
+                      {DIFF_LABELS[a.difficulty_level] || '—'}
+                    </span></td>
+                    <td>
+                      <span className={`td-status-pill ${a.completed ? 'done' : 'pending'}`}>
+                        {a.completed ? 'Completed' : 'In Progress'}
+                      </span>
+                    </td>
+                    <td>{fmtDate(a.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            <div className="dashboard__table">
-              <div className="dashboard__col-headers">
-                <div>STUDENT</div>
-                <div>RISK LEVEL</div>
-                <div>OVERALL SCORE</div>
-                <div>TASK BREAKDOWN</div>
-                <div>LAST ASSESSMENT</div>
-                <div>ACTIONS</div>
-              </div>
+// ══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ══════════════════════════════════════════════════════════════
+const TherapistDashboard = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('home');
+  const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [chatDefaultParent, setChatDefaultParent] = useState(null);
 
-              {filtered.map((s) => {
-                const riskConf = RISK_CONFIG[s.riskLevel];
-                const latest = s.summaries?.[0];
-                const scoreColor = riskConf?.color || '#aaa';
+  useEffect(() => {
+    apiFetch('/api/therapist/patients')
+      .then(r => r.json())
+      .then(d => setPatients(Array.isArray(d) ? d : []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-                return (
-                  <div key={s.id} className="dashboard__row">
-                    {/* Student */}
-                    <div className="dashboard__student-info">
-                      <Avatar name={s.name} />
-                      <div className="dashboard__student-details">
-                        <div className="dashboard__student-name">{s.name}</div>
-                        <div className="dashboard__student-meta">{s.grade}{s.age ? ` • Age ${s.age}` : ''}</div>
-                        {s.assessmentCount > 0 && <div style={{ fontSize: 10, color: '#aaa' }}>{s.assessmentCount} session{s.assessmentCount !== 1 ? 's' : ''}</div>}
-                      </div>
-                    </div>
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/auth');
+  };
 
-                    {/* Risk */}
-                    <div>
-                      {s.riskLevel ? <RiskBadge riskLevel={s.riskLevel} /> : <StatusBadge status={s.status || 'NO DATA'} />}
-                    </div>
+  const assignActivity = async (childId, activityId) => {
+    try {
+      await apiFetch('/api/therapist/assignments', {
+        method: 'POST',
+        body: JSON.stringify({ child_id: childId, activity_id: activityId }),
+      });
+      alert('Activity assigned!');
+    } catch {}
+  };
 
-                    {/* Overall Score */}
-                    <div>
-                      {s.overallScore != null ? (
-                        <span style={{ fontWeight: 800, fontSize: 18, color: scoreColor }}>{s.overallScore}%</span>
-                      ) : (
-                        <span style={{ color: '#bbb', fontSize: 13 }}>—</span>
-                      )}
-                    </div>
+  const openChat = (patient) => {
+    setChatDefaultParent(patient);
+    setSelectedPatient(null);
+    setActiveTab('chat');
+  };
 
-                    {/* Task Breakdown mini bars */}
-                    <div>
-                      {latest ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                          {[
-                            { key: 'task1_score', label: 'T1' },
-                            { key: 'task2_score', label: 'T2' },
-                            { key: 'task3_score', label: 'T3' },
-                            { key: 'task4_score', label: 'T4' },
-                          ].map(({ key, label }) => (
-                            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{ fontSize: 10, color: '#aaa', width: 14 }}>{label}</span>
-                              <MiniScoreBar value={latest[key]} color={scoreColor} />
-                              <span style={{ fontSize: 10, color: '#666', width: 26 }}>{latest[key] != null ? `${latest[key]}%` : '—'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#bbb', fontSize: 12 }}>No data</span>
-                      )}
-                    </div>
+  if (loading) return (
+    <div className="td-loading">
+      <div className="td-spinner" />
+      <div>Loading dashboard…</div>
+    </div>
+  );
 
-                    {/* Last Assessment */}
-                    <div style={{ fontSize: 12, color: '#666' }}>
-                      {s.lastAssessmentDate ? fmtDate(s.lastAssessmentDate) : <span style={{ color: '#bbb' }}>—</span>}
-                    </div>
+  const TABS = [
+    { key: 'home',       label: 'Overview',   icon: Icons.home },
+    { key: 'patients',   label: 'Patients',   icon: Icons.patients },
+    { key: 'chat',       label: 'Messages',   icon: Icons.chat },
+    { key: 'notes',      label: 'Notes',      icon: Icons.notes },
+    { key: 'activities', label: 'Activities', icon: Icons.activity },
+  ];
 
-                    {/* Actions */}
-                    <div className="dashboard__actions-group">
-                      <button
-                        className="dashboard__review-btn"
-                        onClick={() => setSelectedStudent(s)}
-                        disabled={!s.summaries?.length}
-                        style={{ opacity: s.summaries?.length ? 1 : 0.4 }}
-                      >
-                        View Results
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+  const completedCount = patients.filter(p => p.overall_score != null).length;
 
-              {filtered.length === 0 && (
-                <div style={{ padding: '32px', textAlign: 'center', color: '#aaa', fontSize: 13 }}>No students found.</div>
-              )}
-            </div>
-
-            <div className="dashboard__table-footer">
-              <span>Showing {filtered.length} of {students.length} students</span>
-            </div>
+  return (
+    <div className="td-root">
+      {/* TOP NAV */}
+      <nav className="td-topnav">
+        <div className="td-brand">
+          <div className="td-brand-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+            </svg>
           </div>
-
-          {/* Bottom Row */}
-          <div className="dashboard__bottom-grid">
-            <div className="dashboard__activity-card">
-              <h3 className="dashboard__card-title">Recent Student Activity</h3>
-              <div className="dashboard__activity-list">
-                {activity.map((a) => (
-                  <div key={a.id} className="dashboard__activity-item">
-                    <div className="dashboard__activity-dot" style={{ background: a.dot }} />
-                    <div>
-                      <div className="dashboard__activity-title">{a.title}</div>
-                      <div className="dashboard__activity-sub">{a.sub}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="dashboard__notes-card">
-              <h3 className="dashboard__card-title">Therapist Notes</h3>
-              <div className="dashboard__notes-list">
-                {notes.map((n) => (
-                  <div key={n.id} className="dashboard__note-item">
-                    <div className="dashboard__note-date">{n.date}</div>
-                    <div className="dashboard__note-text">{n.text}</div>
-                  </div>
-                ))}
-              </div>
-              <form onSubmit={handleAddNote} className="dashboard__note-form">
-                <div className="dashboard__note-input-container">
-                  <input
-                    placeholder="+ Add Quick Note"
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    className="dashboard__note-input"
-                  />
-                  {newNote && <button type="submit" className="dashboard__note-save">Save</button>}
-                </div>
-              </form>
-            </div>
+          <div>
+            <span className="td-brand-name">Lexi<em>Care</em></span>
+            <span className="td-brand-sub">Clinical Portal</span>
           </div>
         </div>
-      </main>
 
-      {/* Add Student Modal */}
-      {showAddStudent && (
-        <div className="dashboard__modal-overlay" onClick={() => setShowAddStudent(false)}>
-          <div className="dashboard__modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="dashboard__modal-title">Add New Student</h3>
-            <form onSubmit={handleAddStudent}>
-              {[
-                { label: 'Full Name', key: 'name', type: 'text', placeholder: 'e.g. Emily Johnson' },
-                { label: 'Grade', key: 'grade', type: 'text', placeholder: 'e.g. Grade 3' },
-                { label: 'Age', key: 'age', type: 'number', placeholder: 'e.g. 8' },
-              ].map((f) => (
-                <div key={f.key} className="dashboard__form-group">
-                  <label className="dashboard__form-label">{f.label}</label>
-                  <input
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={addForm[f.key]}
-                    onChange={(e) => setAddForm((p) => ({ ...p, [f.key]: e.target.value }))}
-                    required
-                    className="dashboard__form-input"
-                  />
-                </div>
-              ))}
-              <div className="dashboard__modal-actions">
-                <button type="button" onClick={() => setShowAddStudent(false)} className="dashboard__modal-cancel">Cancel</button>
-                <button type="submit" className="dashboard__modal-submit">Add Student</button>
-              </div>
-            </form>
-          </div>
+        <div className="td-nav-tabs">
+          {TABS.map(t => (
+            <button key={t.key} className={`td-nav-tab ${activeTab === t.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(t.key)}>
+              <Ico d={t.icon} size={15} /> {t.label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* Assessment Detail Modal */}
-      {selectedStudent && (
-        <AssessmentDetailModal
-          student={selectedStudent}
-          assessments={selectedStudent.summaries || []}
-          onClose={() => setSelectedStudent(null)}
+        <div className="td-nav-right">
+          <div className="td-notif"><Ico d={Icons.bell} size={17} /></div>
+          <div className="td-therapist-chip">
+            <div className="td-therapist-av">S</div>
+            <div>
+              <div className="td-therapist-name">Dr. Sarah Mohamed</div>
+              <div className="td-therapist-role">Dyslexia Specialist</div>
+            </div>
+          </div>
+          <button className="td-logout" onClick={handleLogout}>
+            <Ico d={Icons.logout} size={15} /> Sign out
+          </button>
+        </div>
+      </nav>
+
+      {/* HEADER STRIP */}
+      <div className="td-header-strip">
+        <div className="td-hs-item">
+          <div className="td-hs-val">{patients.length}</div>
+          <div className="td-hs-label">Total Patients</div>
+        </div>
+        <div className="td-hs-divider" />
+        <div className="td-hs-item">
+          <div className="td-hs-val">{completedCount}</div>
+          <div className="td-hs-label">Assessed</div>
+        </div>
+        <div className="td-hs-divider" />
+        <div className="td-hs-item">
+          <div className="td-hs-val" style={{ color:'#ef4444' }}>
+            {patients.filter(p => p.overall_score != null && p.overall_score < 50).length}
+          </div>
+          <div className="td-hs-label">Severe Cases</div>
+        </div>
+        <div className="td-hs-divider" />
+        <div className="td-hs-item">
+          <div className="td-hs-val" style={{ color:'#f97316' }}>
+            {patients.filter(p => p.overall_score != null && p.overall_score >= 50 && p.overall_score < 70).length}
+          </div>
+          <div className="td-hs-label">Moderate</div>
+        </div>
+        <div className="td-hs-divider" />
+        <div className="td-hs-item">
+          <div className="td-hs-val" style={{ color:'#1a6b40' }}>
+            {patients.filter(p => p.overall_score != null && p.overall_score >= 85).length}
+          </div>
+          <div className="td-hs-label">Normal Range</div>
+        </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <div className="td-layout">
+        {/* SIDEBAR */}
+        <aside className="td-sidebar">
+          <div className="td-sb-section">Navigation</div>
+          {TABS.map(t => (
+            <button key={t.key} className={`td-slink ${activeTab === t.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(t.key)}>
+              <Ico d={t.icon} size={16} /> {t.label}
+            </button>
+          ))}
+
+          <div className="td-sb-section" style={{ marginTop: 24 }}>Quick Stats</div>
+          <div className="td-sb-stat"><span>Total Patients</span><strong>{patients.length}</strong></div>
+          <div className="td-sb-stat"><span>Assessed</span><strong>{completedCount}</strong></div>
+          <div className="td-sb-stat" style={{ color: '#ef4444' }}>
+            <span>Severe</span>
+            <strong>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</strong>
+          </div>
+
+          <div className="td-sb-section" style={{ marginTop: 24 }}>Therapist</div>
+          <div className="td-sb-profile">
+            <div className="td-sb-av">S</div>
+            <div>
+              <div className="td-sb-name">Dr. Sarah Mohamed</div>
+              <div className="td-sb-spec">Dyslexia & Literacy</div>
+            </div>
+          </div>
+          <div className="td-sb-badge">
+            <Ico d={Icons.star} size={12} /> Certified Specialist
+          </div>
+        </aside>
+
+        {/* MAIN */}
+        <main className="td-main">
+          {activeTab === 'home'       && <HomeTab patients={patients} onViewPatient={p => setSelectedPatient(p)} />}
+          {activeTab === 'patients'   && <PatientsTab patients={patients} onViewPatient={p => setSelectedPatient(p)} />}
+          {activeTab === 'chat'       && <ChatTab patients={patients} defaultParent={chatDefaultParent} />}
+          {activeTab === 'notes'      && <NotesTab patients={patients} />}
+          {activeTab === 'activities' && <ActivitiesTab patients={patients} />}
+        </main>
+      </div>
+
+      {/* PATIENT DETAIL PANEL */}
+      {selectedPatient && (
+        <PatientDetail
+          patient={selectedPatient}
+          onClose={() => setSelectedPatient(null)}
+          onAssignActivity={assignActivity}
+          onOpenChat={openChat}
         />
       )}
     </div>
   );
-}
+};
+
+export default TherapistDashboard;

@@ -1,0 +1,508 @@
+/* SpellingBagGame.css - Enhanced Picture Spelling Game (TaskOne Style) */
+
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.spelling-game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* Background (same as TaskOne) */
+.task-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/assets/task1.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+}
+
+.dark-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(2px);
+  z-index: 1;
+}
+
+/* ── ENHANCED TOP BAR ── */
+.spelling-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(8px);
+  border-bottom: 2px solid rgba(61, 90, 76, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  position: relative;
+  z-index: 20;
+}
+
+.nav-left-group, .nav-right-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-center-group {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.spelling-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+}
+.spelling-icon-btn:hover {
+  transform: translateY(-2px);
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.spelling-icon-btn:active {
+  transform: translateY(1px);
+}
+
+.home-btn { background: #FFB84D; color: #3D5A4C; }
+.reset-btn { background: #a8d0db; color: #3D5A4C; }
+.sound-toggle-btn { background: #e0e0e0; }
+.help-btn { background: #FFE9AD; }
+
+/* Progress indicator */
+.spelling-progress {
+  background: #3D5A4C;
+  padding: 8px 20px;
+  border-radius: 40px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.2), 0 2px 4px rgba(0,0,0,0.1);
+}
+.progress-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #FFE9AD;
+  letter-spacing: 1px;
+}
+.progress-current, .progress-total {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: white;
+  font-family: monospace;
+}
+.progress-sep {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #FFB84D;
+}
+
+/* Stars badge */
+.spelling-stars {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #f0f0f0;
+  padding: 6px 16px;
+  border-radius: 40px;
+  font-weight: 800;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+}
+.star-icon { font-size: 1.3rem; }
+.stars-count { font-size: 1.2rem; color: #3D5A4C; }
+
+/* Instructions tooltip */
+.instructions-tooltip {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(10px);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: left;
+  animation: slideDownFade 0.3s ease-out forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@media (max-width: 600px) {
+  .instructions-tooltip {
+    white-space: normal;
+    width: 90%;
+    font-size: 0.8rem;
+    top: 70px;
+  }
+}
+
+/* Bigger Image Card */
+.spelling-image-area {
+  margin-top: 12px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.spelling-image-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 2rem;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  border: 4px solid transparent;
+  transition: border-color 0.1s ease;
+  max-width: 550px;
+  width: 90%;
+  margin: 0 auto;
+  position: relative;
+}
+.spelling-picture {
+  width: 260px;
+  height: 260px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(4px 6px 12px rgba(0,0,0,0.2));
+}
+.picture-hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 12px;
+}
+.picture-sound-btn {
+  background: #3D5A4C;
+  border: none;
+  border-radius: 50%;
+  width: 46px;
+  height: 46px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: white;
+  position: absolute;
+  bottom: 12px;
+  right: 18px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+  transition: transform 0.1s;
+}
+.picture-sound-btn:active { transform: scale(0.95); }
+
+.feedback-correct {
+  border-color: #4CAF50;
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+}
+.feedback-incorrect {
+  border-color: #f44336;
+  box-shadow: 0 0 20px rgba(244, 67, 54, 0.5);
+}
+
+/* Slots area */
+.spelling-slots-area {
+  text-align: center;
+  margin: 8px 0 4px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.slots-label {
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  margin-bottom: 6px;
+  font-size: 1rem;
+}
+.slots-row {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 0 12px;
+}
+.spelling-slot {
+  width: 70px;
+  height: 70px;
+  background: rgba(255, 255, 255, 0.3);
+  border: 3px dashed rgba(255,255,240,0.8);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.slot-filled {
+  background: rgba(255, 255, 255, 0.9);
+  border-style: solid;
+  border-color: #FFB84D;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+.slot-letter {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #3D5A4C;
+}
+
+/* Letters grid */
+.spelling-letters-area {
+  text-align: center;
+  margin: 8px 0 4px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.letters-label {
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 1px 5px rgba(0,0,0,0.3);
+  margin-bottom: 6px;
+  font-size: 1rem;
+}
+.letters-grid {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 0 20px;
+  max-width: 550px;
+  margin: 0 auto;
+}
+.spelling-ball {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #FFB84D, #e09d32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 0 #a05e15, 0 6px 14px rgba(0,0,0,0.2);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.spelling-ball:active {
+  transform: translateY(3px);
+  box-shadow: 0 4px 0 #a05e15;
+}
+.ball-used {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  filter: grayscale(0.2);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.ball-letter-text {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.2rem;
+  color: white;
+  text-shadow: 0 2px 3px rgba(0,0,0,0.3);
+}
+
+/* Check button */
+.spelling-check-area {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+  flex-shrink: 0;
+}
+.spelling-check-btn {
+  background: #ccc;
+  color: #888;
+  border: none;
+  padding: 14px 36px;
+  border-radius: 60px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: not-allowed;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transition: all 0.2s;
+}
+.check-active {
+  background: linear-gradient(135deg, #4CAF50, #2e7d32);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #1b5e20;
+}
+.check-active:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #1b5e20;
+}
+.check-active:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #1b5e20;
+}
+
+/* Monkey helper */
+.spelling-monkey {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255,255,240,0.9);
+  border-radius: 60px;
+  padding: 6px 15px 6px 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  backdrop-filter: blur(4px);
+}
+.monkey-face { font-size: 2.2rem; }
+.monkey-bubble {
+  font-weight: 700;
+  color: #3D5A4C;
+  font-size: 0.85rem;
+}
+
+/* Correct next overlay */
+.correct-next-overlay {
+  position: fixed;
+  bottom: 30%;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: none;
+  animation: fadeOutUp 1.5s forwards;
+}
+.correct-next-box {
+  background: #4CAF50;
+  color: white;
+  padding: 12px 28px;
+  border-radius: 60px;
+  font-weight: 800;
+  font-size: 1.2rem;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+@keyframes fadeOutUp {
+  0% { opacity: 0; transform: translateY(30px); }
+  20% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-40px); display: none; }
+}
+
+/* Confetti */
+.spelling-confetti {
+  position: fixed;
+  top: -10px;
+  border-radius: 2px;
+  z-index: 200;
+  animation: confettiFall 2.2s ease-in forwards;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* Final celebration */
+.celebration-overlay-final {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  animation: fadeIn 0.3s;
+}
+.celebration-box-final {
+  background: white;
+  border-radius: 2rem;
+  padding: 2rem 2.5rem;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+  animation: popScale 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+.celebrate-emoji-final { font-size: 3.5rem; }
+.celebrate-title-final {
+  font-family: 'Comic Neue', cursive;
+  color: #3D5A4C;
+  font-size: 2rem;
+  margin: 0.5rem 0;
+}
+.final-score {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #FFB84D;
+  margin: 0.5rem 0;
+}
+.btn-final-finish {
+  background: linear-gradient(135deg, #3D5A4C, #2C4A3A);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 2rem;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: transform 0.2s;
+}
+.btn-final-finish:hover { transform: scale(1.02); }
+@keyframes popScale {
+  from { transform: scale(0.6); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .spelling-slot { width: 55px; height: 55px; }
+  .slot-letter { font-size: 1.6rem; }
+  .spelling-ball { width: 65px; height: 65px; }
+  .ball-letter-text { font-size: 1.8rem; }
+  .spelling-picture { width: 200px; height: 200px; }
+  .spelling-image-card { max-width: 450px; padding: 1rem 1.5rem; }
+  .spelling-progress { padding: 4px 12px; }
+  .progress-current, .progress-total { font-size: 1rem; }
+  .progress-label { font-size: 0.7rem; }
+  .monkey-bubble { font-size: 0.7rem; }
+  .spelling-check-btn { padding: 10px 24px; font-size: 1rem; }
+}
+@media (max-width: 480px) {
+  .spelling-icon-btn { width: 38px; height: 38px; font-size: 1.1rem; }
+  .nav-left-group, .nav-right-group { gap: 8px; }
+  .spelling-stars { padding: 4px 10px; }
+  .stars-count { font-size: 1rem; }
+}

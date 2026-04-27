@@ -24,17 +24,15 @@ const {
 const router = express.Router();
 
 // ── Helpers ───────────────────────────────────────────────────
-
 async function logAudit(userId, userRole, eventType, ipAddress, userAgent) {
     try {
         await pool.query(
-            `INSERT INTO AuditLog
+            `INSERT INTO audit_log
              (user_id, user_role, event_type, ip_address, user_agent)
              VALUES (?, ?, ?, ?, ?)`,
             [userId, userRole, eventType, ipAddress, userAgent]
         );
     } catch (e) {
-        // Never let audit log failures break the main flow
         console.error('AuditLog error:', e.message);
     }
 }
@@ -48,9 +46,6 @@ function getClientInfo(req) {
 
 // ══════════════════════════════════════════════════════════════
 // POST /api/auth/login
-// Checks Therapist first, then Parent. Backend decides the role.
-// Returns: short-lived access JWT in body + long-lived refresh
-//          token in httpOnly cookie.
 // ══════════════════════════════════════════════════════════════
 router.post('/login', async (req, res) => {
     try {
@@ -64,7 +59,7 @@ router.post('/login', async (req, res) => {
 
         // ── 1. Try Therapist ──────────────────────────────────
         const [[therapist]] = await pool.query(
-            'SELECT id, username, email, password_hash FROM Therapist WHERE LOWER(email) = ?',
+            'SELECT id, username, email, password_hash FROM therapist WHERE LOWER(email) = ?',
             [normalEmail]
         );
 
@@ -76,25 +71,23 @@ router.post('/login', async (req, res) => {
                 return res.status(401).json({ error: 'Invalid email or password' });
             }
 
-            // Update login stats
             await pool.query(
-                'UPDATE Therapist SET login_count = login_count + 1, last_login = NOW(), last_ip = ? WHERE id = ?',
+                'UPDATE therapist SET login_count = login_count + 1, last_login = NOW(), last_ip = ? WHERE id = ?',
                 [ip, therapist.id]
             );
             await logAudit(therapist.id, 'therapist', 'login_success', ip, userAgent);
 
             const [[fresh]] = await pool.query(
-                'SELECT login_count, last_login FROM Therapist WHERE id = ?',
+                'SELECT login_count, last_login FROM therapist WHERE id = ?',
                 [therapist.id]
             );
 
-            // Issue tokens
             const accessToken  = generateToken({ id: therapist.id, role: 'therapist', email: therapist.email, name: therapist.username });
             const refreshToken = generateRefreshToken();
             const expiresAt    = refreshTokenExpiresAt();
 
             await pool.query(
-                `INSERT INTO RefreshToken (token, user_id, user_role, expires_at, ip_address, user_agent)
+                `INSERT INTO refresh_token (token, user_id, user_role, expires_at, ip_address, user_agent)
                  VALUES (?, ?, 'therapist', ?, ?, ?)`,
                 [refreshToken, therapist.id, expiresAt, ip, userAgent]
             );
@@ -116,7 +109,7 @@ router.post('/login', async (req, res) => {
 
         // ── 2. Try Parent ─────────────────────────────────────
         const [[parent]] = await pool.query(
-            'SELECT id, full_name, email, password_hash, assessment_completed FROM Parent WHERE LOWER(email) = ?',
+            'SELECT id, full_name, email, password_hash FROM parent WHERE LOWER(email) = ?',
             [normalEmail]
         );
 
@@ -129,7 +122,7 @@ router.post('/login', async (req, res) => {
             }
 
             await pool.query(
-                'UPDATE Parent SET login_count = login_count + 1, last_login = NOW(), last_ip = ? WHERE id = ?',
+                'UPDATE parent SET login_count = login_count + 1, last_login = NOW(), last_ip = ? WHERE id = ?',
                 [ip, parent.id]
             );
             await logAudit(parent.id, 'parent', 'login_success', ip, userAgent);
@@ -139,7 +132,7 @@ router.post('/login', async (req, res) => {
             const expiresAt    = refreshTokenExpiresAt();
 
             await pool.query(
-                `INSERT INTO RefreshToken (token, user_id, user_role, expires_at, ip_address, user_agent)
+                `INSERT INTO refresh_token (token, user_id, user_role, expires_at, ip_address, user_agent)
                  VALUES (?, ?, 'parent', ?, ?, ?)`,
                 [refreshToken, parent.id, expiresAt, ip, userAgent]
             );
@@ -148,13 +141,12 @@ router.post('/login', async (req, res) => {
             console.log(`✅ Parent login: ${parent.email} (id=${parent.id})`);
 
             return res.json({
-                token:              accessToken,
-                userId:             parent.id,
-                email:              parent.email,
-                role:               'parent',
-                name:               parent.full_name,
-                assessmentCompleted: !!parent.assessment_completed,
-                message:            'Login successful',
+                token:      accessToken,
+                userId:     parent.id,
+                email:      parent.email,
+                role:       'parent',
+                name:       parent.full_name,
+                message:    'Login successful',
             });
         }
 
@@ -169,7 +161,6 @@ router.post('/login', async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════
 // POST /api/auth/logout
-// Revokes the refresh token from DB + clears the cookie.
 // ══════════════════════════════════════════════════════════════
 router.post('/logout', verifyToken, async (req, res) => {
     try {
@@ -177,9 +168,8 @@ router.post('/logout', verifyToken, async (req, res) => {
         const { ip, userAgent } = getClientInfo(req);
 
         if (refreshToken) {
-            // Mark revoked (keep row for audit trail)
             await pool.query(
-                'UPDATE RefreshToken SET revoked = TRUE WHERE token = ?',
+                'UPDATE refresh_token SET revoked = TRUE WHERE token = ?',
                 [refreshToken]
             );
         }
@@ -196,8 +186,6 @@ router.post('/logout', verifyToken, async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════
 // POST /api/auth/refresh
-// Reads the httpOnly refresh token cookie, validates it,
-// and returns a new access token.  No body needed.
 // ══════════════════════════════════════════════════════════════
 router.post('/refresh', async (req, res) => {
     try {
@@ -206,9 +194,8 @@ router.post('/refresh', async (req, res) => {
             return res.status(401).json({ error: 'No refresh token' });
         }
 
-        // Look up in DB — must be not revoked and not expired
         const [[row]] = await pool.query(
-            `SELECT * FROM RefreshToken
+            `SELECT * FROM refresh_token
              WHERE token = ?
                AND revoked = FALSE
                AND expires_at > NOW()`,
@@ -220,18 +207,17 @@ router.post('/refresh', async (req, res) => {
             return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
         }
 
-        // Fetch fresh user data for the new access token
         let userPayload = null;
 
         if (row.user_role === 'therapist') {
             const [[t]] = await pool.query(
-                'SELECT id, username, email FROM Therapist WHERE id = ?',
+                'SELECT id, username, email FROM therapist WHERE id = ?',
                 [row.user_id]
             );
             if (t) userPayload = { id: t.id, role: 'therapist', email: t.email, name: t.username };
         } else {
             const [[p]] = await pool.query(
-                'SELECT id, full_name, email FROM Parent WHERE id = ?',
+                'SELECT id, full_name, email FROM parent WHERE id = ?',
                 [row.user_id]
             );
             if (p) userPayload = { id: p.id, role: 'parent', email: p.email, name: p.full_name };
@@ -252,10 +238,6 @@ router.post('/refresh', async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════
 // POST /api/auth/forgot-password
-// Body: { email }
-// Creates a 15-minute reset token and returns it.
-// In production: send this token by email. For now it's in the
-// response so you can test without a mail server.
 // ══════════════════════════════════════════════════════════════
 router.post('/forgot-password', async (req, res) => {
     try {
@@ -266,43 +248,38 @@ router.post('/forgot-password', async (req, res) => {
 
         const normalEmail = email.trim().toLowerCase();
 
-        // Find the user — check both tables
         let userId   = null;
         let userRole = null;
 
         const [[therapist]] = await pool.query(
-            'SELECT id FROM Therapist WHERE LOWER(email) = ?',
+            'SELECT id FROM therapist WHERE LOWER(email) = ?',
             [normalEmail]
         );
         if (therapist) { userId = therapist.id; userRole = 'therapist'; }
 
         if (!userId) {
             const [[parent]] = await pool.query(
-                'SELECT id FROM Parent WHERE LOWER(email) = ?',
+                'SELECT id FROM parent WHERE LOWER(email) = ?',
                 [normalEmail]
             );
             if (parent) { userId = parent.id; userRole = 'parent'; }
         }
 
-        // IMPORTANT: always return 200 even if email not found.
-        // This prevents user enumeration attacks.
         if (!userId) {
             return res.json({ message: 'If that email exists, a reset link has been sent.' });
         }
 
-        // Invalidate any existing unused tokens for this user
         await pool.query(
-            `UPDATE PasswordResetToken SET used = TRUE
+            `UPDATE password_reset_token SET used = TRUE
              WHERE user_id = ? AND user_role = ? AND used = FALSE`,
             [userId, userRole]
         );
 
-        // Generate new token
-        const resetToken = crypto.randomBytes(32).toString('hex');   // 64 hex chars
-        const expiresAt  = resetTokenExpiresAt(15);                  // 15 minutes
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt  = resetTokenExpiresAt(15);
 
         await pool.query(
-            `INSERT INTO PasswordResetToken (token, user_id, user_role, expires_at)
+            `INSERT INTO password_reset_token (token, user_id, user_role, expires_at)
              VALUES (?, ?, ?, ?)`,
             [resetToken, userId, userRole, expiresAt]
         );
@@ -310,15 +287,11 @@ router.post('/forgot-password', async (req, res) => {
         const { ip, userAgent } = getClientInfo(req);
         await logAudit(userId, userRole, 'password_reset_request', ip, userAgent);
 
-        // TODO: In production, email this link to the user.
-        // For development, return the token directly so you can test.
         const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-
         console.log(`🔑 Password reset link for ${normalEmail}: ${resetLink}`);
 
         res.json({
             message:   'If that email exists, a reset link has been sent.',
-            // Remove 'devToken' and 'devLink' before going to production:
             devToken:  process.env.NODE_ENV !== 'production' ? resetToken : undefined,
             devLink:   process.env.NODE_ENV !== 'production' ? resetLink  : undefined,
         });
@@ -331,8 +304,6 @@ router.post('/forgot-password', async (req, res) => {
 
 // ══════════════════════════════════════════════════════════════
 // POST /api/auth/reset-password
-// Body: { token, newPassword }
-// Validates the token, hashes the new password, marks used.
 // ══════════════════════════════════════════════════════════════
 router.post('/reset-password', async (req, res) => {
     try {
@@ -344,14 +315,12 @@ router.post('/reset-password', async (req, res) => {
         if (newPassword.length < 8) {
             return res.status(400).json({ error: 'Password must be at least 8 characters' });
         }
-        // Enforce at least one special character
         if (!/[^a-zA-Z0-9]/.test(newPassword)) {
             return res.status(400).json({ error: 'Password must contain at least one special character' });
         }
 
-        // Look up token — must be unused and not expired
         const [[row]] = await pool.query(
-            `SELECT * FROM PasswordResetToken
+            `SELECT * FROM password_reset_token
              WHERE token = ?
                AND used = FALSE
                AND expires_at > NOW()`,
@@ -365,28 +334,25 @@ router.post('/reset-password', async (req, res) => {
         const newHash = await bcrypt.hash(newPassword, 12);
         const { ip, userAgent } = getClientInfo(req);
 
-        // Update the correct table
         if (row.user_role === 'therapist') {
             await pool.query(
-                'UPDATE Therapist SET password_hash = ? WHERE id = ?',
+                'UPDATE therapist SET password_hash = ? WHERE id = ?',
                 [newHash, row.user_id]
             );
         } else {
             await pool.query(
-                'UPDATE Parent SET password_hash = ? WHERE id = ?',
+                'UPDATE parent SET password_hash = ? WHERE id = ?',
                 [newHash, row.user_id]
             );
         }
 
-        // Mark token as used
         await pool.query(
-            'UPDATE PasswordResetToken SET used = TRUE WHERE id = ?',
+            'UPDATE password_reset_token SET used = TRUE WHERE id = ?',
             [row.id]
         );
 
-        // Revoke all active refresh tokens for this user (force re-login)
         await pool.query(
-            'UPDATE RefreshToken SET revoked = TRUE WHERE user_id = ? AND user_role = ?',
+            'UPDATE refresh_token SET revoked = TRUE WHERE user_id = ? AND user_role = ?',
             [row.user_id, row.user_role]
         );
 

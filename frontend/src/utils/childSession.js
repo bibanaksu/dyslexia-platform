@@ -1,7 +1,4 @@
 // frontend/src/utils/childSession.js
-// Central helper for reading child info from localStorage.
-// All tasks import from here.
-
 export const getChildInfo = () => {
   try {
     return JSON.parse(localStorage.getItem('child_info') || 'null');
@@ -10,8 +7,14 @@ export const getChildInfo = () => {
   }
 };
 
-export const getSessionUUID = () =>
-  localStorage.getItem('child_session_uuid') || null;
+export const getSessionUUID = () => {
+  console.warn('getSessionUUID is deprecated – use getCurrentChildSessionId');
+  return localStorage.getItem('child_session_id');
+};
+
+export const getCurrentChildSessionId = () => {
+  return localStorage.getItem('child_session_id');
+};
 
 export const getUserInfo = () => {
   try {
@@ -30,11 +33,9 @@ export const getGuestId = () => {
   return id;
 };
 
-/** Returns the child's display name, checking both key variants */
 export const getChildName = () => {
   const info = getChildInfo();
-  if (!info) return 'Guest User';
-  return info.childFullName || info.childName || 'Guest User';
+  return info?.childFullName || info?.childName || 'Guest User';
 };
 
 export const getChildGrade = () => {

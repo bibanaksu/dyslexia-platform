@@ -1,14 +1,12 @@
 // frontend/src/components/ChildInfoPage/ChildInfo.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { saveChildSession } from '../../services/api'; // ✅ Correct path
 
-const generateUUID = () => {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = (Math.random() * 16) | 0;
-    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-  });
+const BASE_URL = 'http://localhost:5000';
+
+// Simple ID generator
+const generateSessionId = () => {
+  return Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
 };
 
 export default function ChildInfo() {
@@ -17,6 +15,46 @@ export default function ChildInfo() {
   const [childGrade, setChildGrade] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const saveChildSession = async (sessionData) => {
+    const token = localStorage.getItem('token');
+    
+    const payload = {
+      sessionUUID: sessionData.sessionUUID,
+      childName: sessionData.childName,
+      childGrade: sessionData.childGrade,
+      childAge: sessionData.childAge || null,
+      parentId: null,
+      guestId: 'guest_' + Date.now(),
+    };
+    
+    console.log('Saving child session to DB:', payload);
+    
+    const res = await fetch(`${BASE_URL}/api/child-info/session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to save child session');
+    }
+    
+    const data = await res.json();
+    console.log('Child session saved successfully:', data);
+    
+    if (data.sessionId) {
+      localStorage.setItem('child_session_id', data.sessionId);
+    } else if (data.sessionUUID) {
+      localStorage.setItem('child_session_id', data.sessionUUID);
+    }
+    
+    return data;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,17 +73,17 @@ export default function ChildInfo() {
     setIsLoading(true);
     setError('');
 
-    const sessionUUID = generateUUID();
+    const sessionId = generateSessionId();
     const gradeNum = parseInt(grade, 10);
     const childAge = isNaN(gradeNum) ? null : gradeNum + 5;
 
     // Save to localStorage for frontend access
-    localStorage.setItem('child_session_uuid', sessionUUID);
+    localStorage.setItem('child_session_id', sessionId);
     localStorage.setItem('child_info', JSON.stringify({
       childFullName: name,
       childGrade: grade,
       childAge: childAge,
-      sessionUUID: sessionUUID
+      sessionId: sessionId
     }));
 
     // Clear all old quest/task progress for fresh start
@@ -63,7 +101,7 @@ export default function ChildInfo() {
 
     try {
       await saveChildSession({
-        sessionUUID: sessionUUID,
+        sessionUUID: sessionId,
         childName: name,
         childGrade: grade,
         childAge: childAge

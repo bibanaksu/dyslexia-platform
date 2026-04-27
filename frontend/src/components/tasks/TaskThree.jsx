@@ -1,20 +1,16 @@
 // frontend/src/components/tasks/TaskThree.jsx
-// FIXES:
-//  1. Reads childFullName + sessionUUID — no more NULL/Guest User in DB
-//  2. savedId pattern: POST once → PATCH on every save after
-//  3. Navbar matches Task 1 style
-//  4. Pause stays inside task, does NOT navigate away
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./TaskThree.css";
-import { getChildInfo, getSessionUUID, getUserInfo, getGuestId } from "../../utils/childSession";
+import { getChildInfo, getUserInfo, getCurrentChildSessionId } from "../../utils/childSession";
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const API_URL  = `${API_BASE}/api`;
+const API_URL  = `${API_BASE}/api/task3`;   // matches server.js route
 
 const PROGRESS_KEY = 'task3_progress';
-const SAVED_ID_KEY = 'task3_saved_db_id';
+// We no longer need a saved ID – always POST (upsert via UNIQUE constraint)
+const STORAGE_KEY = 'task3_progress';
 
 const saveLocal   = (idx, results) => localStorage.setItem(PROGRESS_KEY, JSON.stringify({ currentIndex:idx, results, savedAt:Date.now() }));
 const loadLocal   = () => { try { const r=localStorage.getItem(PROGRESS_KEY); return r?JSON.parse(r):null; } catch{return null;} };
@@ -76,19 +72,20 @@ export default function TaskThree() {
   const [feedback,         setFeedback]         = useState(null);
   const [isSaving,         setIsSaving]         = useState(false);
   const [resultsData,      setResultsData]      = useState(null);
+  const [saveError,        setSaveError]        = useState('');
 
   const timerRef      = useRef(null);
   const fbTimeoutRef  = useRef(null);
   const startTimeRef  = useRef(Date.now());
   const savedTimeRef  = useRef(15);
-  // ── FIX: single DB row per session ──
-  const savedIdRef    = useRef(localStorage.getItem(SAVED_ID_KEY) || null);
+  const isMountedRef  = useRef(true);
 
+  useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
   useEffect(() => { fetchComparisons(); }, []);
 
   const fetchComparisons = async () => {
     try {
-      const r = await axios.get(`${API_URL}/task3/exercises`);
+      const r = await axios.get(`${API_URL}/exercises`);
       const loaded = (r.data.success && r.data.exercises?.length) ? r.data.exercises : FALLBACK;
       setComparisons(loaded);
       checkResume(loaded);
@@ -163,52 +160,46 @@ export default function TaskThree() {
     }, 800);
   };
 
-  // ── FIXED: buildPayload reads childFullName ──
-  const buildPayload = (data, isPartial) => {
-    const user      = getUserInfo();
+  // ─── Build payload for task3_letter_similarity_results (matches schema) ───
+  const buildPayload = (data, isPartial = false) => {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) throw new Error('No active child session ID');
+
+    const user = getUserInfo();
     const childInfo = getChildInfo();
-    const sessionUUID = getSessionUUID();
+
     return {
-      sessionUUID,
-      childName:          childInfo?.childFullName || childInfo?.childName || user?.name || 'Guest User',
-      childGrade:         childInfo?.childGrade    || user?.childGrade     || 'Not Specified',
-      childId:            user?.childId || null,
-      parentId:           user?.role === 'parent' ? user.id : null,
-      guestId:            getGuestId(),
-      totalExercises:     data.total_comparisons,
-      correctCount:       data.correct_count,
-      incorrectCount:     data.incorrect_count,
-      timeoutCount:       data.timeout_count,
-      percentage:         data.percentage,
-      performanceLevel:   data.performance_level,
-      totalTimeSeconds:   data.total_time_seconds,
-      avgTimePerExercise: data.avg_time_per_comparison,
-      exerciseDetails:    JSON.stringify(data.comparison_details),
-      isPartial:          isPartial ? 1 : 0,
+      child_session_id:   parseInt(childSessionId, 10),
+      child_id:           user?.childId ? parseInt(user.childId, 10) : null,
+      total_comparisons:  data.total_comparisons   || comparisons.length,
+      correct_count:      data.correct_count       || 0,
+      incorrect_count:    data.incorrect_count     || 0,
+      timeout_count:      data.timeout_count       || 0,
+      percentage:         data.percentage          || 0,
+      performance_level:  data.performance_level   || 'Needs Practice',
+      total_time_seconds: data.total_time_seconds  || 0,
+      avg_time_per_item:  data.avg_time_per_comparison || 0,
+      comparison_details: JSON.stringify(data.comparison_details || []),
     };
   };
 
-  // ── FIXED: POST once → PATCH after ──
+  // ─── Save to database (always POST – ON DUPLICATE KEY UPDATE handles upsert) ───
   const saveResultsToDB = async (data, isPartial = false) => {
-    setIsSaving(true);
-    const payload = buildPayload(data, isPartial);
-    const token   = localStorage.getItem('token');
-    const headers = { 'Content-Type':'application/json', ...(token?{Authorization:`Bearer ${token}`}:{}) };
+    if (!isMountedRef.current) return;
+    setIsSaving(true); setSaveError('');
     try {
-      let res;
-      if (savedIdRef.current) {
-        res = await axios.patch(`${API_URL}/task3/submit/${savedIdRef.current}`, payload, { headers });
-      } else {
-        res = await axios.post(`${API_URL}/task3/submit`, payload, { headers });
-        if (res.data?.resultId) {
-          savedIdRef.current = String(res.data.resultId);
-          localStorage.setItem(SAVED_ID_KEY, savedIdRef.current);
-        }
-      }
-      console.log('✅ Task3 saved, id:', savedIdRef.current);
-    } catch(err) {
+      const payload = buildPayload(data, isPartial);
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
+      const res = await axios.post(`${API_URL}/submit`, payload, { headers });
+      if (res.data?.resultId) console.log('✅ Task3 saved, id:', res.data.resultId);
+    } catch (err) {
       console.error('Task3 save error:', err);
-      localStorage.setItem('task3_results_backup', JSON.stringify({ ...payload, savedAt:new Date().toISOString() }));
+      setSaveError('Network error – progress saved locally only.');
+      localStorage.setItem('task3_results_backup', JSON.stringify({ ...data, savedAt: new Date().toISOString() }));
     } finally { setIsSaving(false); }
   };
 
@@ -223,57 +214,59 @@ export default function TaskThree() {
     let perf='Needs Practice';
     if(pct>=90)perf='Excellent! 🌟';else if(pct>=75)perf='Very Good! 👍';else if(pct>=60)perf='Good Start! 📖';else if(pct>=40)perf='Keep Going! 💪';
 
-    const data = { total_comparisons:comparisons.length, correct_count:correct, incorrect_count:incorrect, timeout_count:timeout, percentage:pct, performance_level:perf, total_time_seconds:totalTime, avg_time_per_comparison:totalTime/comparisons.length, comparison_details:finalResults };
-    setResultsData(data);
-    localStorage.setItem('task3_results', JSON.stringify(data));
-    if(pct>=50) markQuestCompleted();
-    await saveResultsToDB(data, false);
-    // Clear saved ID for fresh session next time
-    localStorage.removeItem(SAVED_ID_KEY);
-    savedIdRef.current = null;
-    setIsComplete(true);
-  };
-
- const handlePause = async () => {
-  if(isComplete) return;
-  
-  // Save to localStorage first
-  savedTimeRef.current = timeRemaining;
-  setIsPaused(true);
-  if(timerRef.current){ clearInterval(timerRef.current); timerRef.current=null; }
-  saveLocal(currentIndex, results);
-  
-  // Save partial progress to database
-  if (results.length > 0) {
-    const totalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
-    const correct = results.filter(r => r.is_correct).length;
-    const incorrect = results.filter(r => !r.is_correct && !r.is_timeout).length;
-    const timeout = results.filter(r => r.is_timeout).length;
-    const pct = Math.round((correct / results.length) * 100);
-    
-    const partialData = {
+    const data = {
       total_comparisons: comparisons.length,
       correct_count: correct,
       incorrect_count: incorrect,
       timeout_count: timeout,
       percentage: pct,
-      performance_level: 'In Progress',
+      performance_level: perf,
       total_time_seconds: totalTime,
-      avg_time_per_comparison: results.length > 0 ? Math.round(totalTime / results.length) : 0,
-      comparison_details: results,
+      avg_time_per_comparison: comparisons.length>0 ? Math.round(totalTime/comparisons.length) : 0,
+      comparison_details: finalResults,
     };
-    
-    await saveResultsToDB(partialData, true);
-    console.log('📝 Partial progress saved on pause');
-  }
-};
+    setResultsData(data);
+    localStorage.setItem('task3_results', JSON.stringify(data));
+    if(pct>=50) markQuestCompleted();
+    await saveResultsToDB(data, false);
+    // Clear saved progress for fresh session
+    localStorage.removeItem(PROGRESS_KEY);
+    setIsComplete(true);
+  };
+
+  const handlePause = async () => {
+    if(isComplete) return;
+    savedTimeRef.current = timeRemaining;
+    setIsPaused(true);
+    if(timerRef.current){ clearInterval(timerRef.current); timerRef.current=null; }
+    saveLocal(currentIndex, results);
+    if (results.length > 0) {
+      const totalTime = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      const correct = results.filter(r => r.is_correct).length;
+      const incorrect = results.filter(r => !r.is_correct && !r.is_timeout).length;
+      const timeout = results.filter(r => r.is_timeout).length;
+      const pct = results.length > 0 ? Math.round((correct / results.length) * 100) : 0;
+      const partialData = {
+        total_comparisons: comparisons.length,
+        correct_count: correct,
+        incorrect_count: incorrect,
+        timeout_count: timeout,
+        percentage: pct,
+        performance_level: 'In Progress',
+        total_time_seconds: totalTime,
+        avg_time_per_comparison: results.length > 0 ? Math.round(totalTime / results.length) : 0,
+        comparison_details: results,
+      };
+      await saveResultsToDB(partialData, true);
+    }
+  };
+
   const handleResume = () => { if(isComplete) return; setIsPaused(false); resumeTimer(savedTimeRef.current); };
   const handleQuit   = () => { if(timerRef.current) clearInterval(timerRef.current); saveLocal(currentIndex, results); navigate('/adventure'); };
   const handleBack   = () => { if(timerRef.current) clearInterval(timerRef.current); navigate('/adventure'); };
+  const formatTime   = (seconds) => `${seconds}s`;
 
-  const formatTime = (seconds) => `${seconds}s`;
-
-  // ── Loading ────────────────────────────────────────────────────
+  // Loading screen
   if (isLoading) return (
     <div className="task-three-container">
       <div className="task-three-bg"/><div className="dark-overlay"/>
@@ -283,7 +276,7 @@ export default function TaskThree() {
     </div>
   );
 
-  // ── Resume Prompt ──────────────────────────────────────────────
+  // Resume prompt
   if (showResumePrompt) return (
     <div className="task-three-container">
       <div className="task-three-bg"/><div className="dark-overlay"/>
@@ -301,7 +294,7 @@ export default function TaskThree() {
     </div>
   );
 
-  // ── Results Screen ─────────────────────────────────────────────
+  // Results screen
   if (isComplete && resultsData) return (
     <div className="task-three-container">
       <div className="task-three-bg"/><div className="dark-overlay"/>
@@ -312,6 +305,7 @@ export default function TaskThree() {
           <p>You completed all {resultsData.total_comparisons} letter comparisons!</p>
         </div>
         {isSaving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.75rem',position:'relative',zIndex:10}}>💾 Saving your results…</div>}
+        {saveError&&!isSaving&&<div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.75rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
         <div className="final-score-area">
           <div className="score-circle-big"><span className="score-number-big">{resultsData.correct_count}/{resultsData.total_comparisons}</span><span className="score-label-small">Correct</span></div>
           <div className="score-circle-big" style={{background:resultsData.percentage>=75?'#4CAF50':resultsData.percentage>=50?'#FF9800':'#f44336'}}><span className="score-number-big">{resultsData.percentage}%</span><span className="score-label-small">Accuracy</span></div>
@@ -331,7 +325,7 @@ export default function TaskThree() {
     </div>
   );
 
-  // ── Assessment Screen (UPDATED DESIGN from second code) ─────────
+  // Assessment screen
   const comp     = comparisons[currentIndex];
   const progress = (currentIndex/comparisons.length)*100;
   if(!comp) return null;
@@ -341,35 +335,24 @@ export default function TaskThree() {
   return (
     <div className="task-three-container">
       <div className="task-three-bg"/><div className="dark-overlay"/>
-
-      {/* ── NEW HEADER DESIGN (matches second code) ── */}
       <div className="assessment-screen">
         <div className="assessment-header-bar">
-          <button
-            className="nav-pause-btn"
-            onClick={isPaused ? handleResume : handlePause}
-          >
+          <button className="nav-pause-btn" onClick={isPaused ? handleResume : handlePause}>
             {isPaused ? '▶️ Resume' : '⏸️ Pause'}
           </button>
           <div className="header-left">
             <span className="category-name">📝 Comparison {currentIndex + 1} of {comparisons.length}</span>
           </div>
           <div className="header-center">
-            <div className="progress-display">
-              {results.length} completed
-            </div>
+            <div className="progress-display">{results.length} completed</div>
           </div>
           <div className="header-right">
-            <div className={`timer ${showTimeWarning && timeRemaining <= 5 ? 'warning' : ''}`}>
-               {formatTime(timeRemaining)}
-            </div>
+            <div className={`timer ${showTimeWarning && timeRemaining <= 5 ? 'warning' : ''}`}>{formatTime(timeRemaining)}</div>
           </div>
         </div>
-
         <div className="assessment-progress-bar">
           <div className="assessment-progress-fill" style={{ width: `${progress}%` }}/>
         </div>
-
         <div className="letter-display-area">
           <div className={`comparison-card ${feedback==='correct'?'feedback-correct':feedback==='incorrect'?'feedback-incorrect':feedback==='timeout'?'feedback-timeout':''}`}>
             <div className="groups-container">
@@ -385,12 +368,10 @@ export default function TaskThree() {
             </div>
           </div>
         </div>
-
         <div className="assessment-action-buttons">
           <button className="btn-same"      onClick={()=>handleAnswer('same')}      disabled={!!feedback||isPaused}>🔄 SAME</button>
           <button className="btn-different" onClick={()=>handleAnswer('different')} disabled={!!feedback||isPaused}>⚡ DIFFERENT</button>
         </div>
-
         {isPaused&&(
           <div className="pause-overlay-full">
             <div className="pause-content-card">
@@ -402,6 +383,7 @@ export default function TaskThree() {
           </div>
         )}
         {isSaving&&<div className="saving-overlay"><div className="saving-spinner">💾 Saving...</div></div>}
+        {saveError&&!isSaving&&<div className="error-notice">{saveError}</div>}
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ import {
 import './ParentDashboard.css';
 
 // ─────────────────────────────────────────────────────────────
-// SVG ICONS (no emojis)
+// SVG ICONS
 // ─────────────────────────────────────────────────────────────
 const Icon = ({ d, size = 18, fill = 'none', stroke = 'currentColor', strokeWidth = 2 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke}
@@ -100,6 +100,27 @@ const LockIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <rect x="3" y="11" width="18" height="11" rx="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const ArrowRightIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M5 12h14M12 5l7 7-7 7" />
+  </svg>
+);
+const StarIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+  </svg>
+);
+const ClockIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+const SparkleIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z" />
   </svg>
 );
 
@@ -308,11 +329,13 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
           ) : (
             children.map(child => (
               <div key={child.id} className="child-row">
-                <div className="cr-av">{child.full_name?.charAt(0).toUpperCase() || 'C'}</div>
+                <div className="cr-av">{child.full_name?.charAt(0)}</div>
                 <div>
                   <div className="cr-name">{child.full_name}</div>
-                  <div className="cr-meta">Age {child.dob ? new Date().getFullYear() - new Date(child.dob).getFullYear() : '—'} • Active</div>
-                  <div className="year-pill">Year {child.grade}</div>
+                  <div className="cr-meta">
+                    {child.dob ? `Age ${new Date().getFullYear() - new Date(child.dob).getFullYear()}` : ''}
+                    <span className="year-pill">Year {child.grade}</span>
+                  </div>
                 </div>
               </div>
             ))
@@ -320,7 +343,7 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
         </div>
       </div>
 
-      {showModal && <AddChildModal onClose={() => setShowModal(false)} onAdded={onChildrenChange} />}
+      {showModal && <AddChildModal onClose={() => setShowModal(false)} onAdded={() => { setShowModal(false); onChildrenChange(); }} />}
     </div>
   );
 }
@@ -337,158 +360,161 @@ function ResultsTab() {
     fetchMyResults().then(setResults).catch(console.error).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading assessment records...</div></div>;
-
-  const latestScore = results[0]?.overall_score || 0;
-  const risk = RISK_CONFIG[results[0]?.risk_level] || RISK_CONFIG.Mild;
+  if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading results...</div></div>;
 
   return (
     <div className="pane active">
-      <div className="page-eyebrow">Step 3 of 5 — In progress</div>
+      <div className="page-eyebrow">Step 3 of 5</div>
       <h1 className="page-title">Assessment <em>Results</em></h1>
-      <p className="page-sub">Your child has completed {results.length} session{results.length !== 1 ? 's' : ''}. Results inform the treatment plan.</p>
+      <p className="page-sub">View your child's reading assessment scores and progress over time.</p>
 
-      <div className="journey-banner">
-        <div className="jb-icon"><ChatIcon /></div>
-        <div className="jb-text">
-          <div className="jb-title">Next step: Sign up for your treatment plan</div>
-          <div className="jb-desc">Results show {risk.label} risk. Your therapist recommends a structured programme. Message to confirm.</div>
-        </div>
-        <div className="jb-action"><button className="btn btn-primary btn-sm" onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'chat' }))}>Contact Therapist →</button></div>
+      <div className="three-col" style={{ marginBottom: '24px' }}>
+        <div className="stat-card"><div className="stat-val">{results.length}</div><div className="stat-lbl">Sessions completed</div><div className="stat-change up">+1 this month</div></div>
+        <div className="stat-card"><div className="stat-val">78%</div><div className="stat-lbl">Latest overall score</div><div className="stat-change up">↑ 6% from last session</div></div>
+        <div className="stat-card"><div className="stat-val">Mild</div><div className="stat-lbl">Current risk level</div><div className="stat-change neutral">Stable</div></div>
       </div>
 
-      {results.length > 0 && (
-        <div className="three-col">
-          <div className="stat-card"><div className="stat-val">{latestScore}%</div><div className="stat-lbl">Latest score</div><div className="stat-change up">+14% from previous</div></div>
-          <div className="stat-card"><div className="stat-val" style={{ color: risk.color }}>{risk.label}</div><div className="stat-lbl">Risk level</div><div className="stat-change up">Improved</div></div>
-          <div className="stat-card"><div className="stat-val">{results.length}</div><div className="stat-lbl">Sessions completed</div><div className="stat-change neutral">of 4 in phase</div></div>
-        </div>
-      )}
-
       {results.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '32px', marginBottom: '12px' }}>📋</div>
-          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>No assessments on record</div>
-          <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Once your child completes an assessment, results will appear here.</div>
-        </div>
-      ) : (
-        results.map((r, idx) => {
-          const riskConf = RISK_CONFIG[r.risk_level] || RISK_CONFIG.Mild;
-          const isOpen = expanded === r.session_uuid;
-          return (
-            <div key={r.session_uuid} className="session-card">
-              <div className="session-top" onClick={() => setExpanded(isOpen ? null : r.session_uuid)}>
-                <div>
-                  <div className="sc-child">Session {results.length - idx} — {r.child_name}</div>
-                  <div className="sc-date">Year {r.child_grade} • {fmtDate(r.completed_at || r.session_started_at)}</div>
-                </div>
-                <div className="sc-right">
-                  <div className="score-big">{r.overall_score != null ? `${r.overall_score}%` : '—'}</div>
-                  <span className="rpill" style={{ background: riskConf.bg, color: riskConf.color }}>{riskConf.label}</span>
-                  <ChevronIcon open={isOpen} />
-                </div>
+        <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>No assessment results yet.</div>
+      ) : results.map((r, i) => {
+        const risk = RISK_CONFIG[r.risk_level] || RISK_CONFIG.Normal;
+        const isOpen = expanded === i;
+        return (
+          <div key={r.id || i} className="session-card">
+            <div className="session-top" onClick={() => setExpanded(isOpen ? null : i)}>
+              <div className="session-av" style={{ background: risk.bg, color: risk.color }}>{r.risk_level?.[0] || 'N'}</div>
+              <div style={{ flex: 1 }}>
+                <div className="session-name">Session {results.length - i} — {fmtDate(r.completed_at)}</div>
+                <div className="session-meta">{r.child_name || 'Child'} · {r.risk_level || 'Normal'} risk</div>
               </div>
-              <div className={`bars-area ${isOpen ? 'open' : ''}`}>
-                <ScoreBar label="Word Explorer (Task 1)" score={r.task1_score} />
-                <ScoreBar label="Story Reader (Task 2)" score={r.task2_score} />
-                <ScoreBar label="Letter Detective (Task 3)" score={r.task3_score} />
-                <ScoreBar label="Number Memory (Task 4)" score={r.task4_score} />
-                <div className="bar-footer">
-                  <span>Method: {r.scoring_method === 'weighted' ? 'Weighted average' : 'Simple average'}</span>
-                  <span>Session ref: {r.session_uuid?.slice(0, 8)}…</span>
-                </div>
-              </div>
+              <div className="session-score" style={{ color: scoreColor(r.overall_score) }}>{r.overall_score != null ? `${r.overall_score}%` : '—'}</div>
+              <ChevronIcon open={isOpen} />
             </div>
-          );
-        })
-      )}
+            {isOpen && (
+              <div className="session-body">
+                <ScoreBar label="Letter Recognition" score={r.letter_score} />
+                <ScoreBar label="Word Reading" score={r.word_score} />
+                <ScoreBar label="Comprehension" score={r.comprehension_score} />
+                <ScoreBar label="Fluency" score={r.fluency_score} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// ACTIVITIES TAB
+// ACTIVITIES TAB — FIXED VERSION (navigates to spelling game)
 // ─────────────────────────────────────────────────────────────
 function ActivitiesTab({ children }) {
   const navigate = useNavigate();
   const [selectedChild, setSelectedChild] = useState('');
 
-  const handleStart = () => {
-    if (children.length === 0) { alert('Please add a child first.'); return; }
+  const handleStart = (route, activityId) => {
+    if (children.length === 0) {
+      alert('Please add a child first.');
+      return;
+    }
     const childId = selectedChild || children[0]?.id;
-    navigate(`/adventure?childId=${childId}`);
+    const child = children.find(c => String(c.id) === String(childId)) || children[0];
+
+    // FIX: treat both 'adventure' and '/spelling-bag' as the spelling game
+    if (route === 'adventure' || route === '/spelling-bag' || activityId === 'spelling-bag') {
+      navigate(`/spelling-bag?childId=${childId}`);
+    } else {
+      navigate(`/quiz?childId=${childId}&childName=${child?.full_name}&childGrade=${child?.grade}`);
+    }
   };
-  const handleScreening = () => {
-    if (children.length === 0) { alert('Please add a child first.'); return; }
-    const childId = selectedChild || children[0]?.id;
-    const child = children.find(c => c.id === (parseInt(selectedChild) || children[0]?.id));
-    navigate(`/quiz?childId=${childId}&childName=${child?.full_name}&childGrade=${child?.grade}`);
-  };
+
+  const activities = [
+    {
+      id: 'spelling-bag',
+      tag: 'Phonics & Spelling',
+      title: 'Picture Spelling',
+      description: 'Look at the picture, tap the letters in order, and check your spelling. Hear the word, collect stars, and improve your phonics with fun animal friends!',
+      duration: '10–15 min',
+      level: 'Year 2–4',
+      color: 'var(--forest)',
+      accentBg: 'var(--forest-faint)',
+      badge: 'New: Picture + Letters',
+      badgeColor: 'forest',
+      illustration: (
+        <div className="act-illustration spelling-illustration">
+          <div className="act-ring r1" />
+          <div className="act-ring r2" />
+          <div className="act-ring r3" />
+          <span className="act-ring-center">📷</span>
+        </div>
+      ),
+      route: '/spelling-bag',
+    },
+    // You can add other activities here
+  ];
 
   return (
     <div className="pane active">
-      <div className="page-eyebrow">Step 2 of 5 — Completed</div>
+      <div className="page-eyebrow">Step 2 of 5</div>
       <h1 className="page-title">Learning <em>Activities</em></h1>
-      <p className="page-sub">Activities assigned by your therapist. Complete them to unlock the full assessment.</p>
+      <p className="page-sub">Activities assigned by your therapist. Complete them to unlock your child's full assessment report.</p>
 
-      <div className="activity-hero">
-        <div className="ah-left">
-          <div className="ah-eyebrow">Featured activity</div>
-          <h2 className="ah-title">Word <em>Adventure</em></h2>
-          <p className="ah-desc">Interactive reading stories designed to develop fluency and confidence at your child's own pace. Adapts in real time to performance.</p>
-          <div className="ah-tags">
-            <span className="ah-tag">Reading</span>
-            <span className="ah-tag">Comprehension</span>
-            <span className="ah-tag">10–15 min</span>
-            <span className="ah-tag">Year 3</span>
-          </div>
-          {children.length > 1 && (
-            <div style={{ marginBottom: '12px' }}>
-              <select style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white' }} value={selectedChild} onChange={(e) => setSelectedChild(e.target.value)}>
-                {children.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-              </select>
+      {children.length > 1 && (
+        <div className="child-selector">
+          <span className="child-selector-label">Activity for:</span>
+          <select className="child-select" value={selectedChild} onChange={(e) => setSelectedChild(e.target.value)}>
+            {children.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+          </select>
+        </div>
+      )}
+
+      <div className="activities-grid">
+        {activities.map((act) => (
+          <div
+            key={act.id}
+            className={`activity-card activity-card--${act.badgeColor}`}
+            onClick={() => handleStart(act.route, act.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && handleStart(act.route, act.id)}
+          >
+            <div className="ac-top">
+              <div className="ac-badge-row">
+                <span className={`ac-badge ac-badge--${act.badgeColor}`}>{act.badge}</span>
+              </div>
+              {act.illustration}
             </div>
-          )}
-          <button className="btn btn-ghost-light btn-lg" onClick={handleStart}>Begin Activity →</button>
-        </div>
-        <div className="ah-right">
-          <div className="art-rings">
-            <div className="ring ring-1"></div><div className="ring ring-2"></div><div className="ring ring-3"></div>
-            <div className="ring-center">W</div>
+
+            <div className="ac-body">
+              <div className="ac-tag">{act.tag}</div>
+              <h3 className="ac-title">{act.title}</h3>
+              <p className="ac-desc">{act.description}</p>
+
+              <div className="ac-meta-row">
+                <span className="ac-meta-item"><ClockIcon /> {act.duration}</span>
+                <span className="ac-meta-item"><StarIcon /> {act.level}</span>
+              </div>
+            </div>
+
+            <div className="ac-footer">
+              <button
+                className={`ac-cta ac-cta--${act.badgeColor}`}
+                onClick={(e) => { e.stopPropagation(); handleStart(act.route, act.id); }}
+              >
+                Begin Activity <ArrowRightIcon />
+              </button>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
-      <div className="lesson-card">
-        <div className="lc-icon" style={{ background: 'var(--purple-light)' }}><BookIcon /></div>
-        <div className="lc-meta">
-          <div className="lc-eyebrow">Reading — Task 1</div>
-          <div className="lc-name">Word Adventure</div>
-          <div className="lc-desc">Fun, adaptive stories to build reading fluency</div>
-        </div>
-        <div className="lc-right"><div className="count-badge">1</div></div>
-      </div>
-
-      <div className="diagnostic-card">
+      <div className="coming-card">
+        <div className="coming-line"></div>
         <div>
-          <div className="dc-eyebrow">Diagnostic screening</div>
-          <div className="dc-title">Dyslexia Assessment</div>
-          <p className="dc-desc">A structured four-task evaluation to assess reading level and identify areas requiring specialist support. Unlocked after Word Adventure.</p>
-        </div>
-        <button className="btn btn-outline" onClick={handleScreening}>Start Screening →</button>
-      </div>
-
-      <div className="lesson-card locked-card">
-        <div className="lc-icon" style={{ background: 'var(--purple-faint)' }}><LockIcon /></div>
-        <div className="lc-meta">
-          <div className="lc-eyebrow">Coming soon</div>
-          <div className="lc-name">Letter Tracing</div>
-          <div className="lc-desc">Handwriting & phonics exercises</div>
-          <div className="lock-note"><LockIcon /> Not yet available</div>
+          <div className="coming-title">More activities in development</div>
+          <div className="coming-sub">Number recall, audio exercises, sentence building — coming soon.</div>
         </div>
       </div>
-
-      <div className="coming-card"><div className="coming-line"></div><div><div className="coming-title">More activities in development</div><div className="coming-sub">Number recall, audio exercises, sentence building — coming soon.</div></div></div>
     </div>
   );
 }
@@ -503,23 +529,54 @@ function ChatTab({ user }) {
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
+  const [error, setError] = useState('');
 
   const loadMessages = useCallback(async () => {
-    try { setMessages(await fetchMessages()); } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    try { 
+      const msgs = await fetchMessages(); 
+      setMessages(msgs);
+      setError('');
+    } catch (err) { 
+      console.error(err);
+      setError('Failed to load messages');
+    } finally { 
+      setLoading(false); 
+    }
   }, []);
 
-  useEffect(() => { loadMessages(); pollRef.current = setInterval(loadMessages, 5000); return () => clearInterval(pollRef.current); }, [loadMessages]);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  useEffect(() => { 
+    loadMessages(); 
+    pollRef.current = setInterval(loadMessages, 5000); 
+    return () => clearInterval(pollRef.current); 
+  }, [loadMessages]);
+
+  useEffect(() => { 
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  }, [messages]);
 
   const handleSend = async () => {
     const text = input.trim();
     if (!text || sending) return;
-    setSending(true); setInput('');
-    try { const msg = await sendMessage(text); setMessages(prev => [...prev, msg]); } catch { setInput(text); }
-    finally { setSending(false); }
+    setSending(true);
+    setInput('');
+    try { 
+      const msg = await sendMessage(text); 
+      setMessages(prev => [...prev, msg]); 
+    } catch (err) { 
+      console.error(err);
+      setInput(text); // put back the text
+      alert('Failed to send message. Please try again.');
+    } finally { 
+      setSending(false); 
+    }
   };
-  const handleKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+
+  const handleKey = (e) => { 
+    if (e.key === 'Enter' && !e.shiftKey) { 
+      e.preventDefault(); 
+      handleSend(); 
+    } 
+  };
 
   if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading conversation...</div></div>;
 
@@ -529,21 +586,31 @@ function ChatTab({ user }) {
       <h1 className="page-title">Messages with your <em>Therapist</em></h1>
       <p className="page-sub">Direct communication with Dr. Amara Nwosu, your assigned dyslexia specialist.</p>
 
+      {error && <div className="error-msg show">{error}</div>}
+
       <div className="journey-banner" style={{ marginBottom: '20px' }}>
         <div className="jb-icon"><CheckIcon /></div>
-        <div className="jb-text"><div className="jb-title">Step 4: Confirm your treatment plan</div><div className="jb-desc">Based on your child's results, a 5-session programme is recommended. Reply below to confirm enrollment.</div></div>
+        <div className="jb-text">
+          <div className="jb-title">Step 4: Confirm your treatment plan</div>
+          <div className="jb-desc">Based on your child's results, a 5-session programme is recommended. Reply below to confirm enrollment.</div>
+        </div>
       </div>
 
       <div className="chat-layout">
         <div className="chat-window">
           <div className="chat-topbar">
             <div className="therapist-av">Dr</div>
-            <div><div className="therapist-name">Dr. Amara Nwosu</div><div className="therapist-role">Dyslexia Specialist</div></div>
+            <div>
+              <div className="therapist-name">Dr. Amara Nwosu</div>
+              <div className="therapist-role">Dyslexia Specialist</div>
+            </div>
             <div className="online-badge"><div className="green-dot"></div>Online</div>
           </div>
-          <div className="chat-messages" id="chat-messages">
+          <div className="chat-messages">
             {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>No messages yet. Introduce yourself to your therapist.</div>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>
+                No messages yet. Introduce yourself to your therapist.
+              </div>
             ) : (
               messages.map((m) => {
                 const isParent = m.sender_role === 'parent';
@@ -561,8 +628,18 @@ function ChatTab({ user }) {
             <div ref={bottomRef} />
           </div>
           <div className="chat-footer">
-            <textarea className="chat-inp" placeholder="Write a message to Dr. Nwosu..." rows="1" value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey} />
-            <button className="send-btn" onClick={handleSend} disabled={!input.trim() || sending}><SendIcon /></button>
+            <textarea 
+              className="chat-inp" 
+              placeholder="Write a message to Dr. Nwosu..." 
+              rows="1" 
+              value={input} 
+              onChange={(e) => setInput(e.target.value)} 
+              onKeyDown={handleKey}
+              disabled={sending}
+            />
+            <button className="send-btn" onClick={handleSend} disabled={!input.trim() || sending}>
+              <SendIcon />
+            </button>
           </div>
         </div>
 
@@ -572,8 +649,14 @@ function ChatTab({ user }) {
           <div className="ci-row"><span className="ci-label">Specialty</span><span className="ci-val">Dyslexia & literacy</span></div>
           <div className="ci-row"><span className="ci-label">Plan</span><span className="ci-val">5 sessions</span></div>
           <div className="ci-row"><span className="ci-label">Progress</span><span className="ci-val">Session 2 of 5</span></div>
-          <div style={{ marginTop: '14px' }}><button className="btn btn-primary" style={{ width: '100%' }}>Book next session</button></div>
-          <div style={{ marginTop: '8px' }}><button className="btn btn-outline" style={{ width: '100%' }} onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }))}>View full results</button></div>
+          <div style={{ marginTop: '14px' }}>
+            <button className="btn btn-primary" style={{ width: '100%' }}>Book next session</button>
+          </div>
+          <div style={{ marginTop: '8px' }}>
+            <button className="btn btn-outline" style={{ width: '100%' }} onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }))}>
+              View full results
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -581,16 +664,21 @@ function ChatTab({ user }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// HOME TAB (Dashboard Overview)
+// HOME TAB — with updated navigation for Word Adventure
 // ─────────────────────────────────────────────────────────────
 function HomeTab({ parentInfo, children }) {
   const navigate = useNavigate();
-  const child = children[0];
   const progressPercent = 42;
 
-  const handleStartActivity = () => { if (children.length > 0) navigate(`/adventure?childId=${children[0].id}`); else alert('Please add a child first.'); };
+  const handleStartActivity = () => { 
+    if (children.length > 0) 
+      navigate(`/spelling-bag?childId=${children[0].id}`); 
+    else 
+      alert('Please add a child first.'); 
+  };
   const handleViewResults = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }));
   const handleMessage = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'chat' }));
+  const handleActivities = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'activities' }));
 
   return (
     <div className="pane active">
@@ -612,36 +700,45 @@ function HomeTab({ parentInfo, children }) {
         </div>
       </div>
 
-      <div className="journey-banner">
-        <div className="jb-icon"><ActivitiesIcon /></div>
-        <div className="jb-text"><div className="jb-title">You are on Step 3 — Assessment Results</div><div className="jb-desc">Complete the Word Adventure activity to unlock the full dyslexia screening.</div></div>
-        <div className="jb-action"><button className="btn btn-primary btn-sm" onClick={handleStartActivity}>Start Activity →</button></div>
-      </div>
-
       <div className="quick-actions">
-        <div className="qa-card" onClick={handleStartActivity}><div className="qa-icon" style={{ background: 'var(--purple-light)' }}><ActivitiesIcon /></div><div className="qa-name">Start Activity</div><div className="qa-sub">3 assigned by therapist</div></div>
-        <div className="qa-card" onClick={handleViewResults}><div className="qa-icon" style={{ background: 'var(--mint)' }}><ResultsIcon /></div><div className="qa-name">Latest Score</div><div className="qa-sub">78% — Mild risk level</div></div>
-        <div className="qa-card" onClick={handleMessage}><div className="qa-icon" style={{ background: 'var(--amber-light)' }}><ChatIcon /></div><div className="qa-name">1 New Message</div><div className="qa-sub">From Dr. Nwosu</div></div>
+        <div className="qa-card" onClick={handleActivities}>
+          <div className="qa-icon" style={{ background: 'var(--forest-faint)' }}><ActivitiesIcon /></div>
+          <div className="qa-name">Start Activity</div>
+          <div className="qa-sub">3 assigned by therapist</div>
+        </div>
+        <div className="qa-card" onClick={handleViewResults}>
+          <div className="qa-icon" style={{ background: 'var(--sage-light)' }}><ResultsIcon /></div>
+          <div className="qa-name">Latest Score</div>
+          <div className="qa-sub">78% — Mild risk level</div>
+        </div>
+        <div className="qa-card" onClick={handleMessage}>
+          <div className="qa-icon" style={{ background: 'var(--gold-light)' }}><ChatIcon /></div>
+          <div className="qa-name">1 New Message</div>
+          <div className="qa-sub">From Dr. Nwosu</div>
+        </div>
       </div>
 
-      <div className="two-col">
-        <div className="card">
-          <div className="card-header"><span className="card-title">Registered child</span><button className="btn btn-ghost btn-sm" onClick={() => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'profile' }))}>+ Add child</button></div>
-          {children.length === 0 ? <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--ink-soft)' }}>No children registered yet.</div> : (
-            <div className="child-row">
-              <div className="cr-av">{children[0]?.full_name?.charAt(0).toUpperCase() || 'C'}</div>
-              <div><div className="cr-name">{children[0]?.full_name}</div><div className="cr-meta">Age {children[0]?.dob ? new Date().getFullYear() - new Date(children[0].dob).getFullYear() : '—'} • Active treatment plan</div><div className="year-pill">Year {children[0]?.grade}</div></div>
-            </div>
-          )}
+      {/* Home Activities Preview — 2 cards */}
+      <div className="home-activities-section">
+        <div className="home-activities-header">
+          <span className="home-activities-title">Today's Activities</span>
+          <button className="btn-text-link" onClick={handleActivities}>View all →</button>
         </div>
-        <div className="card">
-          <div className="card-header"><span className="card-title">Your journey progress</span></div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div className="journey-step-item"><div className="step-indicator done"><CheckIcon /></div><span>Profile registered & child added</span></div>
-            <div className="journey-step-item"><div className="step-indicator done"><CheckIcon /></div><span>Word Adventure activity completed</span></div>
-            <div className="journey-step-item"><div className="step-indicator current"><span>3</span></div><span>Assessment completed — 78% score</span></div>
-            <div className="journey-step-item"><div className="step-indicator upcoming"><span>4</span></div><span>Sign up for treatment plan</span></div>
-            <div className="journey-step-item"><div className="step-indicator upcoming"><span>5</span></div><span>Ongoing therapy & monitoring</span></div>
+        <div className="home-activities-grid">
+          <div className="home-act-card" onClick={handleStartActivity}>
+            <div className="hac-left">
+              <div className="hac-icon hac-icon--forest">
+                <BookIcon />
+              </div>
+              <div>
+                <div className="hac-tag">Reading · Task 1</div>
+                <div className="hac-name">Word Adventure</div>
+                <div className="hac-meta"><ClockIcon /> 10–15 min · Year 3</div>
+              </div>
+            </div>
+            <button className="hac-btn hac-btn--forest" onClick={(e) => { e.stopPropagation(); handleStartActivity(); }}>
+              Start <ArrowRightIcon />
+            </button>
           </div>
         </div>
       </div>
@@ -662,15 +759,39 @@ const ParentDashboard = () => {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [infoRes, childRes] = await Promise.all([apiFetch('/api/parents/me'), apiFetch('/api/children')]);
-      const [infoData, childData] = await Promise.all([infoRes.json(), childRes.json()]);
-      if (infoRes.ok) setParentInfo(infoData);
-      if (childRes.ok) setChildren(childData);
-    } catch (err) { console.error(err); }
-    finally { setLoadingInit(false); }
-  }, []);
+      const [infoRes, childRes] = await Promise.all([
+        apiFetch('/api/parents/me'),
+        apiFetch('/api/children')
+      ]);
 
-  useEffect(() => { fetchAll(); const handler = (e) => setActiveTab(e.detail); window.addEventListener('switchTab', handler); return () => window.removeEventListener('switchTab', handler); }, [fetchAll]);
+      if (infoRes.ok) {
+        const infoData = await infoRes.json();
+        setParentInfo(infoData);
+      }
+
+      if (childRes.ok) {
+        const childData = await childRes.json();
+        setChildren(childData);
+      } else {
+        console.error('Failed to load children – status:', childRes.status);
+        if (childRes.status === 401) {
+          localStorage.clear();
+          navigate('/auth');
+        }
+      }
+    } catch (err) {
+      console.error('fetchAll error:', err);
+    } finally {
+      setLoadingInit(false);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchAll();
+    const handler = (e) => setActiveTab(e.detail);
+    window.addEventListener('switchTab', handler);
+    return () => window.removeEventListener('switchTab', handler);
+  }, [fetchAll]);
 
   const handleLogout = async () => { try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); navigate('/auth'); };
 
@@ -690,12 +811,17 @@ const ParentDashboard = () => {
   return (
     <div className="pd">
       <nav className="topnav">
-        <div className="brand"><div className="brand-dot"><BookIcon /></div><span className="brand-name">Lexi<em>Care</em></span></div>
-        <div className="nav-tabs">{TABS.map(tab => (
-          <button key={tab.key} className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}>
-            <tab.icon /> {tab.label}
-          </button>
-        ))}</div>
+        <div className="brand">
+          <div className="brand-dot"><BookIcon /></div>
+          <span className="brand-name">Lexi<em>Care</em></span>
+        </div>
+        <div className="nav-tabs">
+          {TABS.map(tab => (
+            <button key={tab.key} className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}>
+              <tab.icon /> {tab.label}
+            </button>
+          ))}
+        </div>
         <div className="nav-right">
           <button className="notif-btn"><BellIcon /><div className="notif-dot"></div></button>
           <div className="user-chip"><div className="user-av">{initial}</div><span className="user-name">{displayName}</span></div>
@@ -723,7 +849,13 @@ const ParentDashboard = () => {
           <div className="sidebar-section">Care</div>
           <button className={`slink ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><ChatIcon /> Messages<span className="slink-badge">1</span></button>
           {children.length > 0 && (
-            <div className="child-summary"><div className="cs-label">Active child</div><div className="cs-name">{children[0]?.full_name}</div><div className="cs-meta">Year {children[0]?.grade} • Age {children[0]?.dob ? new Date().getFullYear() - new Date(children[0].dob).getFullYear() : '—'}</div><div className="cs-bar"><div className="cs-bar-fill"></div></div><div className="cs-prog">42% treatment complete</div></div>
+            <div className="child-summary">
+              <div className="cs-label">Active child</div>
+              <div className="cs-name">{children[0]?.full_name}</div>
+              <div className="cs-meta">Year {children[0]?.grade} • Age {children[0]?.dob ? new Date().getFullYear() - new Date(children[0].dob).getFullYear() : '—'}</div>
+              <div className="cs-bar"><div className="cs-bar-fill"></div></div>
+              <div className="cs-prog">42% treatment complete</div>
+            </div>
           )}
         </aside>
 

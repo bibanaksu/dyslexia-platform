@@ -29,6 +29,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AuditLog from './pages/AuditLog';
 import { PrivateRoute, RoleRoute, PublicRoute } from './components/RouteGuards';
+import SpellingBagGame from './components/ParentDashboard/SpellingBagGame'; // adjust path as needed
 
 function App() {
   const [scrollY, setScrollY] = useState(0);
@@ -83,6 +84,9 @@ function App() {
           
           {/* Quiz route */}
           <Route path="/quiz" element={<QuizPage />} />
+          
+          {/* Spelling Bag Game route */}
+          <Route path="/spelling-bag" element={<SpellingBagGame />} />
           
           {/* Auth routes */}
           <Route path="/auth" element={

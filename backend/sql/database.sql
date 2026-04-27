@@ -1,462 +1,586 @@
-﻿-- =====================================================
--- DYSLEXIA SUPPORT PLATFORM — DATABASE v5.0
--- Clean rebuild — drop and recreate everything.
--- Run: mysql -u root -p dyslexia_db < database.sql
--- =====================================================
+﻿-- ================================================================
+--  DYSLEXIA PLATFORM — FINAL CLEAN DATABASE
+--  Built: 2026-04-26
+--
+--  ARCHITECTURE DECISION (read this first):
+--
+--  The single linking key is child_id.
+--  Every piece of data — quiz, tasks, results, messages —
+--  belongs to a child. A child always belongs to one parent.
+--  So to get everything for a parent, you just do:
+--    SELECT * FROM child WHERE parent_id = ?
+--  and from child_id you can reach every other table.
+--
+--  HOW GUEST → ACCOUNT WORKS:
+--  1. Guest starts assessment → backend creates a temporary
+--     row in `child_session` (NOT in child table yet).
+--     Returns child_session.id (integer) to the frontend.
+--     Frontend stores this integer id in localStorage.
+--  2. All 4 task tables use child_session_id as their FK.
+--  3. At the end, parent is shown results and invited to register.
+--  4. Parent registers → backend does:
+--       INSERT INTO parent (...) → parent_id
+--       INSERT INTO child (name, grade, parent_id) → child_id
+--       UPDATE child_session SET child_id=?, parent_id=? WHERE id=?
+--       UPDATE task1..4 SET child_id=? WHERE child_session_id=?
+--       UPDATE full_assessment_summary SET child_id=?, parent_id=? WHERE child_session_id=?
+--       UPDATE parent_screening SET child_id=?, parent_id=? WHERE child_session_id=?
+--  5. Second child of same parent → new child_session, new child row,
+--     same parent_id. Parent logs in once and sees all children.
+--
+--  WHAT WAS REMOVED vs original:
+--    - parentscreening         (duplicate of parent_screening)
+--    - letter_similarity       (duplicate of letter_similarity_exercises)
+--    - child_name/child_grade from task tables (redundant — join child_session)
+--    - guest_id column         (replaced by child_session_id integer)
+--    - session_uuid string     (replaced by child_session.id integer)
+--    - parent.assessment_completed / assessment_date (computed, not stored)
+--    - parent.can_access_activities (computed from assessment status)
+--    - is_partial column in task tables (rarely used, removed)
+--    - assessment + assessmentresults (merged into full_assessment_summary)
+-- ================================================================
 
-CREATE DATABASE IF NOT EXISTS dyslexia_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE dyslexia_db;
-
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET FOREIGN_KEY_CHECKS = 0;
+SET time_zone = "+00:00";
+SET NAMES utf8mb4;
+START TRANSACTION;
 
-DROP TABLE IF EXISTS full_assessment_summary;
-DROP TABLE IF EXISTS task4_number_sequence_results;
-DROP TABLE IF EXISTS task3_letter_similarity_results;
-DROP TABLE IF EXISTS task2_results;
-DROP TABLE IF EXISTS task1_word_results;
-DROP TABLE IF EXISTS number_sequences;
-DROP TABLE IF EXISTS letter_similarity_exercises;
-DROP TABLE IF EXISTS reading_words;
-DROP TABLE IF EXISTS reading_texts;
-DROP TABLE IF EXISTS PasswordResetToken;
-DROP TABLE IF EXISTS RefreshToken;
-DROP TABLE IF EXISTS TherapistNote;
-DROP TABLE IF EXISTS AuditLog;
-DROP TABLE IF EXISTS ChildActivityProgress;
-DROP TABLE IF EXISTS AssessmentResults;
-DROP TABLE IF EXISTS Assessment;
-DROP TABLE IF EXISTS ParentScreening;
-DROP TABLE IF EXISTS child_info_sessions;
-DROP TABLE IF EXISTS Child;
-DROP TABLE IF EXISTS Parent;
-DROP TABLE IF EXISTS Activity;
-DROP TABLE IF EXISTS Therapist;
+-- ================================================================
+--  DROP ALL TABLES (clean slate)
+-- ================================================================
+DROP TABLE IF EXISTS `therapistnote`;
+DROP TABLE IF EXISTS `message`;
+DROP TABLE IF EXISTS `childactivityprogress`;
+DROP TABLE IF EXISTS `task4_number_reversal_results`;
+DROP TABLE IF EXISTS `task4_number_sequence_results`;
+DROP TABLE IF EXISTS `task3_letter_similarity_results`;
+DROP TABLE IF EXISTS `task2_results`;
+DROP TABLE IF EXISTS `task1_word_results`;
+DROP TABLE IF EXISTS `full_assessment_summary`;
+DROP TABLE IF EXISTS `parent_screening`;
+DROP TABLE IF EXISTS `parentscreening`;
+DROP TABLE IF EXISTS `child_info_sessions`;
+DROP TABLE IF EXISTS `child_session`;
+DROP TABLE IF EXISTS `assessment`;
+DROP TABLE IF EXISTS `assessmentresults`;
+DROP TABLE IF EXISTS `childactivityprogress`;
+DROP TABLE IF EXISTS `child`;
+DROP TABLE IF EXISTS `parent`;
+DROP TABLE IF EXISTS `therapist`;
+DROP TABLE IF EXISTS `activity`;
+DROP TABLE IF EXISTS `reading_words`;
+DROP TABLE IF EXISTS `reading_texts`;
+DROP TABLE IF EXISTS `letter_similarity`;
+DROP TABLE IF EXISTS `letter_similarity_exercises`;
+DROP TABLE IF EXISTS `number_sequences`;
+DROP TABLE IF EXISTS `refreshtoken`;
+DROP TABLE IF EXISTS `passwordresettoken`;
+DROP TABLE IF EXISTS `auditlog`;
+
+-- ================================================================
+--  1. THERAPIST
+--  One therapist account (or more). Manages the platform.
+-- ================================================================
+CREATE TABLE `therapist` (
+  `id`            INT          NOT NULL AUTO_INCREMENT,
+  `username`      VARCHAR(50)  NOT NULL,
+  `email`         VARCHAR(100) NOT NULL,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `login_count`   INT          NOT NULL DEFAULT 0,
+  `last_login`    DATETIME     DEFAULT NULL,
+  `last_ip`       VARCHAR(45)  DEFAULT NULL,
+  `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_username` (`username`),
+  UNIQUE KEY `uq_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  2. PARENT
+--  One row per real parent/guardian person.
+--  One email = one parent account.
+--  A parent can have multiple children (separate child rows).
+-- ================================================================
+CREATE TABLE `parent` (
+  `id`                    INT          NOT NULL AUTO_INCREMENT,
+  `full_name`             VARCHAR(255) NOT NULL,
+  `email`                 VARCHAR(255) NOT NULL,
+  `phone`                 VARCHAR(20)  DEFAULT NULL,
+  `password_hash`         VARCHAR(255) NOT NULL,
+  `assigned_therapist_id` INT          DEFAULT NULL,
+  `login_count`           INT          NOT NULL DEFAULT 0,
+  `last_login`            DATETIME     DEFAULT NULL,
+  `last_ip`               VARCHAR(45)  DEFAULT NULL,
+  `created_at`            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_email` (`email`),
+  KEY `fk_parent_therapist` (`assigned_therapist_id`),
+  CONSTRAINT `fk_parent_therapist`
+    FOREIGN KEY (`assigned_therapist_id`) REFERENCES `therapist` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  3. CHILD
+--  One row per child. Linked to parent AFTER registration.
+--  Created when parent registers and claims an assessment session.
+--  parent_id is NOT NULL — a child in this table always has a parent.
+--  (Unregistered children live in child_session only.)
+-- ================================================================
+CREATE TABLE `child` (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  `parent_id`  INT          NOT NULL,
+  `full_name`  VARCHAR(255) NOT NULL,
+  `grade`      INT          NOT NULL,
+  `dob`        DATE         DEFAULT NULL,
+  `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_child_parent` (`parent_id`),
+  CONSTRAINT `fk_child_parent`
+    FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  4. CHILD_SESSION  ★ THE CENTRAL LINKING TABLE ★
+--
+--  Created the moment a user (guest or logged-in) starts an
+--  assessment by entering the child's name and grade.
+--  Returns an INTEGER id to the frontend — stored in localStorage.
+--  This integer id is what links ALL task results together.
+--
+--  BEFORE registration:  child_id = NULL, parent_id = NULL
+--  AFTER registration:   child_id = X,    parent_id = Y
+--
+--  This is the ONLY table that stores child_name and child_grade
+--  for the session. All task tables reference this via FK.
+--  No need to store child_name in every task table.
+-- ================================================================
+CREATE TABLE `child_session` (
+  `id`          INT          NOT NULL AUTO_INCREMENT,  -- ← THE integer linking id
+  `child_name`  VARCHAR(255) NOT NULL,
+  `child_grade` INT          NOT NULL,
+  `parent_id`   INT          DEFAULT NULL,             -- NULL until account linked
+  `child_id`    INT          DEFAULT NULL,             -- NULL until child profile created
+  `created_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_cs_parent` (`parent_id`),
+  KEY `fk_cs_child` (`child_id`),
+  CONSTRAINT `fk_cs_parent`
+    FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`)
+    ON DELETE SET NULL,
+  CONSTRAINT `fk_cs_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  5. PARENT_SCREENING
+--  Optional quiz the parent fills before the child's assessment.
+--  Linked to the session by child_session_id.
+--  parent_id and child_id filled in after registration.
+-- ================================================================
+CREATE TABLE `parent_screening` (
+  `id`               INT          NOT NULL AUTO_INCREMENT,
+  `child_session_id` INT          NOT NULL,             -- ← links to child_session.id
+  `parent_id`        INT          DEFAULT NULL,
+  `child_id`         INT          DEFAULT NULL,
+  `answers`          JSON         NOT NULL,
+  `total_yes_count`  INT          NOT NULL DEFAULT 0,
+  `risk_level`       VARCHAR(20)  NOT NULL,
+  `risk_score`       DECIMAL(5,2) NOT NULL,
+  `created_at`       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_session` (`child_session_id`),  -- one quiz per session
+  KEY `fk_ps_parent` (`parent_id`),
+  KEY `fk_ps_child` (`child_id`),
+  CONSTRAINT `fk_ps_session`
+    FOREIGN KEY (`child_session_id`) REFERENCES `child_session` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_ps_parent`
+    FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`)
+    ON DELETE SET NULL,
+  CONSTRAINT `fk_ps_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  6. TASK 1 — Word Reading
+--  child_name and child_grade REMOVED — get them from child_session.
+--  child_session_id is the only key needed to link everything.
+-- ================================================================
+CREATE TABLE `task1_word_results` (
+  `id`                      INT          NOT NULL AUTO_INCREMENT,
+  `child_session_id`        INT          NOT NULL,
+  `child_id`                INT          DEFAULT NULL,   -- filled after registration
+  `similar_words_score`     INT          NOT NULL DEFAULT 0,
+  `non_similar_words_score` INT          NOT NULL DEFAULT 0,
+  `pseudo_words_score`      INT          NOT NULL DEFAULT 0,
+  `total_score`             INT          NOT NULL DEFAULT 0,
+  `total_words`             INT          NOT NULL DEFAULT 60,
+  `percentage`              DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `performance_level`       VARCHAR(50)  DEFAULT NULL,
+  `total_time_seconds`      INT          NOT NULL DEFAULT 0,
+  `avg_time_per_word`       DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+  `error_patterns`          JSON         DEFAULT NULL,
+  `completed_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_session` (`child_session_id`),   -- one result per session
+  KEY `fk_t1_child` (`child_id`),
+  CONSTRAINT `fk_t1_session`
+    FOREIGN KEY (`child_session_id`) REFERENCES `child_session` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_t1_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  7. TASK 2 — Reading Comprehension / Story Reader
+-- ================================================================
+CREATE TABLE `task2_results` (
+  `id`                 INT          NOT NULL AUTO_INCREMENT,
+  `child_session_id`   INT          NOT NULL,
+  `child_id`           INT          DEFAULT NULL,
+  `total_words`        INT          NOT NULL DEFAULT 0,
+  `correct_count`      INT          NOT NULL DEFAULT 0,
+  `incorrect_count`    INT          NOT NULL DEFAULT 0,
+  `timeout_count`      INT          NOT NULL DEFAULT 0,
+  `percentage`         DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `performance_level`  VARCHAR(50)  DEFAULT NULL,
+  `total_time_seconds` INT          NOT NULL DEFAULT 0,
+  `avg_time_per_word`  DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+  `word_details`       JSON         DEFAULT NULL,
+  `completed_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_session` (`child_session_id`),
+  KEY `fk_t2_child` (`child_id`),
+  CONSTRAINT `fk_t2_session`
+    FOREIGN KEY (`child_session_id`) REFERENCES `child_session` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_t2_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  8. TASK 3 — Letter Similarity / Letter Detective
+-- ================================================================
+CREATE TABLE `task3_letter_similarity_results` (
+  `id`                    INT          NOT NULL AUTO_INCREMENT,
+  `child_session_id`      INT          NOT NULL,
+  `child_id`              INT          DEFAULT NULL,
+  `total_comparisons`     INT          NOT NULL DEFAULT 20,
+  `correct_count`         INT          NOT NULL DEFAULT 0,
+  `incorrect_count`       INT          NOT NULL DEFAULT 0,
+  `timeout_count`         INT          NOT NULL DEFAULT 0,
+  `percentage`            DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `performance_level`     VARCHAR(50)  DEFAULT NULL,
+  `total_time_seconds`    INT          NOT NULL DEFAULT 0,
+  `avg_time_per_item`     DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+  `comparison_details`    JSON         DEFAULT NULL,
+  `completed_at`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_session` (`child_session_id`),
+  KEY `fk_t3_child` (`child_id`),
+  CONSTRAINT `fk_t3_session`
+    FOREIGN KEY (`child_session_id`) REFERENCES `child_session` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_t3_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  9. TASK 4 — Number Memory (sequence + reversal combined)
+--  Previously split into two tables. Merged into one because
+--  they belong to the same task and same session.
+-- ================================================================
+CREATE TABLE `task4_number_memory_results` (
+  `id`                      INT          NOT NULL AUTO_INCREMENT,
+  `child_session_id`        INT          NOT NULL,
+  `child_id`                INT          DEFAULT NULL,
+  -- Sequence sub-task
+  `seq_total`               INT          NOT NULL DEFAULT 20,
+  `seq_correct`             INT          NOT NULL DEFAULT 0,
+  `seq_incorrect`           INT          NOT NULL DEFAULT 0,
+  `seq_timeout`             INT          NOT NULL DEFAULT 0,
+  `seq_percentage`          DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `seq_time_seconds`        INT          NOT NULL DEFAULT 0,
+  `seq_details`             JSON         DEFAULT NULL,
+  -- Reversal sub-task
+  `rev_total`               INT          NOT NULL DEFAULT 10,
+  `rev_correct`             INT          NOT NULL DEFAULT 0,
+  `rev_incorrect`           INT          NOT NULL DEFAULT 0,
+  `rev_timeout`             INT          NOT NULL DEFAULT 0,
+  `rev_percentage`          DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `rev_time_seconds`        INT          NOT NULL DEFAULT 0,
+  `rev_details`             JSON         DEFAULT NULL,
+  -- Combined
+  `overall_percentage`      DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `performance_level`       VARCHAR(50)  DEFAULT NULL,
+  `completed_at`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_session` (`child_session_id`),
+  KEY `fk_t4_child` (`child_id`),
+  CONSTRAINT `fk_t4_session`
+    FOREIGN KEY (`child_session_id`) REFERENCES `child_session` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_t4_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  10. FULL ASSESSMENT SUMMARY
+--  Computed once all 4 tasks are done.
+--  Single row per session. Parent and child IDs filled after signup.
+-- ================================================================
+CREATE TABLE `full_assessment_summary` (
+  `id`               INT          NOT NULL AUTO_INCREMENT,
+  `child_session_id` INT          NOT NULL,
+  `child_id`         INT          DEFAULT NULL,   -- filled after registration
+  `parent_id`        INT          DEFAULT NULL,   -- filled after registration
+  `task1_score`      DECIMAL(5,2) DEFAULT NULL,
+  `task2_score`      DECIMAL(5,2) DEFAULT NULL,
+  `task3_score`      DECIMAL(5,2) DEFAULT NULL,
+  `task4_score`      DECIMAL(5,2) DEFAULT NULL,
+  `overall_score`    DECIMAL(5,2) DEFAULT NULL,
+  `risk_level`       ENUM('Low Risk','Moderate Risk','High Risk') DEFAULT NULL,
+  `therapist_notes`  TEXT         DEFAULT NULL,   -- therapist can add notes here
+  `reviewed_by`      INT          DEFAULT NULL,   -- therapist.id who reviewed
+  `reviewed_at`      DATETIME     DEFAULT NULL,
+  `completed_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_session` (`child_session_id`),
+  KEY `fk_fas_child` (`child_id`),
+  KEY `fk_fas_parent` (`parent_id`),
+  KEY `fk_fas_therapist` (`reviewed_by`),
+  CONSTRAINT `fk_fas_session`
+    FOREIGN KEY (`child_session_id`) REFERENCES `child_session` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_fas_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL,
+  CONSTRAINT `fk_fas_parent`
+    FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`)
+    ON DELETE SET NULL,
+  CONSTRAINT `fk_fas_therapist`
+    FOREIGN KEY (`reviewed_by`) REFERENCES `therapist` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  11. ACTIVITY  (learning activities assigned after assessment)
+-- ================================================================
+CREATE TABLE `activity` (
+  `id`               INT          NOT NULL AUTO_INCREMENT,
+  `name`             VARCHAR(255) NOT NULL,
+  `description`      TEXT,
+  `difficulty_level` INT          NOT NULL DEFAULT 1,
+  `created_at`       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  12. CHILD ACTIVITY PROGRESS
+--  Tracks which activities a child has done and their score.
+-- ================================================================
+CREATE TABLE `child_activity_progress` (
+  `id`          INT       NOT NULL AUTO_INCREMENT,
+  `child_id`    INT       NOT NULL,
+  `activity_id` INT       NOT NULL,
+  `completed`   TINYINT(1) NOT NULL DEFAULT 0,
+  `score`       INT       DEFAULT NULL,
+  `completed_at` DATETIME DEFAULT NULL,
+  `created_at`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_child_activity` (`child_id`, `activity_id`),
+  KEY `fk_cap_activity` (`activity_id`),
+  CONSTRAINT `fk_cap_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_cap_activity`
+    FOREIGN KEY (`activity_id`) REFERENCES `activity` (`id`)
+    ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  13. MESSAGE
+--  Between parent and therapist, about a specific child.
+-- ================================================================
+CREATE TABLE `message` (
+  `id`           INT  NOT NULL AUTO_INCREMENT,
+  `parent_id`    INT  NOT NULL,
+  `therapist_id` INT  NOT NULL,
+  `child_id`     INT  DEFAULT NULL,   -- which child this conversation is about
+  `sender_role`  ENUM('parent','therapist') NOT NULL,
+  `content`      TEXT NOT NULL,
+  `is_read`      TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_msg_parent` (`parent_id`),
+  KEY `fk_msg_therapist` (`therapist_id`),
+  KEY `fk_msg_child` (`child_id`),
+  CONSTRAINT `fk_msg_parent`
+    FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_msg_therapist`
+    FOREIGN KEY (`therapist_id`) REFERENCES `therapist` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_msg_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  14. THERAPIST NOTE  (private notes therapist writes)
+-- ================================================================
+CREATE TABLE `therapist_note` (
+  `id`           INT  NOT NULL AUTO_INCREMENT,
+  `therapist_id` INT  NOT NULL,
+  `child_id`     INT  DEFAULT NULL,  -- note about a specific child
+  `note_text`    TEXT NOT NULL,
+  `created_at`   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `fk_tn_therapist` (`therapist_id`),
+  KEY `fk_tn_child` (`child_id`),
+  CONSTRAINT `fk_tn_therapist`
+    FOREIGN KEY (`therapist_id`) REFERENCES `therapist` (`id`)
+    ON DELETE CASCADE,
+  CONSTRAINT `fk_tn_child`
+    FOREIGN KEY (`child_id`) REFERENCES `child` (`id`)
+    ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  15. REFRESH TOKEN  (JWT refresh tokens for auth)
+-- ================================================================
+CREATE TABLE `refresh_token` (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  `token`      VARCHAR(128) NOT NULL,
+  `user_id`    INT          NOT NULL,
+  `user_role`  ENUM('parent','therapist') NOT NULL,
+  `expires_at` DATETIME     NOT NULL,
+  `ip_address` VARCHAR(45)  DEFAULT NULL,
+  `user_agent` VARCHAR(512) DEFAULT NULL,
+  `revoked`    TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_token` (`token`),
+  KEY `idx_expires` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  16. PASSWORD RESET TOKEN
+-- ================================================================
+CREATE TABLE `password_reset_token` (
+  `id`         INT          NOT NULL AUTO_INCREMENT,
+  `token`      VARCHAR(128) NOT NULL,
+  `user_id`    INT          NOT NULL,
+  `user_role`  ENUM('parent','therapist') NOT NULL,
+  `expires_at` DATETIME     NOT NULL,
+  `used`       TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_token` (`token`),
+  KEY `idx_expires_at` (`expires_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  17. AUDIT LOG  (login events, security tracking)
+-- ================================================================
+CREATE TABLE `audit_log` (
+  `id`         INT         NOT NULL AUTO_INCREMENT,
+  `user_id`    INT         NOT NULL,
+  `user_role`  ENUM('parent','therapist') NOT NULL,
+  `event_type` VARCHAR(50) NOT NULL,
+  `ip_address` VARCHAR(45) DEFAULT NULL,
+  `user_agent` VARCHAR(512) DEFAULT NULL,
+  `created_at` TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`user_id`, `user_role`),
+  KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- ================================================================
+--  STATIC CONTENT TABLES  (no changes needed)
+-- ================================================================
+
+CREATE TABLE `reading_words` (
+  `id`            INT         NOT NULL AUTO_INCREMENT,
+  `word_text`     VARCHAR(100) NOT NULL,
+  `category`      ENUM('similar','non_similar','pseudo') NOT NULL,
+  `display_order` INT         NOT NULL DEFAULT 0,
+  `created_at`    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_category` (`category`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `reading_texts` (
+  `id`         INT      NOT NULL AUTO_INCREMENT,
+  `title`      VARCHAR(255) NOT NULL,
+  `content`    TEXT     NOT NULL,
+  `word_count` INT      NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `letter_similarity_exercises` (
+  `id`              INT         NOT NULL AUTO_INCREMENT,
+  `exercise_number` INT         NOT NULL,
+  `group1`          VARCHAR(50) NOT NULL,
+  `group2`          VARCHAR(50) NOT NULL,
+  `is_same`         TINYINT(1)  NOT NULL,
+  `display_order`   INT         NOT NULL DEFAULT 0,
+  `created_at`      TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_display_order` (`display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `number_sequences` (
+  `id`                    INT       NOT NULL AUTO_INCREMENT,
+  `sequence_number`       INT       NOT NULL,
+  `numbers`               JSON      NOT NULL,
+  `length`                INT       NOT NULL,
+  `response_time_seconds` INT       NOT NULL,
+  `display_order`         INT       NOT NULL DEFAULT 0,
+  `created_at`            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_display_order` (`display_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;
+COMMIT;
 
--- =====================================================
--- Therapist
--- =====================================================
-CREATE TABLE Therapist (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    username      VARCHAR(50)  NOT NULL UNIQUE,
-    email         VARCHAR(100) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL,
-    login_count   INT          NOT NULL DEFAULT 0,
-    last_login    DATETIME     NULL,
-    last_ip       VARCHAR(45)  NULL,
-    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+-- ================================================================
+--  SEED DATA
+-- ================================================================
 
--- =====================================================
--- Parent
--- =====================================================
-CREATE TABLE Parent (
-    id                    INT AUTO_INCREMENT PRIMARY KEY,
-    full_name             VARCHAR(255) NOT NULL,
-    email                 VARCHAR(255) NOT NULL UNIQUE,
-    phone                 VARCHAR(20)  NULL,
-    password_hash         VARCHAR(255) NOT NULL,
-    assessment_completed  BOOLEAN      NOT NULL DEFAULT FALSE,
-    assessment_date       DATETIME     NULL,
-    can_access_activities BOOLEAN      NOT NULL DEFAULT FALSE,
-    login_count           INT          NOT NULL DEFAULT 0,
-    last_login            DATETIME     NULL,
-    last_ip               VARCHAR(45)  NULL,
-    created_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_email (email)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `therapist` (`id`, `username`, `email`, `password_hash`) VALUES
+(1, 'therapist', 'therapist@dyslexiaplatform.com',
+ '$2b$12$oY59mCDWwrF.qxDex8Bm5uXZP8vpt06W4LUOPe0ag39GWfwCAXjBi');
 
--- =====================================================
--- Child
--- =====================================================
-CREATE TABLE Child (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    full_name  VARCHAR(255) NOT NULL,
-    grade      INT          NOT NULL,
-    parent_id  INT          NOT NULL,
-    dob        DATE         NULL,
-    created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE CASCADE,
-    INDEX idx_parent_id (parent_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `activity` (`id`, `name`, `description`, `difficulty_level`) VALUES
+(1, 'Letter Recognition Basics', 'Learn to recognize basic alphabet letters', 1),
+(2, 'Phonics Practice',          'Practice phonetic sounds and patterns',      2),
+(3, 'Word Building',             'Build simple words from letter blocks',       2),
+(4, 'Reading Comprehension',     'Read passages and answer questions',          3),
+(5, 'Speed Reading Exercise',    'Improve reading speed with timed exercises',  3);
 
--- =====================================================
--- child_info_sessions  (one row per assessment session)
--- =====================================================
-CREATE TABLE child_info_sessions (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    session_uuid VARCHAR(64)  NOT NULL UNIQUE,
-    child_name   VARCHAR(255) NOT NULL,
-    child_grade  VARCHAR(20)  NOT NULL,
-    parent_id    INT          NULL,
-    child_id     INT          NULL,
-    guest_id     VARCHAR(100) NULL,
-    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id)  ON DELETE SET NULL,
-    FOREIGN KEY (child_id)  REFERENCES Child(id)   ON DELETE SET NULL,
-    INDEX idx_session_uuid (session_uuid),
-    INDEX idx_parent_id    (parent_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO `reading_texts` (`id`, `title`, `content`, `word_count`) VALUES
+(1, 'The Teacher',
+'While the children were sitting around their father, talking together, one of them asked: "Is there any similarity between you and the teacher, Father?" The father replied, "Yes." "The teacher, my son, takes care of your mind and dedicates his life to educating and guiding you. A polite student obeys teachers just as he obeys his parents and respects them. All teachers make great efforts to raise and educate students. Therefore, students should listen to their advice and recognize the teacher\'s value, just as they recognize the value of their parents." Then the father turned to his children and said, "Do not neglect your duties. Be kind to those who are kind to you. Work hard for your future and for the service of your country."',
+85);
 
--- =====================================================
--- Activity
--- =====================================================
-CREATE TABLE Activity (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    name             VARCHAR(255) NOT NULL,
-    description      TEXT         NULL,
-    difficulty_level INT          NOT NULL DEFAULT 1,
-    created_at       TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- Assessment  (links to Child, used by therapist dashboard)
--- =====================================================
-CREATE TABLE Assessment (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    child_id        INT          NOT NULL,
-    assessment_date DATETIME     NOT NULL,
-    notes           TEXT         NULL,
-    reviewed        TINYINT(1)   NOT NULL DEFAULT 0,
-    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (child_id) REFERENCES Child(id) ON DELETE CASCADE,
-    INDEX idx_child_id (child_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- AssessmentResults  (detailed scores per Assessment)
--- =====================================================
-CREATE TABLE AssessmentResults (
-    id                       INT AUTO_INCREMENT PRIMARY KEY,
-    assessment_id            INT          NOT NULL,
-    letter_recognition_score DECIMAL(5,2) NULL,
-    word_reading_score       DECIMAL(5,2) NULL,
-    comprehension_score      DECIMAL(5,2) NULL,
-    overall_evaluation       TEXT         NULL,
-    created_at               TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (assessment_id) REFERENCES Assessment(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_assessment (assessment_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- ChildActivityProgress
--- =====================================================
-CREATE TABLE ChildActivityProgress (
-    id          INT AUTO_INCREMENT PRIMARY KEY,
-    child_id    INT NOT NULL,
-    activity_id INT NOT NULL,
-    completed   BOOLEAN NOT NULL DEFAULT FALSE,
-    score       INT NULL,
-    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (child_id)    REFERENCES Child(id)    ON DELETE CASCADE,
-    FOREIGN KEY (activity_id) REFERENCES Activity(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_child_activity (child_id, activity_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- AuditLog
--- =====================================================
-CREATE TABLE AuditLog (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    user_id    INT          NOT NULL,
-    user_role  VARCHAR(20)  NOT NULL,
-    event_type VARCHAR(50)  NOT NULL,
-    ip_address VARCHAR(45)  NULL,
-    user_agent TEXT         NULL,
-    created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_id (user_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- TherapistNote
--- =====================================================
-CREATE TABLE TherapistNote (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    therapist_id  INT  NOT NULL,
-    note_text     TEXT NOT NULL,
-    created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (therapist_id) REFERENCES Therapist(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- ParentScreening
--- =====================================================
-CREATE TABLE ParentScreening (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    parent_id  INT  NOT NULL,
-    answers    JSON NULL,
-    score      INT  NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- PasswordResetToken
--- =====================================================
-CREATE TABLE PasswordResetToken (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    token      VARCHAR(128)              NOT NULL UNIQUE,
-    user_id    INT                       NOT NULL,
-    user_role  ENUM('therapist','parent') NOT NULL,
-    expires_at DATETIME                  NOT NULL,
-    used       BOOLEAN                   NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP                 NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_token      (token),
-    INDEX idx_expires_at (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- RefreshToken
--- =====================================================
-CREATE TABLE RefreshToken (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    token      VARCHAR(128)              NOT NULL UNIQUE,
-    user_id    INT                       NOT NULL,
-    user_role  ENUM('therapist','parent') NOT NULL,
-    expires_at DATETIME                  NOT NULL,
-    ip_address VARCHAR(45)               NULL,
-    user_agent TEXT                      NULL,
-    revoked    BOOLEAN                   NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP                 NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_token   (token),
-    INDEX idx_expires (expires_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- reading_words  (Task 1 word bank)
--- =====================================================
-CREATE TABLE reading_words (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    word_text     VARCHAR(100) NOT NULL,
-    category      VARCHAR(50)  NOT NULL,
-    display_order INT          NOT NULL DEFAULT 0,
-    created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_category (category)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- reading_texts  (Task 2 passage bank)
--- =====================================================
-CREATE TABLE reading_texts (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    title      VARCHAR(255) NOT NULL,
-    content    TEXT         NOT NULL,
-    word_count INT          NOT NULL DEFAULT 0,
-    created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- task1_word_results  (Word Explorer)
--- UNIQUE on session_uuid → ON DUPLICATE KEY UPDATE works
--- =====================================================
-CREATE TABLE task1_word_results (
-    id                      INT AUTO_INCREMENT PRIMARY KEY,
-    session_uuid            VARCHAR(64)   NULL,
-    child_id                INT           NULL,
-    parent_id               INT           NULL,
-    child_name              VARCHAR(255)  NOT NULL DEFAULT 'Guest User',
-    child_grade             VARCHAR(20)   NOT NULL DEFAULT 'Not Specified',
-    similar_words_score     INT           NOT NULL DEFAULT 0,
-    non_similar_words_score INT           NOT NULL DEFAULT 0,
-    pseudo_words_score      INT           NOT NULL DEFAULT 0,
-    total_score             INT           NOT NULL DEFAULT 0,
-    total_words             INT           NOT NULL DEFAULT 60,
-    percentage              DECIMAL(5,2)  NOT NULL DEFAULT 0,
-    performance_level       VARCHAR(50)   NULL,
-    total_time_seconds      INT           NOT NULL DEFAULT 0,
-    avg_time_per_word       DECIMAL(6,2)  NOT NULL DEFAULT 0,
-    error_patterns          JSON          NULL,
-    is_partial              TINYINT(1)    NOT NULL DEFAULT 0,
-    completed_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at              DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (child_id)  REFERENCES Child(id)  ON DELETE SET NULL,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE SET NULL,
-    UNIQUE KEY uq_session_uuid (session_uuid),
-    INDEX idx_child_id   (child_id),
-    INDEX idx_parent_id  (parent_id),
-    INDEX idx_percentage (percentage)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- task2_results  (Story Reader — voice reading)
--- =====================================================
-CREATE TABLE task2_results (
-    id                INT AUTO_INCREMENT PRIMARY KEY,
-    session_uuid      VARCHAR(64)   NULL,
-    child_id          INT           NULL,
-    parent_id         INT           NULL,
-    child_name        VARCHAR(255)  NOT NULL DEFAULT 'Guest User',
-    child_grade       VARCHAR(20)   NOT NULL DEFAULT 'Not Specified',
-    passage_title     VARCHAR(255)  NOT NULL DEFAULT 'The Teacher',
-    total_words       INT           NOT NULL DEFAULT 0,
-    correct_words     INT           NOT NULL DEFAULT 0,
-    error_count       INT           NOT NULL DEFAULT 0,
-    percentage        DECIMAL(5,2)  NOT NULL DEFAULT 0,
-    fluency_level     VARCHAR(50)   NULL,
-    reading_speed_wpm INT           NOT NULL DEFAULT 0,
-    time_used_seconds INT           NOT NULL DEFAULT 0,
-    max_time_seconds  INT           NOT NULL DEFAULT 180,
-    finished_early    TINYINT(1)    NOT NULL DEFAULT 0,
-    error_details     JSON          NULL,
-    is_partial        TINYINT(1)    NOT NULL DEFAULT 0,
-    completed_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (child_id)  REFERENCES Child(id)  ON DELETE SET NULL,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE SET NULL,
-    UNIQUE KEY uq_session_uuid (session_uuid),
-    INDEX idx_child_id    (child_id),
-    INDEX idx_parent_id   (parent_id),
-    INDEX idx_fluency     (fluency_level),
-    INDEX idx_percentage  (percentage)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- letter_similarity_exercises  (Task 3 exercise bank)
--- =====================================================
-CREATE TABLE letter_similarity_exercises (
-    id              INT AUTO_INCREMENT PRIMARY KEY,
-    exercise_number INT          NOT NULL,
-    group1          VARCHAR(50)  NOT NULL,
-    group2          VARCHAR(50)  NOT NULL,
-    is_same         BOOLEAN      NOT NULL,
-    display_order   INT          NOT NULL DEFAULT 0,
-    created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_display_order (display_order)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- task3_letter_similarity_results  (Letter Detective)
--- =====================================================
-CREATE TABLE task3_letter_similarity_results (
-    id                    INT AUTO_INCREMENT PRIMARY KEY,
-    session_uuid          VARCHAR(64)   NULL,
-    child_id              INT           NULL,
-    parent_id             INT           NULL,
-    child_name            VARCHAR(255)  NOT NULL DEFAULT 'Guest User',
-    child_grade           VARCHAR(20)   NOT NULL DEFAULT 'Not Specified',
-    total_exercises       INT           NOT NULL DEFAULT 20,
-    correct_count         INT           NOT NULL DEFAULT 0,
-    incorrect_count       INT           NOT NULL DEFAULT 0,
-    timeout_count         INT           NOT NULL DEFAULT 0,
-    percentage            DECIMAL(5,2)  NOT NULL DEFAULT 0,
-    performance_level     VARCHAR(50)   NULL,
-    total_time_seconds    INT           NOT NULL DEFAULT 0,
-    avg_time_per_exercise DECIMAL(6,2)  NOT NULL DEFAULT 0,
-    exercise_details      JSON          NULL,
-    is_partial            TINYINT(1)    NOT NULL DEFAULT 0,
-    completed_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at            DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (child_id)  REFERENCES Child(id)  ON DELETE SET NULL,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE SET NULL,
-    UNIQUE KEY uq_session_uuid (session_uuid),
-    INDEX idx_child_id   (child_id),
-    INDEX idx_parent_id  (parent_id),
-    INDEX idx_percentage (percentage)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- number_sequences  (Task 4 sequence bank)
--- =====================================================
-CREATE TABLE number_sequences (
-    id                    INT AUTO_INCREMENT PRIMARY KEY,
-    sequence_number       INT          NOT NULL,
-    numbers               JSON         NOT NULL,
-    length                INT          NOT NULL,
-    response_time_seconds INT          NOT NULL,
-    display_order         INT          NOT NULL DEFAULT 0,
-    created_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_display_order (display_order)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- task4_number_sequence_results  (Number Memory)
--- =====================================================
-CREATE TABLE task4_number_sequence_results (
-    id                 INT AUTO_INCREMENT PRIMARY KEY,
-    session_uuid       VARCHAR(64)   NULL,
-    child_id           INT           NULL,
-    parent_id          INT           NULL,
-    guest_id           VARCHAR(100)  NULL,
-    child_name         VARCHAR(255)  NOT NULL DEFAULT 'Guest User',
-    child_grade        VARCHAR(20)   NOT NULL DEFAULT 'Not Specified',
-    total_possible     INT           NOT NULL DEFAULT 20,
-    completed_items    INT           NOT NULL DEFAULT 0,
-    correct_count      INT           NOT NULL DEFAULT 0,
-    incorrect_count    INT           NOT NULL DEFAULT 0,
-    timeout_count      INT           NOT NULL DEFAULT 0,
-    percentage         DECIMAL(5,2)  NOT NULL DEFAULT 0,
-    performance_level  VARCHAR(50)   NULL,
-    total_time_seconds INT           NOT NULL DEFAULT 0,
-    avg_time_per_item  DECIMAL(6,2)  NOT NULL DEFAULT 0,
-    sequence_details   JSON          NULL,
-    is_partial         TINYINT(1)    NOT NULL DEFAULT 0,
-    completed_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (child_id)  REFERENCES Child(id)  ON DELETE SET NULL,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE SET NULL,
-    UNIQUE KEY uq_session_uuid (session_uuid),
-    INDEX idx_child_id   (child_id),
-    INDEX idx_parent_id  (parent_id),
-    INDEX idx_percentage (percentage)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- full_assessment_summary  (combined results per session)
--- =====================================================
-CREATE TABLE full_assessment_summary (
-    id            INT AUTO_INCREMENT PRIMARY KEY,
-    session_uuid  VARCHAR(64)   NOT NULL UNIQUE,
-    child_name    VARCHAR(255)  NOT NULL,
-    child_grade   VARCHAR(20)   NOT NULL,
-    parent_id     INT           NULL,
-    child_id      INT           NULL,
-    task1_score   DECIMAL(5,2)  NULL COMMENT 'Word Explorer %',
-    task2_score   DECIMAL(5,2)  NULL COMMENT 'Story Reader %',
-    task3_score   DECIMAL(5,2)  NULL COMMENT 'Letter Detective %',
-    task4_score   DECIMAL(5,2)  NULL COMMENT 'Number Memory %',
-    overall_score DECIMAL(5,2)  NULL,
-    risk_level    VARCHAR(50)   NULL COMMENT 'Low Risk | Moderate Risk | High Risk',
-    completed_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (parent_id) REFERENCES Parent(id) ON DELETE SET NULL,
-    FOREIGN KEY (child_id)  REFERENCES Child(id)  ON DELETE SET NULL,
-    INDEX idx_parent_id  (parent_id),
-    INDEX idx_risk_level (risk_level)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================
--- SEED DATA
--- =====================================================
-INSERT INTO Therapist (username, email, password_hash) VALUES
-('therapist', 'therapist@dyslexiaplatform.com', '$2b$12$oY59mCDWwrF.qxDex8Bm5uXZP8vpt06W4LUOPe0ag39GWfwCAXjBi');
-
-INSERT INTO Parent (full_name, email, phone, password_hash) VALUES
-('John Smith',   'john.smith@example.com',  '555-0101', '$2b$12$oY59mCDWwrF.qxDex8Bm5uXZP8vpt06W4LUOPe0ag39GWfwCAXjBi'),
-('Mary Johnson', 'mary.johnson@example.com','555-0102', '$2b$12$oY59mCDWwrF.qxDex8Bm5uXZP8vpt06W4LUOPe0ag39GWfwCAXjBi');
-
-INSERT INTO Child (full_name, grade, parent_id, dob) VALUES
-('Emma Smith',     3, 1, DATE_SUB(CURDATE(), INTERVAL  8 YEAR)),
-('Liam Smith',     5, 1, DATE_SUB(CURDATE(), INTERVAL 10 YEAR)),
-('Sophie Johnson', 2, 2, DATE_SUB(CURDATE(), INTERVAL  7 YEAR));
-
-INSERT INTO Activity (name, description, difficulty_level) VALUES
-('Letter Recognition Basics', 'Learn to recognize basic alphabet letters', 1),
-('Phonics Practice',          'Practice phonetic sounds and patterns',     2),
-('Word Building',             'Build simple words from letter blocks',      2),
-('Reading Comprehension',     'Read passages and answer questions',         3),
-('Speed Reading Exercise',    'Improve reading speed with timed exercises', 3);
-
-INSERT INTO TherapistNote (therapist_id, note_text) VALUES
-(1, 'Follow up with parents regarding the updated intervention plan.'),
-(1, 'Prepare assessment materials for mid-term review.');
-
-INSERT INTO reading_words (word_text, category, display_order) VALUES
+INSERT INTO `reading_words` (`word_text`, `category`, `display_order`) VALUES
 ('cat','similar',1),('bat','similar',2),('hat','similar',3),('mat','similar',4),
 ('cap','similar',5),('cup','similar',6),('map','similar',7),('mop','similar',8),
 ('pin','similar',9),('pen','similar',10),('sit','similar',11),('set','similar',12),
@@ -475,28 +599,95 @@ INSERT INTO reading_words (word_text, category, display_order) VALUES
 ('sep','pseudo',13),('gol','pseudo',14),('tim','pseudo',15),('paf','pseudo',16),
 ('lod','pseudo',17),('kes','pseudo',18),('bim','pseudo',19),('ran','pseudo',20);
 
-INSERT INTO reading_texts (title, content, word_count) VALUES (
-  'The Teacher',
-  'While the children were sitting around their father, talking together, one of them asked: "Is there any similarity between you and the teacher, Father?" The father replied, "Yes." "The teacher, my son, takes care of your mind and dedicates his life to educating and guiding you. A polite student obeys teachers just as he obeys his parents and respects them. All teachers make great efforts to raise and educate students. Therefore, students should listen to their advice and recognize the teacher\'s value, just as they recognize the value of their parents." Then the father turned to his children and said, "Do not neglect your duties. Be kind to those who are kind to you. Work hard for your future and for the service of your country."',
-  85
-);
+INSERT INTO `letter_similarity_exercises`
+  (`exercise_number`,`group1`,`group2`,`is_same`,`display_order`) VALUES
+(1,'T Z R','T Z R',1,1),(2,'B L N','B L N',1,2),(3,'S D Z','Z D S',0,3),
+(4,'F Q R S','SH S Q F',0,4),(5,'F Q','F Q',1,5),(6,'B Y T','B Y T',1,6),
+(7,'A B M Y','A B M A',0,7),(8,'H KH J','H KH J',1,8),
+(9,'Y R W','Y S J D',0,9),(10,'D D D D','D D D D',1,10),
+(11,'A GH F','A GH F',1,11),(12,'Q S S','Q S S',1,12),
+(13,'W Z R','R R Z W',0,13),(14,'TH DH H','TH DH H',1,14),
+(15,'S SH S Z','S SH S Z',1,15),(16,'A L SH J R T','A L SH J R T',1,16),
+(17,'TH F Q KH','Q F TH KH',0,17),(18,'Y I L A','I Y L A',0,18),
+(19,'T TH B','T TH B',1,19),(20,'P R B','P R B',1,20);
 
-INSERT INTO letter_similarity_exercises (exercise_number, group1, group2, is_same, display_order) VALUES
-(1,'T Z R','T Z R',TRUE,1),(2,'B L N','B L N',TRUE,2),(3,'S D Z','Z D S',FALSE,3),
-(4,'F Q R S','SH S Q F',FALSE,4),(5,'F Q','F Q',TRUE,5),(6,'B Y T','B Y T',TRUE,6),
-(7,'A B M Y','A B M A',FALSE,7),(8,'H KH J','H KH J',TRUE,8),
-(9,'Y R W','Y S J D',FALSE,9),(10,'D D D D','D D D D',TRUE,10),
-(11,'A GH F','A GH F',TRUE,11),(12,'Q S S','Q S S',TRUE,12),
-(13,'W Z R','R R Z W',FALSE,13),(14,'TH DH H','TH DH H',TRUE,14),
-(15,'S SH S Z','S SH S Z',TRUE,15),(16,'A L SH J R T','A L SH J R T',TRUE,16),
-(17,'TH F Q KH','Q F TH KH',FALSE,17),(18,'Y I L A','I Y L A',FALSE,18),
-(19,'T TH B','T TH B',TRUE,19),(20,'P R B','P R B',TRUE,20);
-
-INSERT INTO number_sequences (sequence_number, numbers, length, response_time_seconds, display_order) VALUES
+INSERT INTO `number_sequences`
+  (`sequence_number`,`numbers`,`length`,`response_time_seconds`,`display_order`) VALUES
 (1,'[4,7]',2,10,1),(2,'[3,8,1]',3,15,2),(3,'[6,2,9,5]',4,20,3),
 (4,'[1,4,7,2,8]',5,25,4),(5,'[5,0,9,3,6,1]',6,30,5),
-(6,'[2,6,4,8,0,7,3]',7,35,6),(7,'[9,2]',2,10,7),
-(8,'[1,5,3]',3,15,8),(9,'[7,0,6,2,4]',5,25,9),
-(10,'[8,3,1,9,5,2]',6,30,10);
+(6,'[2,6,4,8,0,7,3]',7,35,6),(7,'[9,2]',2,10,7),(8,'[1,5,3]',3,15,8),
+(9,'[7,0,6,2,4]',5,25,9),(10,'[8,3,1,9,5,2]',6,30,10);
 
-SELECT '✅ Database v5.0 complete!' AS status;
+
+-- ================================================================
+--  BACKEND API — EXACT ROUTE LOGIC  (for your developers)
+-- ================================================================
+--
+--  ① POST /api/session/start
+--     Body: { child_name, child_grade }
+--     Action: INSERT INTO child_session (child_name, child_grade) → get id
+--     Return: { child_session_id: <integer> }
+--     Frontend: localStorage.setItem('child_session_id', id)
+--
+--  ② POST /api/screening  (optional, before tasks)
+--     Body: { child_session_id, answers, total_yes_count, risk_level, risk_score }
+--     Action: INSERT INTO parent_screening (child_session_id, ...)
+--
+--  ③ POST /api/task1/submit
+--     Body: { child_session_id, similar_words_score, ... }
+--     Action: INSERT INTO task1_word_results (child_session_id, ...)
+--
+--  ④ POST /api/task2/submit  → task2_results
+--  ⑤ POST /api/task3/submit  → task3_letter_similarity_results
+--  ⑥ POST /api/task4/submit  → task4_number_memory_results
+--
+--  ⑦ POST /api/assessment/finalize
+--     Body: { child_session_id }
+--     Action: compute scores from tasks, INSERT INTO full_assessment_summary
+--
+--  ⑧ POST /api/auth/register
+--     Body: { full_name, email, password, phone, child_session_id }
+--     Transaction:
+--       a) INSERT INTO parent (full_name, email, password_hash, ...) → parent_id
+--       b) SELECT child_name, child_grade FROM child_session WHERE id = child_session_id
+--       c) INSERT INTO child (parent_id, full_name, grade) → child_id
+--       d) UPDATE child_session  SET parent_id=?, child_id=? WHERE id=?
+--       e) UPDATE parent_screening SET parent_id=?, child_id=? WHERE child_session_id=?
+--       f) UPDATE task1_word_results SET child_id=? WHERE child_session_id=?
+--       g) UPDATE task2_results SET child_id=? WHERE child_session_id=?
+--       h) UPDATE task3_letter_similarity_results SET child_id=? WHERE child_session_id=?
+--       i) UPDATE task4_number_memory_results SET child_id=? WHERE child_session_id=?
+--       j) UPDATE full_assessment_summary SET child_id=?, parent_id=? WHERE child_session_id=?
+--     Return: JWT token
+--
+--  ⑨ POST /api/auth/add-child  (parent already logged in, adds second child)
+--     Body: { child_name, child_grade }  (from signup page child name field)
+--     Action:
+--       INSERT INTO child_session (child_name, child_grade, parent_id)
+--       INSERT INTO child (parent_id, full_name, grade) → child_id
+--       UPDATE child_session SET child_id=? WHERE id=?
+--     Return: { child_session_id, child_id }
+--     → Then same task flow ③–⑦ using the new child_session_id
+--
+--  ⑩ GET /api/parent/dashboard
+--     Returns all children + their latest assessment for logged-in parent:
+--
+--     SELECT
+--       c.id              AS child_id,
+--       c.full_name       AS child_name,
+--       c.grade,
+--       fas.overall_score,
+--       fas.risk_level,
+--       fas.task1_score,
+--       fas.task2_score,
+--       fas.task3_score,
+--       fas.task4_score,
+--       fas.completed_at,
+--       cs.id             AS child_session_id
+--     FROM child c
+--     JOIN child_session cs ON cs.child_id = c.id
+--     JOIN full_assessment_summary fas ON fas.child_session_id = cs.id
+--     WHERE c.parent_id = ?
+--     ORDER BY fas.completed_at DESC;
+--
+-- ================================================================childSessionRoutes.js

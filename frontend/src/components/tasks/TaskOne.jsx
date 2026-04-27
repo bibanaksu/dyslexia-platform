@@ -3,9 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./TaskOne.css";
-import { getChildInfo, getSessionUUID, getUserInfo, getGuestId } from "../../utils/childSession";
+import { getChildInfo, getUserInfo, getCurrentChildSessionId } from "../../utils/childSession";
 
-/* ─── DATA ─────────────────────────────────────────────── */
 const EXERCISES = [
   {
     id: 1, key: "similarWords", title: "Twins Words 👯",
@@ -35,11 +34,8 @@ const EXERCISES = [
 ];
 
 const STORAGE_KEY = 'task_one_progress';
-// ── KEY FIX: store the DB row ID so we PATCH instead of INSERT twice ──
-const SAVED_ID_KEY = 'task_one_saved_db_id';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-/* ─── Sound effects ─────────────────────────────────────── */
 const playSwipeSound = () => {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -79,7 +75,6 @@ const markQuestCompleted = () => {
   }
 };
 
-/* ─── Main Component ─────────────────────────────────── */
 export default function TaskOne() {
   const navigate = useNavigate();
   const [currentScreen, setCurrentScreen] = useState('categories');
@@ -97,18 +92,20 @@ export default function TaskOne() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [feedbackBorder, setFeedbackBorder] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const timerRef = useRef(null);
   const feedbackTimeoutRef = useRef(null);
   const categoryTimerRef = useRef(null);
-  // ── FIX: single ref holds the DB row id (persisted in localStorage too) ──
-  const savedIdRef = useRef(localStorage.getItem(SAVED_ID_KEY) || null);
 
-  // ── Load saved progress on mount ──────────────────────────
+  // Load saved progress
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const progress = JSON.parse(saved);
+      if (progress.child_session_id && !getCurrentChildSessionId()) {
+        localStorage.setItem('child_session_id', progress.child_session_id);
+      }
       setCategoryProgress(progress.categoryProgress);
       if (progress.currentCategory && progress.currentWordIndex !== undefined) {
         const category = EXERCISES.find(ex => ex.key === progress.currentCategory);
@@ -123,22 +120,40 @@ export default function TaskOne() {
         }
       }
     }
-    getGuestId();
   }, []);
 
-  // ── Persist progress to localStorage ──────────────────────
+  // Redirect if no session
+  useEffect(() => {
+    const sessionId = getCurrentChildSessionId();
+    if (!sessionId && currentScreen !== 'categories') {
+      setSaveError('No active child session. Redirecting to start...');
+      setTimeout(() => navigate('/child-info'), 2000);
+    }
+  }, [navigate, currentScreen]);
+
+  // Persist progress to localStorage (including session ID)
   useEffect(() => {
     if (currentScreen === 'assessment' && selectedCategory) {
+      const currentSessionId = getCurrentChildSessionId();
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        categoryProgress, currentCategory: selectedCategory.key,
-        currentWordIndex, timeElapsed, answeredWords, lastUpdated: Date.now(),
+        categoryProgress,
+        currentCategory: selectedCategory.key,
+        currentWordIndex,
+        timeElapsed,
+        answeredWords,
+        child_session_id: currentSessionId,
+        lastUpdated: Date.now(),
       }));
     } else if (currentScreen !== 'assessment') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ categoryProgress, lastUpdated: Date.now() }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        categoryProgress,
+        child_session_id: getCurrentChildSessionId(),
+        lastUpdated: Date.now()
+      }));
     }
   }, [categoryProgress, currentScreen, selectedCategory, currentWordIndex, timeElapsed, answeredWords]);
 
-  // ── Timer ──────────────────────────────────────────────────
+  // Timer
   useEffect(() => {
     if (timerRunning && !isPaused) {
       timerRef.current = setInterval(() => setTimeElapsed(p => p + 1), 1000);
@@ -146,7 +161,7 @@ export default function TaskOne() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [timerRunning, isPaused]);
 
-  // ── Category time tracking ─────────────────────────────────
+  // Category time tracking
   useEffect(() => {
     if (currentScreen === 'assessment' && !isPaused && categoryStartTime) {
       if (categoryTimerRef.current) clearInterval(categoryTimerRef.current);
@@ -172,13 +187,16 @@ export default function TaskOne() {
     if (totalCompleted === 60 && currentScreen === 'finalResults') markQuestCompleted();
   }, [categoryProgress, currentScreen]);
 
-  // ── FIXED: save results — POST first time, PATCH afterwards ──
+  // ─── Save to backend (always POST – upsert via UNIQUE constraint) ───
   const saveResultsToBackend = async (isPartial = false, latestProgress = null) => {
+    const childSessionId = getCurrentChildSessionId();
+    if (!childSessionId) {
+      setSaveError('Cannot save: no active child session.');
+      return false;
+    }
+
     const user = getUserInfo();
     const childInfo = getChildInfo();
-    const sessionUUID = getSessionUUID();
-    const guestId = getGuestId();
-    const token = localStorage.getItem('token');
 
     const prog = latestProgress || categoryProgress;
 
@@ -196,55 +214,45 @@ export default function TaskOne() {
     const allErrors        = [...prog.similarWords.errors, ...prog.nonSimilarWords.errors, ...prog.nonWords.errors];
 
     const payload = {
-      session_uuid:           sessionUUID,
-      child_id:               user?.childId || null,
-      parent_id:              user?.role === 'parent' ? user.id : null,
-      // ── FIX: use childFullName ──
-      child_name:             childInfo?.childFullName || childInfo?.childName || user?.name || 'Guest User',
-      child_grade:            childInfo?.childGrade    || user?.childGrade     || 'Not Specified',
-      guest_id:               guestId,
-      similar_words_score:    prog.similarWords.correct,
-      non_similar_words_score: prog.nonSimilarWords.correct,
-      pseudo_words_score:     prog.nonWords.correct,
-      total_score:            totalCorrect,
-      total_words:            60,
+      child_session_id:         parseInt(childSessionId, 10),
+      child_id:                 user?.childId ? parseInt(user.childId, 10) : null,
+      similar_words_score:      prog.similarWords.correct,
+      non_similar_words_score:  prog.nonSimilarWords.correct,
+      pseudo_words_score:       prog.nonWords.correct,
+      total_score:              totalCorrect,
+      total_words:              60,
       percentage,
-      performance_level:      performanceLevel,
-      total_time_seconds:     totalTimeSeconds,
-      avg_time_per_word:      avgTimePerWord,
-      error_patterns:         allErrors.length > 0 ? JSON.stringify(allErrors) : null,
-      is_partial:             isPartial ? 1 : 0,
+      performance_level:        performanceLevel,
+      total_time_seconds:       totalTimeSeconds,
+      avg_time_per_word:        avgTimePerWord,
+      error_patterns:           allErrors.length > 0 ? JSON.stringify(allErrors) : null,
     };
 
+    const token = localStorage.getItem('token');
     const headers = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
 
     setIsSaving(true);
+    setSaveError('');
     try {
-      let res;
-      if (savedIdRef.current) {
-        // ── PATCH — update existing row, never create a duplicate ──
-        res = await axios.patch(`${API_URL}/api/task1/submit/${savedIdRef.current}`, payload, { headers });
-      } else {
-        // ── POST — first time only ──
-        res = await axios.post(`${API_URL}/api/task1/submit`, payload, { headers });
-        if (res.data?.resultId) {
-          savedIdRef.current = String(res.data.resultId);
-          localStorage.setItem(SAVED_ID_KEY, savedIdRef.current);
-        }
+      // Always POST – ON DUPLICATE KEY UPDATE handles existing rows
+      const res = await axios.post(`${API_URL}/api/task1/submit`, payload, { headers });
+      if (res.data?.resultId) {
+        console.log('✅ Task1 saved, id:', res.data.resultId);
       }
       return true;
     } catch (error) {
-      console.error('Error saving task1:', error.response?.data || error.message);
+      console.error('❌ Save error:', error.response?.data || error.message);
+      setSaveError(error.response?.data?.error || 'Network error – progress saved locally only.');
       return false;
     } finally {
       setTimeout(() => setIsSaving(false), 800);
     }
   };
 
-  // ── Start a category ───────────────────────────────────────
+  // --- Category handlers (startCategory, handlePause, handleResume, handleQuit, handleAnswer) ---
   const startCategory = (categoryKey) => {
     const category = EXERCISES.find(ex => ex.key === categoryKey);
     const existingProgress = categoryProgress[categoryKey];
@@ -298,7 +306,6 @@ export default function TaskOne() {
       const w = selectedCategory.words[currentWordIndex];
       setAnsweredWords(prev => [...prev, { word: w, correct: isCorrect }]);
 
-      // Build updated progress inline so we have it immediately
       const updatedProgress = {
         ...categoryProgress,
         [selectedCategory.key]: {
@@ -319,13 +326,13 @@ export default function TaskOne() {
         currentWordIndex: currentWordIndex + 1,
         timeElapsed,
         answeredWords: [...answeredWords, { word: w, correct: isCorrect }],
+        child_session_id: getCurrentChildSessionId(),
         lastUpdated: Date.now(),
       }));
 
       if (currentWordIndex < selectedCategory.words.length - 1) {
         setCurrentWordIndex(prev => prev + 1);
       } else {
-        // Category finished
         setTimerRunning(false);
         if (categoryTimerRef.current) clearInterval(categoryTimerRef.current);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -333,9 +340,6 @@ export default function TaskOne() {
         const allDone = Object.values(updatedProgress).every(c => c.completed >= 20);
         if (allDone) {
           await saveResultsToBackend(false, updatedProgress);
-          // Clear the saved ID so a new session next time starts fresh
-          localStorage.removeItem(SAVED_ID_KEY);
-          savedIdRef.current = null;
           setCurrentScreen('finalResults');
           localStorage.removeItem(STORAGE_KEY);
         } else {
@@ -357,7 +361,7 @@ export default function TaskOne() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  /* ── Categories Screen ────────────────────────────────── */
+  // --- Render categories screen ---
   if (currentScreen === 'categories') {
     const totalProgress = calculateTotalProgress();
     return (
@@ -404,7 +408,7 @@ export default function TaskOne() {
     );
   }
 
-  /* ── Assessment Screen ────────────────────────────────── */
+  // --- Render assessment screen ---
   if (currentScreen === 'assessment' && selectedCategory) {
     const word     = selectedCategory.words[currentWordIndex];
     const progress = ((currentWordIndex + 1) / 20) * 100;
@@ -459,11 +463,12 @@ export default function TaskOne() {
           </div>
         )}
         {isSaving && <div className="saving-overlay"><div className="saving-spinner">💾 Saving...</div></div>}
+        {saveError && !isSaving && <div className="error-notice">{saveError}</div>}
       </div>
     );
   }
 
-  /* ── Final Results Screen ─────────────────────────────── */
+  // --- Render results screen ---
   if (currentScreen === 'finalResults') {
     const totalCorrect   = Object.values(categoryProgress).reduce((s, c) => s + c.correct, 0);
     const totalCompleted = Object.values(categoryProgress).reduce((s, c) => s + c.completed, 0);
@@ -518,7 +523,6 @@ export default function TaskOne() {
         <div className="results-action-buttons">
           <button className="btn-home-page" onClick={() => navigate('/adventure')}>🏠 Back to Home</button>
         </div>
-        {isSaving && <div className="saving-overlay"><div className="saving-spinner">💾 Saving your progress...</div></div>}
       </div>
     );
   }

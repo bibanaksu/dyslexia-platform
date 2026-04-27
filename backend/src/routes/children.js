@@ -1,26 +1,19 @@
 const express = require('express');
-const pool    = require('../db');
+const pool = require('../db');
 const { verifyToken, requireParent } = require('../middleware/auth');
 
 const router = express.Router();
 
-// ── GET /api/children ─────────────────────────────────────────
-// Returns all children belonging to the authenticated parent.
-// FIX: was using req.user.parentId which is UNDEFINED because
-//      generateToken stores the id under the key 'id', not 'parentId'.
-//      Changed to req.user.id throughout this file.
-router.get('/', requireParent, async (req, res) => {
+// GET /api/children – add verifyToken before requireParent
+router.get('/', verifyToken, requireParent, async (req, res) => {
     try {
-        const parentId = req.user.id;   // FIX: was req.user.parentId → undefined
-
         const [children] = await pool.query(
             `SELECT id, full_name, grade, parent_id, dob, created_at
-             FROM Child
+             FROM child
              WHERE parent_id = ?
              ORDER BY full_name ASC`,
-            [parentId]
+            [req.user.id]
         );
-
         res.json(children);
     } catch (error) {
         console.error('Error fetching children:', error);
@@ -28,18 +21,15 @@ router.get('/', requireParent, async (req, res) => {
     }
 });
 
-// ── GET /api/children/:id ─────────────────────────────────────
-// Returns a single child — only if it belongs to the caller's parent id.
-router.get('/:id', requireParent, async (req, res) => {
+// GET /api/children/:id
+router.get('/:id', verifyToken, requireParent, async (req, res) => {
     try {
-        const { id }   = req.params;
-        const parentId = req.user.id;   // FIX: was req.user.parentId
-
+        const { id } = req.params;
         const [children] = await pool.query(
             `SELECT id, full_name, grade, parent_id, dob, created_at
-             FROM Child
+             FROM child
              WHERE id = ? AND parent_id = ?`,
-            [id, parentId]
+            [id, req.user.id]
         );
 
         if (children.length === 0) {
@@ -53,50 +43,43 @@ router.get('/:id', requireParent, async (req, res) => {
     }
 });
 
-// ── POST /api/children ────────────────────────────────────────
-router.post('/', requireParent, async (req, res) => {
+// POST /api/children – ADD CHILD
+router.post('/', verifyToken, requireParent, async (req, res) => {
     try {
         const { full_name, grade, dob } = req.body;
-        const parentId                  = req.user.id;   // FIX: was req.user.parentId
-
         if (!full_name || grade === undefined) {
             return res.status(400).json({ error: 'full_name and grade are required' });
         }
-
         const [result] = await pool.query(
-            'INSERT INTO Child (full_name, grade, parent_id, dob) VALUES (?, ?, ?, ?)',
-            [full_name.trim(), parseInt(grade), parentId, dob || null]
+            'INSERT INTO child (parent_id, full_name, grade, dob) VALUES (?, ?, ?, ?)',
+            [req.user.id, full_name.trim(), parseInt(grade), dob || null]
         );
-
         res.status(201).json({
-            id:        result.insertId,
+            id: result.insertId,
             full_name: full_name.trim(),
-            grade:     parseInt(grade),
-            parent_id: parentId,
-            dob:       dob || null,
-            message:   'Child created successfully',
+            grade: parseInt(grade),
+            dob: dob || null,
+            parent_id: req.user.id
         });
     } catch (error) {
-        console.error('Error creating child:', error);
-        res.status(500).json({ error: 'Failed to create child' });
+        console.error('Error adding child:', error);
+        res.status(500).json({ error: 'Failed to add child' });
     }
 });
 
-// ── PUT /api/children/:id ─────────────────────────────────────
-// Only the parent who owns the child can update.
-router.put('/:id', requireParent, async (req, res) => {
+// PUT /api/children/:id
+router.put('/:id', verifyToken, requireParent, async (req, res) => {
     try {
-        const { id }          = req.params;
+        const { id } = req.params;
         const { full_name, grade, dob } = req.body;
-        const parentId        = req.user.id;   // FIX: was req.user.parentId
 
         if (!full_name || grade === undefined) {
             return res.status(400).json({ error: 'full_name and grade are required' });
         }
 
         const [result] = await pool.query(
-            'UPDATE Child SET full_name = ?, grade = ?, dob = ? WHERE id = ? AND parent_id = ?',
-            [full_name.trim(), parseInt(grade), dob || null, id, parentId]
+            'UPDATE child SET full_name = ?, grade = ?, dob = ? WHERE id = ? AND parent_id = ?',
+            [full_name.trim(), parseInt(grade), dob || null, id, req.user.id]
         );
 
         if (result.affectedRows === 0) {
@@ -110,16 +93,13 @@ router.put('/:id', requireParent, async (req, res) => {
     }
 });
 
-// ── DELETE /api/children/:id ──────────────────────────────────
-// Only the parent who owns the child can delete.
-router.delete('/:id', requireParent, async (req, res) => {
+// DELETE /api/children/:id
+router.delete('/:id', verifyToken, requireParent, async (req, res) => {
     try {
-        const { id }   = req.params;
-        const parentId = req.user.id;   // FIX: was req.user.parentId
-
+        const { id } = req.params;
         const [result] = await pool.query(
-            'DELETE FROM Child WHERE id = ? AND parent_id = ?',
-            [id, parentId]
+            'DELETE FROM child WHERE id = ? AND parent_id = ?',
+            [id, req.user.id]
         );
 
         if (result.affectedRows === 0) {
