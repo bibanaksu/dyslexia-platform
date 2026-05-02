@@ -1,4 +1,3 @@
-// frontend/src/components/tasks/TaskOne.jsx
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -131,7 +130,7 @@ export default function TaskOne() {
     }
   }, [navigate, currentScreen]);
 
-  // Persist progress to localStorage (including session ID)
+  // Persist progress
   useEffect(() => {
     if (currentScreen === 'assessment' && selectedCategory) {
       const currentSessionId = getCurrentChildSessionId();
@@ -187,32 +186,25 @@ export default function TaskOne() {
     if (totalCompleted === 60 && currentScreen === 'finalResults') markQuestCompleted();
   }, [categoryProgress, currentScreen]);
 
-  // ─── Save to backend (always POST – upsert via UNIQUE constraint) ───
+  // Save to backend
   const saveResultsToBackend = async (isPartial = false, latestProgress = null) => {
     const childSessionId = getCurrentChildSessionId();
     if (!childSessionId) {
       setSaveError('Cannot save: no active child session.');
       return false;
     }
-
     const user = getUserInfo();
-    const childInfo = getChildInfo();
-
     const prog = latestProgress || categoryProgress;
-
     const totalCorrect   = Object.values(prog).reduce((s, c) => s + c.correct, 0);
     const totalCompleted = Object.values(prog).reduce((s, c) => s + c.completed, 0);
     const percentage     = totalCompleted > 0 ? Math.round((totalCorrect / totalCompleted) * 100) : 0;
-
     let performanceLevel = 'Needs Improvement';
     if (percentage >= 90) performanceLevel = 'Excellent';
     else if (percentage >= 75) performanceLevel = 'Good';
     else if (percentage >= 60) performanceLevel = 'Satisfactory';
-
     const totalTimeSeconds = prog.similarWords.timeSpent + prog.nonSimilarWords.timeSpent + prog.nonWords.timeSpent;
     const avgTimePerWord   = totalCompleted > 0 ? Math.round(totalTimeSeconds / totalCompleted) : 0;
     const allErrors        = [...prog.similarWords.errors, ...prog.nonSimilarWords.errors, ...prog.nonWords.errors];
-
     const payload = {
       child_session_id:         parseInt(childSessionId, 10),
       child_id:                 user?.childId ? parseInt(user.childId, 10) : null,
@@ -227,21 +219,16 @@ export default function TaskOne() {
       avg_time_per_word:        avgTimePerWord,
       error_patterns:           allErrors.length > 0 ? JSON.stringify(allErrors) : null,
     };
-
     const token = localStorage.getItem('token');
     const headers = {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-
     setIsSaving(true);
     setSaveError('');
     try {
-      // Always POST – ON DUPLICATE KEY UPDATE handles existing rows
       const res = await axios.post(`${API_URL}/api/task1/submit`, payload, { headers });
-      if (res.data?.resultId) {
-        console.log('✅ Task1 saved, id:', res.data.resultId);
-      }
+      if (res.data?.resultId) console.log('✅ Task1 saved, id:', res.data.resultId);
       return true;
     } catch (error) {
       console.error('❌ Save error:', error.response?.data || error.message);
@@ -252,7 +239,6 @@ export default function TaskOne() {
     }
   };
 
-  // --- Category handlers (startCategory, handlePause, handleResume, handleQuit, handleAnswer) ---
   const startCategory = (categoryKey) => {
     const category = EXERCISES.find(ex => ex.key === categoryKey);
     const existingProgress = categoryProgress[categoryKey];
@@ -317,7 +303,6 @@ export default function TaskOne() {
             : [...categoryProgress[selectedCategory.key].errors, w],
         },
       };
-
       setCategoryProgress(updatedProgress);
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -361,12 +346,16 @@ export default function TaskOne() {
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // --- Render categories screen ---
+  // ========== CATEGORIES SCREEN (full brand) ==========
   if (currentScreen === 'categories') {
     const totalProgress = calculateTotalProgress();
     return (
       <div className="task-one-container categories-screen">
         <div className="task-bg" /><div className="dark-overlay" />
+        <div className="task-brand">
+          <div className="task-logo-icon">DS</div>
+          <span className="task-logo-text">Dyslexia Support</span>
+        </div>
         <div className="categories-grid">
           {EXERCISES.map((category) => {
             const progress    = categoryProgress[category.key];
@@ -399,24 +388,23 @@ export default function TaskOne() {
           <div className="celebration">
             <div className="confetti">🎉</div>
             <p className="celebration-text">All challenges completed! Ready for results?</p>
-            <button className="btn-final-results" onClick={() => setCurrentScreen('finalResults')}>
-              See Final Results 🏆
-            </button>
+            <button className="btn-final-results" onClick={() => setCurrentScreen('finalResults')}>See Final Results 🏆</button>
           </div>
         )}
       </div>
     );
   }
 
-  // --- Render assessment screen ---
+  // ========== ASSESSMENT SCREEN (only DS badge, buttons raised) ==========
   if (currentScreen === 'assessment' && selectedCategory) {
-    const word     = selectedCategory.words[currentWordIndex];
+    const word = selectedCategory.words[currentWordIndex];
     const progress = ((currentWordIndex + 1) / 20) * 100;
     return (
       <div className="task-one-container assessment-screen">
         <div className="task-bg" /><div className="dark-overlay" />
         <div className="assessment-header-bar">
           <div className="header-left">
+            <div className="task-logo-icon">DS</div>
             <button className="btn-pause" onClick={handlePause}>
               {isPaused ? '▶️ Resume' : '⏸️ Pause'}
             </button>
@@ -426,7 +414,7 @@ export default function TaskOne() {
             <div className="progress-display">Word {currentWordIndex + 1} of 20</div>
           </div>
           <div className="header-right">
-            <div className="timer"> {formatTime(timeElapsed)}</div>
+            <div className="timer">{formatTime(timeElapsed)}</div>
           </div>
         </div>
         <div className="assessment-progress-bar">
@@ -444,7 +432,7 @@ export default function TaskOne() {
             </div>
           </div>
           <div className="character-area">
-            <div className="character-thinking">🐵</div>
+            <div className="character-thinking">🦁</div>
             <div className="speech-bubble">Can you read this word?</div>
           </div>
         </div>
@@ -468,7 +456,7 @@ export default function TaskOne() {
     );
   }
 
-  // --- Render results screen ---
+  // ========== RESULTS SCREEN (full brand) ==========
   if (currentScreen === 'finalResults') {
     const totalCorrect   = Object.values(categoryProgress).reduce((s, c) => s + c.correct, 0);
     const totalCompleted = Object.values(categoryProgress).reduce((s, c) => s + c.completed, 0);
@@ -476,8 +464,9 @@ export default function TaskOne() {
     return (
       <div className="task-one-container results-screen">
         <div className="task-bg" /><div className="dark-overlay" />
-        <div className="results-back-btn">
-          <button className="nav-back-btn" onClick={() => navigate('/adventure')}>← Back to Adventure</button>
+        <div className="task-brand">
+          <div className="task-logo-icon">DS</div>
+          <span className="task-logo-text">Dyslexia Support</span>
         </div>
         <div className="results-header-area">
           <div className="trophy-icon">🤩</div>
@@ -498,28 +487,29 @@ export default function TaskOne() {
             </p>
           </div>
         </div>
-        <div className="category-breakdown-area">
-          <h2>📊 Your Results by Challenge</h2>
-          <div className="breakdown-grid-area">
-            {EXERCISES.map((category) => {
-              const prog    = categoryProgress[category.key];
-              const catPct  = prog.completed > 0 ? Math.round((prog.correct / prog.completed) * 100) : 0;
-              return (
-                <div key={category.key} className="breakdown-card-item">
-                  <div className="breakdown-icon-item">{category.icon}</div>
-                  <h3>{category.title}</h3>
-                  <div className="breakdown-score-item">
-                    <span>{prog.correct}/{prog.completed}</span>
-                    <span className="percentage-item">({catPct}%)</span>
-                  </div>
-                  <div className="breakdown-bar-item">
-                    <div className="bar-fill-item" style={{ width: `${catPct}%` }} />
-                  </div>
-                </div>
-              );
-            })}
+     <div className="category-breakdown-area">
+  <h2>Your Results by Challenge</h2>
+  <div className="breakdown-grid-area">
+    {EXERCISES.map((category) => {
+      const prog = categoryProgress[category.key];
+      const total = prog.completed;
+      const correct = prog.correct;
+      const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
+      return (
+        <div key={category.key} className="breakdown-card-item">
+          <div className="breakdown-icon-item">{category.icon}</div>
+          <h3>{category.title}</h3>
+          <div className="breakdown-score-item">
+            {correct}/{total} <span className="percentage-item">({pct}%)</span>
+          </div>
+          <div className="breakdown-bar-item">
+            <div className="bar-fill-item" style={{ width: `${pct}%` }} />
           </div>
         </div>
+      );
+    })}
+  </div>
+</div>
         <div className="results-action-buttons">
           <button className="btn-home-page" onClick={() => navigate('/adventure')}>🏠 Back to Home</button>
         </div>

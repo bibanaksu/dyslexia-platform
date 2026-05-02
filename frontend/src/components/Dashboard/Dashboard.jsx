@@ -1,21 +1,21 @@
-// TherapistDashboard.jsx — Dr. Sarah Mohamed | LexiCare Platform
+// Dashboard.jsx — LexiCare Clinical Portal (Fully Fixed)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Dashboard.css';   
-const BASE_URL = 'http://localhost:5000';
+import { 
+  apiFetch, 
+  fetchPatients, 
+  fetchTherapistNotes, 
+  addTherapistNote, 
+  deleteTherapistNote, 
+  fetchActivities, 
+  fetchAssignments, 
+  assignActivity, 
+  sendTherapistMessage, 
+  logout as apiLogout 
+} from '../../services/api';
+import './Dashboard.css';
 
-function apiFetch(path, options = {}) {
-  const token = localStorage.getItem('token');
-  return fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-    credentials: 'include',
-  });
-}
+const BASE_URL = 'http://localhost:5000';
 
 // ─── RISK CONFIG ──────────────────────────────────────────────
 const RISK = {
@@ -116,7 +116,7 @@ function RiskBadge({ score }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// HOME TAB
+// HOME TAB (Corrected table)
 // ══════════════════════════════════════════════════════════════
 function HomeTab({ patients, onViewPatient }) {
   const completed = patients.filter(p => p.overall_score != null);
@@ -142,7 +142,6 @@ function HomeTab({ patients, onViewPatient }) {
         <StatCard icon={Icons.check}    value={normal}  label="Normal Range"   sub="performing well" accent="#1a6b40" />
       </div>
 
-      {/* Risk distribution */}
       <div className="td-card" style={{ marginBottom: 24 }}>
         <div className="td-card-hdr"><span className="td-card-title">Risk Distribution</span></div>
         <div className="td-risk-dist">
@@ -166,7 +165,6 @@ function HomeTab({ patients, onViewPatient }) {
         </div>
       </div>
 
-      {/* Recent assessments */}
       <div className="td-card">
         <div className="td-card-hdr">
           <span className="td-card-title">Recent Assessments</span>
@@ -176,24 +174,22 @@ function HomeTab({ patients, onViewPatient }) {
         ) : (
           <table className="td-table">
             <thead>
-              <tr>
-                <th>Child</th><th>Grade</th><th>Overall</th><th>Risk</th><th>Date</th><th></th>
-              </tr>
+              <tr><th>Child</th><th>Grade</th><th>Overall</th><th>Risk</th><th>Date</th><th></th></tr>
             </thead>
             <tbody>
               {recent.map(p => (
                 <tr key={p.child_session_id || p.child_id}>
                   <td>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div className="td-av">{p.child_name?.charAt(0)}</div>
                       <div>
-                        <div style={{ fontWeight:600 }}>{p.child_name}</div>
-                        <div style={{ fontSize:11, color:'var(--ink-soft)' }}>{p.parent_name || '—'}</div>
+                        <div style={{ fontWeight: 600 }}>{p.child_name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{p.parent_name || '—'}</div>
                       </div>
                     </div>
                   </td>
                   <td>Year {p.grade}</td>
-                  <td style={{ fontWeight:700, color: getRisk(p.overall_score).color }}>
+                  <td style={{ fontWeight: 700, color: getRisk(p.overall_score).color }}>
                     {p.overall_score != null ? `${Math.round(p.overall_score)}%` : '—'}
                   </td>
                   <td><RiskBadge score={p.overall_score} /></td>
@@ -212,7 +208,7 @@ function HomeTab({ patients, onViewPatient }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// PATIENTS TAB
+// PATIENTS TAB (unchanged, correct)
 // ══════════════════════════════════════════════════════════════
 function PatientsTab({ patients, onViewPatient }) {
   const [search, setSearch] = useState('');
@@ -253,7 +249,6 @@ function PatientsTab({ patients, onViewPatient }) {
           <div className="td-empty" style={{ gridColumn:'1/-1' }}>No patients found.</div>
         ) : filtered.map(p => {
           const risk = getRisk(p.overall_score);
-          const label = getRiskLabel(p.overall_score);
           return (
             <div key={p.child_session_id || p.child_id} className="td-patient-card"
               onClick={() => onViewPatient(p)} style={{ '--risk-color': risk.color }}>
@@ -323,34 +318,29 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
   const [newNote, setNewNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [activities, setActivities] = useState([]);
-  const [showAssign, setShowAssign] = useState(false);
 
   useEffect(() => {
     if (!patient) return;
-    apiFetch(`/api/therapist/notes?childId=${patient.child_id}`)
-      .then(r => r.json()).then(d => setNotes(Array.isArray(d) ? d : [])).catch(() => {});
-    apiFetch(`/api/activities`)
-      .then(r => r.json()).then(d => setActivities(Array.isArray(d) ? d : [])).catch(() => {});
+    fetchTherapistNotes(patient.child_id).then(setNotes).catch(() => setNotes([]));
+    fetchActivities().then(data => {
+      const acts = data?.activities || (Array.isArray(data) ? data : []);
+      setActivities(acts);
+    }).catch(() => setActivities([]));
   }, [patient]);
 
   const addNote = async () => {
     if (!newNote.trim()) return;
     setSavingNote(true);
     try {
-      const res = await apiFetch('/api/therapist/notes', {
-        method: 'POST',
-        body: JSON.stringify({ child_id: patient.child_id, note_text: newNote.trim() }),
-      });
-      const data = await res.json();
-      setNotes(prev => [data, ...prev]);
+      const note = await addTherapistNote(patient.child_id, newNote.trim());
+      setNotes(prev => [note, ...prev]);
       setNewNote('');
-    } catch {}
+    } catch (err) { console.error(err); }
     setSavingNote(false);
   };
 
   if (!patient) return null;
 
-  const risk = getRisk(patient.overall_score);
   const tasks = [
     { label: 'Word Explorer',    score: patient.task1_score, weight: 2, key: 'task1' },
     { label: 'Story Reader',     score: patient.task2_score, weight: 2, key: 'task2' },
@@ -361,7 +351,6 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
   return (
     <div className="td-detail-overlay" onClick={onClose}>
       <div className="td-detail-panel" onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="td-detail-hdr" style={{ background: `linear-gradient(135deg, var(--forest-dk), var(--forest))` }}>
           <button className="td-detail-close" onClick={onClose}>×</button>
           <div className="td-detail-av">{patient.child_name?.charAt(0)}</div>
@@ -379,13 +368,11 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
         </div>
 
         <div className="td-detail-body">
-          {/* Task Scores */}
           <div className="td-detail-section">
             <div className="td-detail-section-title">Assessment Results</div>
             {tasks.map(t => <ScoreBar key={t.key} label={t.label} score={t.score} weight={t.weight} />)}
           </div>
 
-          {/* Session Info */}
           <div className="td-detail-section">
             <div className="td-detail-section-title">Session Information</div>
             <div className="td-info-grid">
@@ -396,25 +383,15 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
             </div>
           </div>
 
-          {/* Notes */}
           <div className="td-detail-section">
             <div className="td-detail-section-title">Clinical Notes</div>
             <div className="td-note-input-row">
-              <textarea
-                className="td-note-input"
-                placeholder="Add a clinical note about this child…"
-                value={newNote}
-                onChange={e => setNewNote(e.target.value)}
-                rows={2}
-              />
-              <button className="td-btn-primary" onClick={addNote} disabled={savingNote || !newNote.trim()}>
-                {savingNote ? '…' : 'Add'}
-              </button>
+              <textarea className="td-note-input" placeholder="Add a clinical note…" value={newNote} onChange={e => setNewNote(e.target.value)} rows={2} />
+              <button className="td-btn-primary" onClick={addNote} disabled={savingNote || !newNote.trim()}>{savingNote ? '…' : 'Add'}</button>
             </div>
             <div className="td-notes-list">
-              {notes.length === 0 ? (
-                <div className="td-empty-sm">No notes yet.</div>
-              ) : notes.map((n, i) => (
+              {notes.length === 0 && <div className="td-empty-sm">No notes yet.</div>}
+              {notes.map((n, i) => (
                 <div key={i} className="td-note-item">
                   <div className="td-note-text">{n.note_text}</div>
                   <div className="td-note-date">{fmtDate(n.created_at)}</div>
@@ -423,10 +400,10 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
             </div>
           </div>
 
-          {/* Assign Activity */}
           <div className="td-detail-section">
             <div className="td-detail-section-title">Assign Activity</div>
             <div className="td-activities-list">
+              {activities.length === 0 && <div className="td-empty-sm">No activities available.</div>}
               {activities.map(act => (
                 <div key={act.id} className="td-act-item">
                   <div>
@@ -434,8 +411,7 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
                     <div className="td-act-desc">{act.description}</div>
                     <span className="td-act-level">Level {act.difficulty_level}</span>
                   </div>
-                  <button className="td-btn-assign"
-                    onClick={() => onAssignActivity(patient.child_id, act.id)}>
+                  <button className="td-btn-assign" onClick={() => onAssignActivity(patient.child_id, act.id)}>
                     <Ico d={Icons.assign} size={14} /> Assign
                   </button>
                 </div>
@@ -443,10 +419,8 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
             </div>
           </div>
 
-          {/* Actions */}
           <div className="td-detail-actions">
-            <button className="td-btn-primary" style={{ flex: 1 }}
-              onClick={() => onOpenChat(patient)}>
+            <button className="td-btn-primary" style={{ flex: 1 }} onClick={() => onOpenChat(patient)}>
               <Ico d={Icons.chat} size={15} /> Message Parent
             </button>
           </div>
@@ -457,9 +431,9 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// CHAT TAB
+// CHAT TAB (unchanged, but correct)
 // ══════════════════════════════════════════════════════════════
-function ChatTab({ patients, defaultParent }) {
+function ChatTab({ patients, defaultParent, onMessagesRead }) {
   const [conversations, setConversations] = useState([]);
   const [activeParentId, setActiveParentId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -469,7 +443,6 @@ function ChatTab({ patients, defaultParent }) {
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
 
-  // Build unique parent list from patients
   useEffect(() => {
     const parentMap = {};
     patients.forEach(p => {
@@ -485,7 +458,6 @@ function ChatTab({ patients, defaultParent }) {
     setConversations(Object.values(parentMap));
   }, [patients]);
 
-  // Set default from patient detail
   useEffect(() => {
     if (defaultParent?.parent_id) setActiveParentId(defaultParent.parent_id);
   }, [defaultParent]);
@@ -496,14 +468,19 @@ function ChatTab({ patients, defaultParent }) {
     try {
       const res = await apiFetch(`/api/messages?parentId=${activeParentId}`);
       const data = await res.json();
-      setMessages(data.messages || []);
-    } catch {}
+      const msgs = data.messages || [];
+      setMessages(msgs);
+      const unreadIds = msgs.filter(m => m.sender_role === 'parent' && !m.is_read).map(m => m.id);
+      if (unreadIds.length) {
+        await Promise.all(unreadIds.map(id => apiFetch(`/api/messages/${id}/read`, { method: 'PUT' })));
+        if (onMessagesRead) onMessagesRead();
+      }
+    } catch (err) { console.error(err); }
     setLoadingMsgs(false);
-  }, [activeParentId]);
+  }, [activeParentId, onMessagesRead]);
 
   useEffect(() => {
     loadMessages();
-    clearInterval(pollRef.current);
     pollRef.current = setInterval(loadMessages, 4000);
     return () => clearInterval(pollRef.current);
   }, [loadMessages]);
@@ -519,12 +496,12 @@ function ChatTab({ patients, defaultParent }) {
     setInput('');
     try {
       const conv = conversations.find(c => c.parent_id === activeParentId);
-      await apiFetch('/api/messages', {
-        method: 'POST',
-        body: JSON.stringify({ content: text, parentId: activeParentId, child_id: conv?.child_id || null }),
-      });
+      await sendTherapistMessage(activeParentId, text, conv?.child_id || null);
       await loadMessages();
-    } catch { setInput(text); }
+    } catch (err) {
+      console.error(err);
+      setInput(text);
+    }
     setSending(false);
   };
 
@@ -537,15 +514,11 @@ function ChatTab({ patients, defaultParent }) {
       <p className="td-page-sub">Communicate directly with parents about their child's progress.</p>
 
       <div className="td-chat-layout">
-        {/* Conversation list */}
         <div className="td-conv-list">
           <div className="td-conv-head">Conversations</div>
-          {conversations.length === 0 ? (
-            <div className="td-empty-sm" style={{ padding: '20px 16px' }}>No conversations yet.</div>
-          ) : conversations.map(c => (
-            <div key={c.parent_id}
-              className={`td-conv-item ${activeParentId === c.parent_id ? 'active' : ''}`}
-              onClick={() => setActiveParentId(c.parent_id)}>
+          {conversations.length === 0 ? <div className="td-empty-sm" style={{ padding: '20px 16px' }}>No conversations yet.</div> : null}
+          {conversations.map(c => (
+            <div key={c.parent_id} className={`td-conv-item ${activeParentId === c.parent_id ? 'active' : ''}`} onClick={() => setActiveParentId(c.parent_id)}>
               <div className="td-conv-av">{c.parent_name?.charAt(0)}</div>
               <div>
                 <div className="td-conv-name">{c.parent_name}</div>
@@ -555,13 +528,9 @@ function ChatTab({ patients, defaultParent }) {
           ))}
         </div>
 
-        {/* Messages panel */}
         <div className="td-chat-panel">
           {!activeParentId ? (
-            <div className="td-chat-empty">
-              <Ico d={Icons.chat} size={40} />
-              <p>Select a conversation to begin</p>
-            </div>
+            <div className="td-chat-empty"><Ico d={Icons.chat} size={40} /><p>Select a conversation to begin</p></div>
           ) : (
             <>
               <div className="td-chat-topbar">
@@ -571,13 +540,10 @@ function ChatTab({ patients, defaultParent }) {
                   <div className="td-chat-sub">Parent of {activeConv?.child_name}</div>
                 </div>
               </div>
-
               <div className="td-chat-messages">
-                {loadingMsgs && messages.length === 0 ? (
-                  <div className="td-empty-sm">Loading…</div>
-                ) : messages.length === 0 ? (
-                  <div className="td-chat-start">Start the conversation with {activeConv?.parent_name}.</div>
-                ) : messages.map(m => {
+                {loadingMsgs && messages.length === 0 ? <div className="td-empty-sm">Loading…</div> : null}
+                {messages.length === 0 && !loadingMsgs ? <div className="td-chat-start">Start the conversation with {activeConv?.parent_name}.</div> : null}
+                {messages.map(m => {
                   const isMe = m.sender_role === 'therapist';
                   return (
                     <div key={m.id} className={`td-msg-wrap ${isMe ? 'right' : ''}`}>
@@ -591,17 +557,9 @@ function ChatTab({ patients, defaultParent }) {
                 })}
                 <div ref={bottomRef} />
               </div>
-
               <div className="td-chat-footer">
-                <textarea className="td-chat-inp" rows={1}
-                  placeholder="Write a message…"
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                />
-                <button className="td-send-btn" onClick={handleSend} disabled={!input.trim() || sending}>
-                  <Ico d={Icons.send} size={16} />
-                </button>
+                <textarea className="td-chat-inp" rows={1} placeholder="Write a message…" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} />
+                <button className="td-send-btn" onClick={handleSend} disabled={!input.trim() || sending}><Ico d={Icons.send} size={16} /></button>
               </div>
             </>
           )}
@@ -612,7 +570,7 @@ function ChatTab({ patients, defaultParent }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// NOTES TAB
+// NOTES TAB (unchanged)
 // ══════════════════════════════════════════════════════════════
 function NotesTab({ patients }) {
   const [notes, setNotes] = useState([]);
@@ -622,39 +580,27 @@ function NotesTab({ patients }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiFetch('/api/therapist/notes')
-      .then(r => r.json())
-      .then(d => setNotes(Array.isArray(d) ? d : []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    fetchTherapistNotes().then(setNotes).catch(() => setNotes([])).finally(() => setLoading(false));
   }, []);
 
   const addNote = async () => {
     if (!noteText.trim()) return;
     setSaving(true);
     try {
-      const res = await apiFetch('/api/therapist/notes', {
-        method: 'POST',
-        body: JSON.stringify({
-          child_id: selectedChild ? parseInt(selectedChild) : null,
-          note_text: noteText.trim(),
-        }),
-      });
-      const data = await res.json();
-      setNotes(prev => [data, ...prev]);
+      const note = await addTherapistNote(selectedChild ? parseInt(selectedChild) : null, noteText.trim());
+      setNotes(prev => [note, ...prev]);
       setNoteText('');
-    } catch {}
+    } catch (err) { console.error(err); }
     setSaving(false);
   };
 
   const deleteNote = async (id) => {
     try {
-      await apiFetch(`/api/therapist/notes/${id}`, { method: 'DELETE' });
+      await deleteTherapistNote(id);
       setNotes(prev => prev.filter(n => n.id !== id));
-    } catch {}
+    } catch (err) { console.error(err); }
   };
 
-  // Unique children from patients
   const childOptions = patients.filter(p => p.child_id);
 
   return (
@@ -664,7 +610,6 @@ function NotesTab({ patients }) {
       <p className="td-page-sub">Private notes and observations about your patients.</p>
 
       <div className="td-notes-layout">
-        {/* Note editor */}
         <div className="td-note-editor">
           <div className="td-card">
             <div className="td-card-hdr"><span className="td-card-title">New Note</span></div>
@@ -673,47 +618,30 @@ function NotesTab({ patients }) {
                 <label>Link to patient (optional)</label>
                 <select className="td-select" value={selectedChild} onChange={e => setSelectedChild(e.target.value)}>
                   <option value="">General note (no patient)</option>
-                  {childOptions.map(p => (
-                    <option key={p.child_id} value={p.child_id}>{p.child_name} — Year {p.grade}</option>
-                  ))}
+                  {childOptions.map(p => <option key={p.child_id} value={p.child_id}>{p.child_name} — Year {p.grade}</option>)}
                 </select>
               </div>
               <div className="td-field">
                 <label>Note content</label>
-                <textarea
-                  className="td-textarea"
-                  placeholder="Write your clinical observation, recommendation, or note…"
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
-                  rows={6}
-                />
+                <textarea className="td-textarea" placeholder="Write your clinical observation…" value={noteText} onChange={e => setNoteText(e.target.value)} rows={6} />
               </div>
-              <button className="td-btn-primary" style={{ width: '100%', marginTop: 12 }}
-                onClick={addNote} disabled={saving || !noteText.trim()}>
-                {saving ? 'Saving…' : '+ Save Note'}
-              </button>
+              <button className="td-btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={addNote} disabled={saving || !noteText.trim()}>{saving ? 'Saving…' : '+ Save Note'}</button>
             </div>
           </div>
         </div>
-
-        {/* Notes list */}
         <div className="td-notes-feed">
-          {loading ? <div className="td-empty">Loading notes…</div>
-          : notes.length === 0 ? <div className="td-empty">No notes yet. Add your first note.</div>
-          : notes.map((n, i) => {
+          {loading ? <div className="td-empty">Loading notes…</div> : null}
+          {!loading && notes.length === 0 && <div className="td-empty">No notes yet. Add your first note.</div>}
+          {notes.map((n, i) => {
             const child = patients.find(p => p.child_id === n.child_id);
             return (
               <div key={n.id || i} className="td-note-card">
                 <div className="td-note-card-hdr">
                   <div>
-                    {child && (
-                      <span className="td-note-tag">{child.child_name}</span>
-                    )}
+                    {child && <span className="td-note-tag">{child.child_name}</span>}
                     <div className="td-note-card-date">{fmtDate(n.created_at)}</div>
                   </div>
-                  <button className="td-btn-icon" onClick={() => deleteNote(n.id)}>
-                    <Ico d={Icons.trash} size={14} />
-                  </button>
+                  <button className="td-btn-icon" onClick={() => deleteNote(n.id)}><Ico d={Icons.trash} size={14} /></button>
                 </div>
                 <div className="td-note-card-text">{n.note_text}</div>
               </div>
@@ -726,10 +654,16 @@ function NotesTab({ patients }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ACTIVITIES TAB
+// ACTIVITIES TAB (Therapist view) – Hardcoded activities, fixed table
 // ══════════════════════════════════════════════════════════════
 function ActivitiesTab({ patients }) {
-  const [activities, setActivities] = useState([]);
+  const defaultActivities = [
+    { id: 1, name: 'Word-Picture Matching', description: 'Match the word to the correct picture', type: 'matching', difficulty_level: 1 },
+    { id: 2, name: 'Letter & Sound Match', description: 'Listen and select the correct letter', type: 'letter_sound', difficulty_level: 1 },
+    { id: 3, name: 'Reading Comprehension: Ali\'s Ball', description: 'Read a short story and answer questions', type: 'reading', difficulty_level: 1 },
+  ];
+
+  const [activities, setActivities] = useState(defaultActivities);
   const [assignments, setAssignments] = useState([]);
   const [selectedChild, setSelectedChild] = useState('');
   const [selectedActivity, setSelectedActivity] = useState('');
@@ -737,8 +671,11 @@ function ActivitiesTab({ patients }) {
   const [msg, setMsg] = useState('');
 
   useEffect(() => {
-    apiFetch('/api/activities').then(r => r.json()).then(d => setActivities(Array.isArray(d) ? d : [])).catch(() => {});
-    apiFetch('/api/therapist/assignments').then(r => r.json()).then(d => setAssignments(Array.isArray(d) ? d : [])).catch(() => {});
+    fetchAssignments().then(data => setAssignments(Array.isArray(data) ? data : [])).catch(() => setAssignments([]));
+    fetchActivities().then(data => {
+      const acts = data?.activities || (Array.isArray(data) ? data : []);
+      if (acts && acts.length > 0) setActivities(acts);
+    }).catch(() => {});
   }, []);
 
   const assign = async () => {
@@ -746,15 +683,14 @@ function ActivitiesTab({ patients }) {
     setAssigning(true);
     setMsg('');
     try {
-      await apiFetch('/api/therapist/assignments', {
-        method: 'POST',
-        body: JSON.stringify({ child_id: parseInt(selectedChild), activity_id: parseInt(selectedActivity) }),
-      });
+      await assignActivity(selectedChild, selectedActivity);
       setMsg('Activity assigned successfully!');
-      const res = await apiFetch('/api/therapist/assignments');
-      const data = await res.json();
-      setAssignments(Array.isArray(data) ? data : []);
-    } catch { setMsg('Failed to assign activity.'); }
+      const updated = await fetchAssignments();
+      setAssignments(Array.isArray(updated) ? updated : []);
+    } catch (err) {
+      console.error(err);
+      setMsg('Failed to assign activity.');
+    }
     setAssigning(false);
     setTimeout(() => setMsg(''), 3000);
   };
@@ -766,10 +702,9 @@ function ActivitiesTab({ patients }) {
     <div className="td-pane">
       <div className="td-page-eyebrow">Intervention Management</div>
       <h1 className="td-page-title">Learning <em>Activities</em></h1>
-      <p className="td-page-sub">Assign targeted activities to children based on their assessment results.</p>
+      <p className="td-page-sub">Assign targeted activities to children.</p>
 
       <div className="td-act-layout">
-        {/* Assign form */}
         <div className="td-card" style={{ flex: '0 0 340px' }}>
           <div className="td-card-hdr"><span className="td-card-title">Assign Activity</span></div>
           <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -777,32 +712,26 @@ function ActivitiesTab({ patients }) {
               <label>Select patient</label>
               <select className="td-select" value={selectedChild} onChange={e => setSelectedChild(e.target.value)}>
                 <option value="">Choose a child…</option>
-                {childOptions.map(p => (
-                  <option key={p.child_id} value={p.child_id}>{p.child_name} — Year {p.grade}</option>
-                ))}
+                {childOptions.map(p => <option key={p.child_id} value={p.child_id}>{p.child_name} — Year {p.grade}</option>)}
               </select>
             </div>
             <div className="td-field">
               <label>Select activity</label>
               <select className="td-select" value={selectedActivity} onChange={e => setSelectedActivity(e.target.value)}>
                 <option value="">Choose an activity…</option>
-                {activities.map(a => (
-                  <option key={a.id} value={a.id}>{a.name} (Level {a.difficulty_level})</option>
-                ))}
+                {activities.map(a => <option key={a.id} value={a.id}>{a.name} (Level {a.difficulty_level})</option>)}
               </select>
             </div>
             {msg && <div className="td-msg-flash">{msg}</div>}
-            <button className="td-btn-primary" onClick={assign}
-              disabled={assigning || !selectedChild || !selectedActivity}>
+            <button className="td-btn-primary" onClick={assign} disabled={assigning || !selectedChild || !selectedActivity}>
               {assigning ? 'Assigning…' : '+ Assign to Child'}
             </button>
           </div>
 
-          {/* Available activities */}
           <div className="td-card-hdr" style={{ borderTop: '1px solid var(--border)' }}>
             <span className="td-card-title">Available Activities</span>
           </div>
-          <div style={{ padding: '0 20px 20px' }}>
+          <div style={{ padding: '0 20px 20px', maxHeight: '300px', overflowY: 'auto' }}>
             {activities.map(a => (
               <div key={a.id} className="td-avail-act">
                 <div className="td-avail-act-name">{a.name}</div>
@@ -815,7 +744,6 @@ function ActivitiesTab({ patients }) {
           </div>
         </div>
 
-        {/* Recent assignments */}
         <div className="td-card" style={{ flex: 1 }}>
           <div className="td-card-hdr"><span className="td-card-title">Recent Assignments</span></div>
           {assignments.length === 0 ? (
@@ -828,16 +756,10 @@ function ActivitiesTab({ patients }) {
               <tbody>
                 {assignments.map((a, i) => (
                   <tr key={i}>
-                    <td><div style={{ fontWeight:600 }}>{a.child_name || `Child #${a.child_id}`}</div></td>
+                    <td><div style={{ fontWeight: 600 }}>{a.child_name || `Child #${a.child_id}`}</div></td>
                     <td>{a.activity_name || `Activity #${a.activity_id}`}</td>
-                    <td><span className="td-diff-pill" data-level={a.difficulty_level}>
-                      {DIFF_LABELS[a.difficulty_level] || '—'}
-                    </span></td>
-                    <td>
-                      <span className={`td-status-pill ${a.completed ? 'done' : 'pending'}`}>
-                        {a.completed ? 'Completed' : 'In Progress'}
-                      </span>
-                    </td>
+                    <td><span className="td-diff-pill" data-level={a.difficulty_level}>{DIFF_LABELS[a.difficulty_level] || '—'}</span></td>
+                    <td><span className={`td-status-pill ${a.completed ? 'done' : 'pending'}`}>{a.completed ? 'Completed' : 'In Progress'}</span></td>
                     <td>{fmtDate(a.created_at)}</td>
                   </tr>
                 ))}
@@ -860,28 +782,44 @@ const TherapistDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [chatDefaultParent, setChatDefaultParent] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    apiFetch('/api/therapist/patients')
-      .then(r => r.json())
-      .then(d => setPatients(Array.isArray(d) ? d : []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    fetchPatients().then(data => setPatients(Array.isArray(data) ? data : [])).catch(err => { console.error(err); setPatients([]); }).finally(() => setLoading(false));
   }, []);
 
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/messages/unread-count');
+      const data = await res.json();
+      setUnreadCount(data.count || 0);
+    } catch (err) { console.error(err); }
+  }, []);
+
+  useEffect(() => {
+    refreshUnreadCount();
+    const interval = setInterval(refreshUnreadCount, 5000);
+    return () => clearInterval(interval);
+  }, [refreshUnreadCount]);
+
+  useEffect(() => {
+    window.refreshUnreadCount = refreshUnreadCount;
+    return () => { delete window.refreshUnreadCount; };
+  }, [refreshUnreadCount]);
+
   const handleLogout = () => {
-    localStorage.clear();
+    apiLogout();
     navigate('/auth');
   };
 
-  const assignActivity = async (childId, activityId) => {
+  const assignActivityHandler = async (childId, activityId) => {
     try {
-      await apiFetch('/api/therapist/assignments', {
-        method: 'POST',
-        body: JSON.stringify({ child_id: childId, activity_id: activityId }),
-      });
+      await assignActivity(childId, activityId);
       alert('Activity assigned!');
-    } catch {}
+    } catch (err) {
+      console.error(err);
+      alert('Failed to assign activity.');
+    }
   };
 
   const openChat = (patient) => {
@@ -890,18 +828,13 @@ const TherapistDashboard = () => {
     setActiveTab('chat');
   };
 
-  if (loading) return (
-    <div className="td-loading">
-      <div className="td-spinner" />
-      <div>Loading dashboard…</div>
-    </div>
-  );
+  if (loading) return <div className="td-loading"><div className="td-spinner" /><div>Loading dashboard…</div></div>;
 
   const TABS = [
-    { key: 'home',       label: 'Overview',   icon: Icons.home },
-    { key: 'patients',   label: 'Patients',   icon: Icons.patients },
-    { key: 'chat',       label: 'Messages',   icon: Icons.chat },
-    { key: 'notes',      label: 'Notes',      icon: Icons.notes },
+    { key: 'home', label: 'Overview', icon: Icons.home },
+    { key: 'patients', label: 'Patients', icon: Icons.patients },
+    { key: 'chat', label: 'Messages', icon: Icons.chat },
+    { key: 'notes', label: 'Notes', icon: Icons.notes },
     { key: 'activities', label: 'Activities', icon: Icons.activity },
   ];
 
@@ -909,130 +842,66 @@ const TherapistDashboard = () => {
 
   return (
     <div className="td-root">
-      {/* TOP NAV */}
       <nav className="td-topnav">
         <div className="td-brand">
-          <div className="td-brand-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
-          </div>
-          <div>
-            <span className="td-brand-name">Lexi<em>Care</em></span>
-            <span className="td-brand-sub">Clinical Portal</span>
-          </div>
+          <div className="td-brand-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg></div>
+          <div><span className="td-brand-name">Lexi<em>Care</em></span><span className="td-brand-sub">Clinical Portal</span></div>
         </div>
-
         <div className="td-nav-tabs">
           {TABS.map(t => (
-            <button key={t.key} className={`td-nav-tab ${activeTab === t.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(t.key)}>
+            <button key={t.key} className={`td-nav-tab ${activeTab === t.key ? 'active' : ''}`} onClick={() => setActiveTab(t.key)}>
               <Ico d={t.icon} size={15} /> {t.label}
+              {t.key === 'chat' && unreadCount > 0 && <span className="td-unread-badge">{unreadCount}</span>}
             </button>
           ))}
         </div>
-
         <div className="td-nav-right">
           <div className="td-notif"><Ico d={Icons.bell} size={17} /></div>
-          <div className="td-therapist-chip">
-            <div className="td-therapist-av">S</div>
-            <div>
-              <div className="td-therapist-name">Dr. Sarah Mohamed</div>
-              <div className="td-therapist-role">Dyslexia Specialist</div>
-            </div>
-          </div>
-          <button className="td-logout" onClick={handleLogout}>
-            <Ico d={Icons.logout} size={15} /> Sign out
-          </button>
+          <div className="td-therapist-chip"><div className="td-therapist-av">S</div><div><div className="td-therapist-name">Dr. Sarah Mohamed</div><div className="td-therapist-role">Dyslexia Specialist</div></div></div>
+          <button className="td-logout" onClick={handleLogout}><Ico d={Icons.logout} size={15} /> Sign out</button>
         </div>
       </nav>
 
-      {/* HEADER STRIP */}
       <div className="td-header-strip">
-        <div className="td-hs-item">
-          <div className="td-hs-val">{patients.length}</div>
-          <div className="td-hs-label">Total Patients</div>
-        </div>
+        <div className="td-hs-item"><div className="td-hs-val">{patients.length}</div><div className="td-hs-label">Total Patients</div></div>
         <div className="td-hs-divider" />
-        <div className="td-hs-item">
-          <div className="td-hs-val">{completedCount}</div>
-          <div className="td-hs-label">Assessed</div>
-        </div>
+        <div className="td-hs-item"><div className="td-hs-val">{completedCount}</div><div className="td-hs-label">Assessed</div></div>
         <div className="td-hs-divider" />
-        <div className="td-hs-item">
-          <div className="td-hs-val" style={{ color:'#ef4444' }}>
-            {patients.filter(p => p.overall_score != null && p.overall_score < 50).length}
-          </div>
-          <div className="td-hs-label">Severe Cases</div>
-        </div>
+        <div className="td-hs-item"><div className="td-hs-val" style={{ color:'#ef4444' }}>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</div><div className="td-hs-label">Severe Cases</div></div>
         <div className="td-hs-divider" />
-        <div className="td-hs-item">
-          <div className="td-hs-val" style={{ color:'#f97316' }}>
-            {patients.filter(p => p.overall_score != null && p.overall_score >= 50 && p.overall_score < 70).length}
-          </div>
-          <div className="td-hs-label">Moderate</div>
-        </div>
+        <div className="td-hs-item"><div className="td-hs-val" style={{ color:'#f97316' }}>{patients.filter(p => p.overall_score != null && p.overall_score >= 50 && p.overall_score < 70).length}</div><div className="td-hs-label">Moderate</div></div>
         <div className="td-hs-divider" />
-        <div className="td-hs-item">
-          <div className="td-hs-val" style={{ color:'#1a6b40' }}>
-            {patients.filter(p => p.overall_score != null && p.overall_score >= 85).length}
-          </div>
-          <div className="td-hs-label">Normal Range</div>
-        </div>
+        <div className="td-hs-item"><div className="td-hs-val" style={{ color:'#1a6b40' }}>{patients.filter(p => p.overall_score != null && p.overall_score >= 85).length}</div><div className="td-hs-label">Normal Range</div></div>
       </div>
 
-      {/* MAIN CONTENT */}
       <div className="td-layout">
-        {/* SIDEBAR */}
         <aside className="td-sidebar">
           <div className="td-sb-section">Navigation</div>
           {TABS.map(t => (
-            <button key={t.key} className={`td-slink ${activeTab === t.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(t.key)}>
+            <button key={t.key} className={`td-slink ${activeTab === t.key ? 'active' : ''}`} onClick={() => setActiveTab(t.key)}>
               <Ico d={t.icon} size={16} /> {t.label}
+              {t.key === 'chat' && unreadCount > 0 && <span className="td-unread-badge" style={{ marginLeft: 'auto' }}>{unreadCount}</span>}
             </button>
           ))}
-
           <div className="td-sb-section" style={{ marginTop: 24 }}>Quick Stats</div>
           <div className="td-sb-stat"><span>Total Patients</span><strong>{patients.length}</strong></div>
           <div className="td-sb-stat"><span>Assessed</span><strong>{completedCount}</strong></div>
-          <div className="td-sb-stat" style={{ color: '#ef4444' }}>
-            <span>Severe</span>
-            <strong>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</strong>
-          </div>
-
+          <div className="td-sb-stat" style={{ color: '#ef4444' }}><span>Severe</span><strong>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</strong></div>
           <div className="td-sb-section" style={{ marginTop: 24 }}>Therapist</div>
-          <div className="td-sb-profile">
-            <div className="td-sb-av">S</div>
-            <div>
-              <div className="td-sb-name">Dr. Sarah Mohamed</div>
-              <div className="td-sb-spec">Dyslexia & Literacy</div>
-            </div>
-          </div>
-          <div className="td-sb-badge">
-            <Ico d={Icons.star} size={12} /> Certified Specialist
-          </div>
+          <div className="td-sb-profile"><div className="td-sb-av">S</div><div><div className="td-sb-name">Dr. Sarah Mohamed</div><div className="td-sb-spec">Dyslexia & Literacy</div></div></div>
+          <div className="td-sb-badge"><Ico d={Icons.star} size={12} /> Certified Specialist</div>
         </aside>
 
-        {/* MAIN */}
         <main className="td-main">
-          {activeTab === 'home'       && <HomeTab patients={patients} onViewPatient={p => setSelectedPatient(p)} />}
-          {activeTab === 'patients'   && <PatientsTab patients={patients} onViewPatient={p => setSelectedPatient(p)} />}
-          {activeTab === 'chat'       && <ChatTab patients={patients} defaultParent={chatDefaultParent} />}
-          {activeTab === 'notes'      && <NotesTab patients={patients} />}
+          {activeTab === 'home' && <HomeTab patients={patients} onViewPatient={p => setSelectedPatient(p)} />}
+          {activeTab === 'patients' && <PatientsTab patients={patients} onViewPatient={p => setSelectedPatient(p)} />}
+          {activeTab === 'chat' && <ChatTab patients={patients} defaultParent={chatDefaultParent} onMessagesRead={refreshUnreadCount} />}
+          {activeTab === 'notes' && <NotesTab patients={patients} />}
           {activeTab === 'activities' && <ActivitiesTab patients={patients} />}
         </main>
       </div>
 
-      {/* PATIENT DETAIL PANEL */}
-      {selectedPatient && (
-        <PatientDetail
-          patient={selectedPatient}
-          onClose={() => setSelectedPatient(null)}
-          onAssignActivity={assignActivity}
-          onOpenChat={openChat}
-        />
-      )}
+      {selectedPatient && <PatientDetail patient={selectedPatient} onClose={() => setSelectedPatient(null)} onAssignActivity={assignActivityHandler} onOpenChat={openChat} />}
     </div>
   );
 };

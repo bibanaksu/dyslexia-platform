@@ -260,6 +260,13 @@ export default function AssessmentResults() {
   const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(false);
 
+  // Restore body scroll — TaskFour locks it, we need to release it here
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.body.style.position = '';
+    document.body.style.width = '';
+  }, []);
+
   useEffect(() => {
     const finalizeAndFetch = async () => {
       const childSessionId = getCurrentChildSessionId();
@@ -362,7 +369,7 @@ export default function AssessmentResults() {
   const date = session.createdAt ? new Date(session.createdAt).toLocaleDateString('en-US',{ year:'numeric', month:'long', day:'numeric' }) : '';
 
   return (
-    <div style={{ minHeight:'100vh', background:C.beige, fontFamily:"'Nunito', sans-serif", color:C.ink, opacity:visible?1:0, transition:'opacity 0.8s ease' }}>
+    <div style={{ minHeight:'100vh', background:C.beige, fontFamily:"'Nunito', sans-serif", color:C.ink, opacity:visible?1:0, transition:'opacity 0.8s ease', overflowY:'auto', overflowX:'hidden' }}>
       <style>{GLOBAL_CSS}</style>
 
       {/* NAV */}
@@ -383,7 +390,7 @@ export default function AssessmentResults() {
         <div style={{ position:'absolute', top:-40, right:-40, width:200, height:200, borderRadius:'50%', border:`1px solid rgba(255,255,255,0.06)` }} />
         <div style={{ position:'absolute', bottom:0, left:-60, width:250, height:250, borderRadius:'50%', border:`1px solid rgba(255,255,255,0.05)` }} />
 
-        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+        <div style={{ margin:'0 auto' }}>
           <p style={{ color:`rgba(255,184,77,0.9)`, fontSize:'0.68rem', fontWeight:800, letterSpacing:'0.22em', textTransform:'uppercase', margin:'0 0 1rem' }}>Dyslexia Screening Assessment</p>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:'2rem', alignItems:'flex-end', flexWrap:'wrap' }}>
@@ -407,7 +414,7 @@ export default function AssessmentResults() {
         </div>
       </section>
 
-      <div style={{ maxWidth:1100, margin:'0 auto', padding:'2.5rem 2.5rem 6rem' }}>
+      <div style={{ maxWidth:'none', margin:'0 auto', padding:'2.5rem 3.5rem 6rem' }}>
 
         {/* RISK BANNER */}
         {risk && (
@@ -473,32 +480,135 @@ export default function AssessmentResults() {
           </div>
         </div>
 
-        {/* SECTION 3 — SCORING METHODOLOGY */}
+        {/* SECTION 3 — SCORING METHODOLOGY - BIGGER */}
         <Band n="03" title="Scoring Methodology" />
-        <div style={{ background:C.white, borderRadius:'1rem', padding:'1.5rem 2rem', marginBottom:'2rem', boxShadow:'0 2px 20px rgba(30,45,37,0.08)' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:'1.5rem' }}>
-            <div>
-              <div style={{ fontFamily:"'DM Serif Display', serif", fontSize:'1rem', color:C.forest, marginBottom:'0.5rem' }}>📊 Calculation Method</div>
-              <p style={{ fontSize:'0.8rem', color:C.mist, lineHeight:1.6, margin:0 }}>
+        <div style={{ 
+          background: C.white, 
+          borderRadius: '1.5rem', 
+          padding: '2rem 2.5rem', 
+          marginBottom: '2rem', 
+          boxShadow: '0 4px 25px rgba(30,45,37,0.12)' 
+        }}>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '2.5rem'
+          }}>
+            {/* Calculation Method Section */}
+            <div style={{ 
+              background: '#F8F9FA', 
+              borderRadius: '1.25rem', 
+              padding: '1.75rem'
+            }}>
+              <div style={{ 
+                fontFamily: "'DM Serif Display', serif", 
+                fontSize: '1.4rem', 
+                color: C.forest, 
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem'
+              }}>
+                <span style={{ fontSize: '1.8rem' }}></span> Calculation Method
+              </div>
+              <p style={{ 
+                fontSize: '1rem', 
+                color: '#4A5A50', 
+                lineHeight: 1.7, 
+                margin: 0,
+                marginBottom: '1.25rem'
+              }}>
                 {USE_WEIGHTED_SCORE
                   ? `Weighted average using task-specific weights. Some tasks (e.g., Letter Detective) are weighted higher due to their diagnostic importance for dyslexia.`
                   : `Simple average of all completed tasks — each assessment contributes equally to the final score.`}
               </p>
               {USE_WEIGHTED_SCORE && (
-                <div style={{ marginTop:'0.75rem', fontSize:'0.7rem', color:C.mist }}>
-                  <strong>Weights:</strong><br />
-                  Word Explorer: {TASK_WEIGHTS.task1} &nbsp;|&nbsp; Story Reader: {TASK_WEIGHTS.task2} &nbsp;|&nbsp;
-                  Letter Detective: {TASK_WEIGHTS.task3} &nbsp;|&nbsp; Number Memory: {TASK_WEIGHTS.task4}
+                <div style={{ 
+                  marginTop: '1rem', 
+                  fontSize: '0.95rem', 
+                  color: C.mist,
+                  background: 'rgba(61,90,76,0.08)',
+                  padding: '1rem',
+                  borderRadius: '1rem'
+                }}>
+                  <strong style={{ fontSize: '1rem', color: C.forest }}>Weights:</strong><br />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.75rem' }}>
+                    <span> Word Explorer: <strong>{TASK_WEIGHTS.task1}</strong></span>
+                    <span> Story Reader: <strong>{TASK_WEIGHTS.task2}</strong></span>
+                    <span> Letter Detective: <strong>{TASK_WEIGHTS.task3}</strong></span>
+                    <span> Number Memory: <strong>{TASK_WEIGHTS.task4}</strong></span>
+                  </div>
                 </div>
               )}
             </div>
-            <div>
-              <div style={{ fontFamily:"'DM Serif Display', serif", fontSize:'1rem', color:C.forest, marginBottom:'0.5rem' }}>📈 Interpretation Scale</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:'0.3rem', fontSize:'0.7rem' }}>
-                <div><span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:C.forest, marginRight:'0.5rem' }} /> 85–100% — Normal (no signs)</div>
-                <div><span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#8A6000', marginRight:'0.5rem' }} /> 70–84% — Mild (monitor)</div>
-                <div><span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#CC7B00', marginRight:'0.5rem' }} /> 50–69% — Moderate (support needed)</div>
-                <div><span style={{ display:'inline-block', width:12, height:12, borderRadius:2, background:'#8B2020', marginRight:'0.5rem' }} /> 0–49% — Severe (intervention required)</div>
+
+            {/* Interpretation Scale Section */}
+            <div style={{ 
+              background: '#F8F9FA', 
+              borderRadius: '1.25rem', 
+              padding: '1.75rem'
+            }}>
+              <div style={{ 
+                fontFamily: "'DM Serif Display', serif", 
+                fontSize: '1.4rem', 
+                color: C.forest, 
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem'
+              }}>
+                <span style={{ fontSize: '1.8rem' }}></span> Interpretation Scale
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.8rem', 
+                fontSize: '1rem'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem',
+                  background: 'rgba(61,90,76,0.06)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.75rem'
+                }}>
+                  <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: C.forest, marginRight: '0.5rem', flexShrink: 0 }} />
+                  <span><strong>85–100%</strong> — Normal (no signs)</span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem',
+                  background: 'rgba(138,96,0,0.06)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.75rem'
+                }}>
+                  <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: '#8A6000', marginRight: '0.5rem', flexShrink: 0 }} />
+                  <span><strong>70–84%</strong> — Mild (monitor)</span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem',
+                  background: 'rgba(204,123,0,0.06)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.75rem'
+                }}>
+                  <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: '#CC7B00', marginRight: '0.5rem', flexShrink: 0 }} />
+                  <span><strong>50–69%</strong> — Moderate (support needed)</span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem',
+                  background: 'rgba(139,32,32,0.06)',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.75rem'
+                }}>
+                  <span style={{ display: 'inline-block', width: 20, height: 20, borderRadius: 4, background: '#8B2020', marginRight: '0.5rem', flexShrink: 0 }} />
+                  <span><strong>0–49%</strong> — Severe (intervention required)</span>
+                </div>
               </div>
             </div>
           </div>
@@ -617,6 +727,7 @@ const GLOBAL_CSS = `
   @media (max-width: 768px) {
     section > div { padding: 2rem 1.25rem 0 !important; }
     section > div > div:last-child { grid-template-columns: 1fr !important; }
+    .scoring-methodology-grid { grid-template-columns: 1fr !important; }
   }
   @media print {
     .no-print { display: none !important; }

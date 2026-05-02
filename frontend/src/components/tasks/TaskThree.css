@@ -6,14 +6,7 @@
   padding: 0;
 }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  position: fixed;
-}
+/* html/body rules removed - scoped to task container instead */
 
 .task-three-container {
   width: 100vw;
@@ -729,4 +722,147 @@ html, body {
 .btn-quit-game:hover {
   background: #ff9a2e;
   transform: translateY(-2px);
+}
+/* =============================================
+   DS Logo & Brand (same as Task One)
+   ============================================= */
+.task-brand {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: transparent;
+  pointer-events: none;
+}
+.task-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: #FFB84D;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #1E2D25;
+}
+.task-logo-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* For assessment screen header – only the badge */
+.assessment-header-bar .task-logo-icon {
+  margin-right: 0.5rem;
+}
+
+/* =============================================
+   Modern Results Cards (no outer white box)
+   ============================================= */
+.results-screen .category-breakdown-area {
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 1rem 0 !important;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 10;
+}
+
+.results-screen .category-breakdown-area h2 {
+  color: white !important;
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  font-family: 'Comic Neue', cursive;
+}
+
+.results-screen .breakdown-grid-area {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: center !important;
+  gap: 1.5rem !important;
+  flex-wrap: wrap !important;
+}
+
+.results-screen .breakdown-card-item {
+  flex: 1;
+  min-width: 180px !important;
+  max-width: 240px !important;
+  background: white !important;
+  border-radius: 1rem;
+  padding: 1.2rem 1rem !important;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+  border: 1px solid #eee;
+}
+
+.results-screen .breakdown-card-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.2);
+}
+
+.results-screen .breakdown-icon-item {
+  font-size: 2.5rem !important;
+  margin-bottom: 0.5rem;
+}
+
+.results-screen .breakdown-card-item h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #3D5A4C !important;
+  font-weight: 700;
+}
+
+.results-screen .breakdown-score-item {
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: #3D5A4C !important;
+  margin: 0.5rem 0;
+}
+
+.results-screen .breakdown-bar-item {
+  height: 8px;
+  background: #E2DDD5;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.results-screen .bar-fill-item {
+  height: 100%;
+  background: linear-gradient(90deg, #FFB84D, #FFD700);
+  border-radius: 4px;
+}
+
+/* Larger Back to Adventure button */
+.results-action-buttons .btn-home-page {
+  padding: 1rem 2.5rem !important;
+  font-size: 1.2rem !important;
+  min-width: 220px !important;
+  border-radius: 3rem !important;
+}
+
+/* Ensure results screen has proper background */
+.task-three-container .results-screen {
+  position: relative;
+  z-index: 2;
+  padding: 1rem 2rem;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* Fix header alignment in assessment screen */
+.assessment-header-bar .header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
 }

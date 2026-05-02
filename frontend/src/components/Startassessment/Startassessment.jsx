@@ -5,11 +5,42 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&family=Nunito:wght@400;600;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800;900&family=Nunito:wght@400;600;700;800&family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap');
 
   *{margin:0;padding:0;box-sizing:border-box;}
 
-  .sa-root{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;font-family:'Nunito',sans-serif;display:flex;align-items:center;justify-content:center;}
+  .sa-root{position:fixed;inset:0;width:100vw;height:100vh;overflow:hidden;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;}
+
+  /* Logo only (no navbar) */
+  .sa-logo{
+    position:fixed;
+    top:1.5rem;
+    left:1.5rem;
+    z-index:100;
+    display:flex;
+    align-items:center;
+    gap:0.5rem;
+  }
+  .sa-logo-icon{
+    width:36px;
+    height:36px;
+    background:#FFB84D;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:'DM Serif Display',serif;
+    font-weight:900;
+    font-size:0.9rem;
+    color:#1E2D25;
+  }
+  .sa-logo-text{
+    font-family:'DM Serif Display',serif;
+    font-size:1rem;
+    font-weight:400;
+    color:#FFFFFF;
+    text-shadow:0 1px 2px rgba(0,0,0,0.3);
+  }
 
   .sa-bg{position:absolute;inset:0;z-index:1;}
   .sa-bg img{width:100%;height:100%;object-fit:cover;object-position:center;display:block;opacity:0;transition:opacity 1s ease;}
@@ -70,13 +101,18 @@ const StartAssessment = () => {
     return () => clearTimeout(t);
   }, [navigate]);
 
-  // "Start Now" → quest map
   const handleStart = () => navigate('/adventure');
 
   return (
     <>
       <style>{styles}</style>
       <div className={`sa-root${loaded ? ' loaded' : ''}`}>
+        {/* Logo only – no back button, no navbar */}
+        <div className="sa-logo">
+          <div className="sa-logo-icon">DS</div>
+          <span className="sa-logo-text">Dyslexia Support</span>
+        </div>
+
         <div className="sa-bg">
           <img
             src="/assets/start1.png"

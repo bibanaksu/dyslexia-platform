@@ -8,9 +8,10 @@ import { getChildInfo, getUserInfo, getCurrentChildSessionId } from "../../utils
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TASK2_URL = `${API}/api/assessments/task2/submit`;
 
+// ===== UPDATED READING PASSAGE =====
 const READING_PASSAGE = {
-  title: "The Teacher",
-  text: `While the children were sitting around their father, talking together, one of them asked: "Is there any similarity between you and the teacher, Father?" The father replied, "Yes." "The teacher, my son, takes care of your mind and dedicates his life to educating and guiding you. A polite student obeys teachers just as he obeys his parents and respects them. All teachers make great efforts to raise and educate students. Therefore, students should listen to their advice and recognize the teacher's value, just as they recognize the value of their parents." Then the father turned to his children and said, "Do not neglect your duties. Be kind to those who are kind to you. Work hard for your future and for the service of your country."`,
+  title: "Sam and Max",
+  text: `Sam has a small red ball. He plays in the yard every day. His dog Max runs after the ball. Sam laughs when Max jumps high. One sunny morning, the ball rolls near a tree. Max finds it fast. Sam is happy and gives Max a treat. Then they sit under the tree to rest. Sam drinks water, and Max wags his tail. They love playing together outside.`,
 };
 
 const allWords = READING_PASSAGE.text.split(/\s+/).filter(w => w.length > 0);
@@ -47,7 +48,6 @@ const markQuestCompleted = () => {
   const saved = JSON.parse(localStorage.getItem('reading_adventure_progress') || '[]');
   if (!saved.includes(q.id)) {
     localStorage.setItem('reading_adventure_progress', JSON.stringify([...saved, q.id]));
-    console.log('✅ Task2 quest completed');
   }
 };
 
@@ -128,28 +128,21 @@ export default function EnhancedVoiceReading() {
 
   const formatTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
-  // ─── Build payload for task2_results (matches schema) ───
+  // Build payload for task2_results (unchanged)
   const buildPayload = useCallback((resultsObj, isPartial = false) => {
     const childSessionId = getCurrentChildSessionId();
-    if (!childSessionId) {
-      throw new Error('No active child session ID found');
-    }
-
+    if (!childSessionId) throw new Error('No active child session ID found');
     const user = getUserInfo();
-    const childInfo = getChildInfo();
-
     const correctCount = Object.values(resultsObj.wordResults || wordResultsRef.current).filter(r => r?.correct).length;
     const totalWordsRead = Object.keys(resultsObj.wordResults || wordResultsRef.current).length;
     const incorrectCount = totalWordsRead - correctCount;
     const elapsed = startTimeRef.current
       ? Math.round((Date.now() - startTimeRef.current - totalPausedMsRef.current) / 1000) : 0;
     const percentage = totalWordsRead > 0 ? Math.round((correctCount / totalWordsRead) * 100) : 0;
-
     let performanceLevel = 'Building';
     if (percentage >= 95) performanceLevel = 'Advanced';
     else if (percentage >= 85) performanceLevel = 'Proficient';
     else if (percentage >= 70) performanceLevel = 'Basic';
-
     const payload = {
       child_session_id:   parseInt(childSessionId, 10),
       child_id:           user?.childId ? parseInt(user.childId, 10) : null,
@@ -166,7 +159,7 @@ export default function EnhancedVoiceReading() {
     return payload;
   }, []);
 
-  // ─── Save results to database (always POST – ON DUPLICATE KEY UPDATE handles upsert) ───
+  // Save results to database
   const saveResultsToDB = useCallback(async (results, isPartial = false) => {
     if (!isMountedRef.current) return;
     setSaving(true); setSaveError('');
@@ -178,9 +171,7 @@ export default function EnhancedVoiceReading() {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       };
       const res = await axios.post(TASK2_URL, payload, { headers });
-      if (res.data?.resultId) {
-        console.log('✅ Task2 saved, id:', res.data.resultId);
-      }
+      if (res.data?.resultId) console.log('✅ Task2 saved, id:', res.data.resultId);
     } catch (err) {
       console.error('Task2 save error:', err);
       setSaveError('Network error – progress saved locally only.');
@@ -192,7 +183,7 @@ export default function EnhancedVoiceReading() {
     }
   }, [buildPayload]);
 
-  // Process speech – same as before
+  // Process speech (same as before)
   const processSpeech = useCallback(newAccumulated => {
     if (isCompleteRef.current || isPausedRef.current || isTimeUpRef.current) return;
     const cleanFull   = cleanText(newAccumulated);
@@ -335,101 +326,92 @@ export default function EnhancedVoiceReading() {
 
   const handleBack = useCallback(() => { stopRecognition(); stopTimer(); navigate('/adventure'); }, [navigate]);
 
-  // Results screen (unchanged)
-  // ─── RESULTS SCREEN with TaskOne‑style header ─────────────────
-if (isComplete) {
-  const r   = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
-  const pct = r.percentage || 0;
-  return (
-    <div className="task-one-container results-screen">
-      <div className="task-bg"/><div className="dark-overlay"/>
+  // ==================== CATEGORIES SCREEN (if needed) ====================
+  // This component currently starts the reading directly. However for consistency we can keep the categories screen.
+  // But the original EnhancedVoiceReading starts reading immediately. To keep the flow, we'll skip categories.
+  // If you want a start screen similar to Task1, we can add it. For now, the reading starts on load.
 
-      {/* TaskOne‑style header bar (instead of old .task-nav) */}
-      <div className="assessment-header-bar">
-        <div className="header-left">
-          <button className="nav-back-btn" onClick={handleBack}>
-            ← Back
-          </button>
-          <span className="category-name">🎙️ Story Reader</span>
+  // ==================== RESULTS SCREEN ====================
+  if (isComplete) {
+    const r = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
+    const pct = r.percentage || 0;
+    return (
+      <div className="enhanced-voice-container results-screen">
+        <div className="task-bg" />
+        <div className="dark-overlay" />
+        {/* DS logo – full brand */}
+        <div className="task-brand">
+          <div className="task-logo-icon">DS</div>
+          <span className="task-logo-text">Dyslexia Support</span>
         </div>
-        <div className="header-center">
-          <div className="progress-display">✨ Results ✨</div>
+        <div className="results-header-area">
+          <div className="trophy-icon">🏆</div>
+          <h1>Reading Complete!</h1>
+          <p>You read the story with fluency</p>
         </div>
-        <div className="header-right">
-          <div className="timer" style={{ background: '#3D5A4C' }}>
-            ✓ Completed
+        <div className="final-score-area">
+          <div className="score-circle-big">
+            <span className="score-number-big">{r.correct_words}/{r.total_words}</span>
+            <span className="score-label-small">Correct Words</span>
           </div>
-        </div>
-      </div>
-
-      <div className="results-header-area">
-        <div className="trophy-icon">🎉</div>
-        <h1>Wonderful Reading!</h1>
-        <p>You read the passage — great effort! 🌟</p>
-      </div>
-
-      {saving && <div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>💾 Saving…</div>}
-      {saveError && !saving && <div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.5rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
-
-      <div className="final-score-area">
-        <div className="score-circle-big">
-          <span className="score-number-big">{r.correct_words}/{r.total_words}</span>
-          <span className="score-label-small">Words Correct</span>
-        </div>
-        <div className="score-grade-area">
-          <div className="grade-circle-big" style={{background:pct>=80?'#7fb685':pct>=60?'#ff9a76':'#a8d0db'}}>
+          <div className="grade-circle-big" style={{ background: pct >= 80 ? '#3D5A4C' : pct >= 60 ? '#FFB84D' : '#D64545' }}>
             {pct}%
           </div>
-          <p className="grade-label-text">
-            {pct>=80?'🌟 Excellent!':pct>=60?'👍 Good Job!':'💪 Keep Practicing!'}
-          </p>
+        </div>
+
+        {/* Results breakdown – same card style as Task One */}
+        <div className="category-breakdown-area">
+          <h2>Your Performance</h2>
+          <div className="breakdown-grid-area">
+            <div className="breakdown-card-item">
+              <div className="breakdown-icon-item">✅</div>
+              <h3>Correct Words</h3>
+              <div className="breakdown-score-item">{r.correct_words}/{r.total_words}</div>
+              <div className="breakdown-bar-item">
+                <div className="bar-fill-item" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+            <div className="breakdown-card-item">
+              <div className="breakdown-icon-item">📖</div>
+              <h3>Total Words</h3>
+              <div className="breakdown-score-item">{r.total_words}</div>
+            </div>
+            <div className="breakdown-card-item">
+              <div className="breakdown-icon-item">🎯</div>
+              <h3>Accuracy</h3>
+              <div className="breakdown-score-item">{pct}%</div>
+              <div className="breakdown-bar-item">
+                <div className="bar-fill-item" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="results-action-buttons">
+          <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
         </div>
       </div>
+    );
+  }
 
-      <div className="category-breakdown-area">
-        <h2>📊 Your Reading Performance</h2>
-        <div className="breakdown-grid-area">
-          <div className="breakdown-card-item">
-            <div className="breakdown-icon-item">📖</div>
-            <h3>Words Read</h3>
-            <div className="breakdown-score-item">{r.correct_words}/{r.total_words}</div>
-          </div>
-          <div className="breakdown-card-item">
-            <div className="breakdown-icon-item">📝</div>
-            <h3>Let's Practice</h3>
-            <div className="breakdown-score-item">{r.errors}</div>
-          </div>
-          <div className="breakdown-card-item">
-            <div className="breakdown-icon-item">⭐</div>
-            <h3>Your Level</h3>
-            <div className="breakdown-score-item" style={{color:r.fluency_color}}>{r.fluency_level}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="results-action-buttons">
-        <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
-      </div>
-    </div>
-  );
-}
-
-  // ─── Main reading screen with TaskOne‑style header bar ───
+  // ==================== MAIN READING SCREEN ====================
   const totalWords = allWords.length;
-  const completedWords = currentWordIndex; // number of words processed (read or attempted)
+  const completedWords = currentWordIndex;
   const progressPercent = totalWords ? (completedWords / totalWords) * 100 : 0;
 
   return (
     <div className="enhanced-voice-container reading-active">
-      <div className="enhanced-bg"/><div className="enhanced-overlay"/>
+      <div className="enhanced-bg" />
+      <div className="enhanced-overlay" />
 
-      {/* NEW HEADER BAR – exactly like Task One */}
+      {/* Header bar with only DS badge (no text) */}
       <div className="assessment-header-bar">
         <div className="header-left">
+          <div className="task-logo-icon">DS</div>
           <button className="btn-pause" onClick={isListening ? pauseListening : resumeListening}>
             {isListening ? "⏸️ Pause" : "▶️ Resume"}
           </button>
-          <span className="category-name">🎙️ Story Reader</span>
+          <span className="category-name">Story Reader</span>
         </div>
         <div className="header-center">
           <div className="progress-display">
@@ -438,12 +420,12 @@ if (isComplete) {
         </div>
         <div className="header-right">
           <div className={`timer ${showTimeWarning ? 'warning' : ''}`}>
-             {formatTime(timeRemaining)}
+            {formatTime(timeRemaining)}
           </div>
         </div>
       </div>
 
-      {/* Progress bar (optional, matches TaskOne) */}
+      {/* Progress bar */}
       <div className="assessment-progress-bar">
         <div className="assessment-progress-fill" style={{ width: `${progressPercent}%` }} />
       </div>
@@ -456,10 +438,10 @@ if (isComplete) {
             </div>
           </div>
 
-          {saving && <div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,fontSize:'0.85rem',marginBottom:'0.5rem'}}>💾 Saving…</div>}
+          {saving && <div style={{ textAlign: 'center', color: '#3D5A4C', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.5rem' }}>💾 Saving…</div>}
 
           <div className="mic-status-section">
-            <div className={`mic-indicator ${isListening?'listening':''}`}>
+            <div className={`mic-indicator ${isListening ? 'listening' : ''}`}>
               {isListening ? <><span>🎙️</span><span className="mic-text"> Listening… Keep reading!</span></> : <><span>⏸️</span><span className="mic-text"> Paused — press Resume</span></>}
             </div>
             {transcript && (
@@ -477,12 +459,11 @@ if (isComplete) {
                 let cls = 'passage-word';
                 if (idx === currentWordIndex && !wordResults[idx]) cls += ' current';
                 if (wordResults[idx]) cls += wordResults[idx].correct ? ' done-correct' : ' done-wrong';
-                return <span key={idx} className={cls} ref={idx===currentWordIndex?currentWordRef:null}>{word} </span>;
+                return <span key={idx} className={cls} ref={idx === currentWordIndex ? currentWordRef : null}>{word} </span>;
               })}
             </div>
           </div>
 
-          {/* BIG FINISH BUTTON – styled like TaskOne's "CHECK WORD" button */}
           <div className="big-action-button">
             <button className="big-finish-btn" onClick={finishAssessment}>
               🏁 Finish Reading

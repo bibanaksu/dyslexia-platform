@@ -1,4 +1,3 @@
-// frontend/src/components/ChildInfoPage/ChildInfo.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -75,7 +74,7 @@ export default function ChildInfo() {
 
     const sessionId = generateSessionId();
     const gradeNum = parseInt(grade, 10);
-    const childAge = isNaN(gradeNum) ? null : gradeNum + 5;
+    const childAge = isNaN(gradeNum) ? null : gradeNum + 5; // Grade 1 = age 6, consistent with 6-12 range
 
     // Save to localStorage for frontend access
     localStorage.setItem('child_session_id', sessionId);
@@ -122,10 +121,12 @@ export default function ChildInfo() {
     <div style={s.container}>
       <div style={s.navBar}>
         <button onClick={() => navigate('/')} style={s.navBack}>←</button>
-        <span style={s.navBrand}>DyslexiaSupport</span>
+        <div style={s.logo}>
+          <div style={s.logoIcon}>DS</div>
+          <span style={s.logoText}>Dyslexia Support</span>
+        </div>
       </div>
       <div style={s.card}>
-        <div style={s.icon}>🧒</div>
         <h1 style={s.title}>Child Information</h1>
         <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
           <div style={s.fg}>
@@ -153,20 +154,24 @@ export default function ChildInfo() {
               style={s.input}
             >
               <option value="">— Select grade —</option>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => (
-                <option key={g} value={String(g)}>
-                  Grade {g} ({g + 5}–{g + 6} years)
-                </option>
-              ))}
+              {[1, 2, 3, 4, 5, 6].map(g => {
+                const ageLow = g + 5;
+                const ageHigh = g + 6;
+                return (
+                  <option key={g} value={String(g)}>
+                    Grade {g} (ages {ageLow}–{ageHigh} years)
+                  </option>
+                );
+              })}
             </select>
           </div>
           {error && <p style={s.error}>{error}</p>}
           <button type="submit" style={s.btn} disabled={isLoading}>
-            {isLoading ? '⏳ Saving...' : 'Submit →'}
+            {isLoading ? 'Saving...' : 'Continue →'}
           </button>
         </form>
         <div style={s.trust}>
-          <span style={s.trustItem}>✅ Free Assessment</span>
+          <span style={s.trustItem}>Free Assessment</span>
         </div>
       </div>
     </div>
@@ -199,12 +204,29 @@ const s = {
     fontWeight: 600,
     fontSize: '0.875rem'
   },
-  navBrand: {
-    fontFamily: "'Fraunces', serif",
-    fontSize: '1.1rem',
-    fontWeight: 600,
-    color: '#2D4A3E',
-    opacity: 0.7
+  logo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem'
+  },
+  logoIcon: {
+    width: '32px',
+    height: '32px',
+    background: '#FFB84D',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: "'DM Serif Display', serif",
+    fontWeight: 900,
+    fontSize: '0.85rem',
+    color: '#1E2D25'
+  },
+  logoText: {
+    fontFamily: "'DM Serif Display', serif",
+    fontSize: '1rem',
+    fontWeight: 400,
+    color: '#3D5A4C'
   },
   container: {
     minHeight: '100vh',
@@ -224,10 +246,9 @@ const s = {
     boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
     textAlign: 'center'
   },
-  icon: { fontSize: '3.5rem', marginBottom: '0.5rem' },
   title: {
     color: '#2D4A3E',
-    marginBottom: '1.5rem',
+    marginBottom: '1.8rem',
     fontSize: '1.8rem',
     fontWeight: 800,
     fontFamily: "'Fraunces', serif"

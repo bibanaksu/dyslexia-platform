@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Navigation.css';
 
 export function Navigation({ scrollY = 0 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      setIsScrolled(scrollTop > 50);
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    document.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   const navLinks = [
     { name: 'Home', href: '#home' },
@@ -13,42 +28,25 @@ export function Navigation({ scrollY = 0 }) {
     { name: 'About', href: '#about' },
   ];
 
-  const isScrolled = scrollY > 50;
-
-  const handleSignIn = () => {
-    navigate('/auth');
-  };
-
+  const handleSignIn = () => navigate('/auth');
   const handleScrollToSection = (href) => {
-    const element = document.querySelector(href);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
     setIsMenuOpen(false);
   };
 
   return (
     <nav className={`Navigation ${isScrolled ? 'scrolled' : ''}`}>
       <div className="Navigation__container">
-        {/* Logo */}
+        {/* Logo – DS text badge (matching AssessmentResults) */}
         <a href="#home" className="Navigation__logo" onClick={(e) => {
           e.preventDefault();
           handleScrollToSection('#home');
         }}>
           <div className="Navigation__logo-icon">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-              <path d="M12 6V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              <path d="M12 18V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
+            <span className="Navigation__logo-ds">DS</span>
           </div>
-          <span className="Navigation__logo-text">DyslexiaSupport</span>
+          <span className="Navigation__logo-text">Dyslexia Support</span>
         </a>
 
         {/* Desktop Navigation Links */}
@@ -71,21 +69,13 @@ export function Navigation({ scrollY = 0 }) {
 
         {/* Actions */}
         <div className="Navigation__actions">
-          <button 
-            className="Navigation__signin-btn"
-            onClick={handleSignIn}
-          >
-            Sign In
-          </button>
-
+          <button className="Navigation__signin-btn" onClick={handleSignIn}>Sign In</button>
           <button
             className={`Navigation__hamburger ${isMenuOpen ? 'active' : ''}`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-label="Toggle menu"
           >
-            <span></span>
-            <span></span>
-            <span></span>
+            <span></span><span></span><span></span>
           </button>
         </div>
       </div>
@@ -106,12 +96,7 @@ export function Navigation({ scrollY = 0 }) {
               {link.name}
             </a>
           ))}
-          <button 
-            className="Navigation__mobile-signin-btn"
-            onClick={handleSignIn}
-          >
-            Sign In
-          </button>
+          <button className="Navigation__mobile-signin-btn" onClick={handleSignIn}>Sign In</button>
         </div>
       </div>
     </nav>

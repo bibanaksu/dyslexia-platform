@@ -9,7 +9,6 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const API_URL  = `${API_BASE}/api/task3`;   // matches server.js route
 
 const PROGRESS_KEY = 'task3_progress';
-// We no longer need a saved ID – always POST (upsert via UNIQUE constraint)
 const STORAGE_KEY = 'task3_progress';
 
 const saveLocal   = (idx, results) => localStorage.setItem(PROGRESS_KEY, JSON.stringify({ currentIndex:idx, results, savedAt:Date.now() }));
@@ -58,6 +57,18 @@ const FALLBACK = [
 ];
 
 export default function TaskThree() {
+  // Lock body scroll on task pages
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, []);
+
   const navigate = useNavigate();
   const [comparisons,      setComparisons]      = useState([]);
   const [currentIndex,     setCurrentIndex]     = useState(0);
@@ -160,14 +171,10 @@ export default function TaskThree() {
     }, 800);
   };
 
-  // ─── Build payload for task3_letter_similarity_results (matches schema) ───
   const buildPayload = (data, isPartial = false) => {
     const childSessionId = getCurrentChildSessionId();
     if (!childSessionId) throw new Error('No active child session ID');
-
     const user = getUserInfo();
-    const childInfo = getChildInfo();
-
     return {
       child_session_id:   parseInt(childSessionId, 10),
       child_id:           user?.childId ? parseInt(user.childId, 10) : null,
@@ -183,7 +190,6 @@ export default function TaskThree() {
     };
   };
 
-  // ─── Save to database (always POST – ON DUPLICATE KEY UPDATE handles upsert) ───
   const saveResultsToDB = async (data, isPartial = false) => {
     if (!isMountedRef.current) return;
     setIsSaving(true); setSaveError('');
@@ -229,7 +235,6 @@ export default function TaskThree() {
     localStorage.setItem('task3_results', JSON.stringify(data));
     if(pct>=50) markQuestCompleted();
     await saveResultsToDB(data, false);
-    // Clear saved progress for fresh session
     localStorage.removeItem(PROGRESS_KEY);
     setIsComplete(true);
   };
@@ -294,39 +299,79 @@ export default function TaskThree() {
     </div>
   );
 
-  // Results screen
-  if (isComplete && resultsData) return (
-    <div className="task-three-container">
-      <div className="task-three-bg"/><div className="dark-overlay"/>
-      <div className="results-screen">
-        <div className="results-header-area">
-          <div className="trophy-icon">{resultsData.percentage>=75?'🏆':'🎉'}</div>
-          <h1>{resultsData.percentage>=75?'Excellent Detective!':'Great Try!'}</h1>
-          <p>You completed all {resultsData.total_comparisons} letter comparisons!</p>
+  // Results screen – modernised with TaskOne card layout
+  if (isComplete && resultsData) {
+    const correct = resultsData.correct_count;
+    const total = resultsData.total_comparisons;
+    const pct = resultsData.percentage;
+    return (
+      <div className="task-three-container">
+        <div className="task-three-bg"/><div className="dark-overlay"/>
+        {/* DS brand logo */}
+        <div className="task-brand">
+          <div className="task-logo-icon">DS</div>
+          <span className="task-logo-text">Dyslexia Support</span>
         </div>
-        {isSaving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.75rem',position:'relative',zIndex:10}}>💾 Saving your results…</div>}
-        {saveError&&!isSaving&&<div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.75rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
-        <div className="final-score-area">
-          <div className="score-circle-big"><span className="score-number-big">{resultsData.correct_count}/{resultsData.total_comparisons}</span><span className="score-label-small">Correct</span></div>
-          <div className="score-circle-big" style={{background:resultsData.percentage>=75?'#4CAF50':resultsData.percentage>=50?'#FF9800':'#f44336'}}><span className="score-number-big">{resultsData.percentage}%</span><span className="score-label-small">Accuracy</span></div>
-        </div>
-        <div className="category-breakdown-area">
-          <h2>📊 Your Performance</h2>
-          <div className="breakdown-grid-area">
-            <div className="breakdown-card-item"><div className="breakdown-icon-item">✅</div><h3>Correct</h3><div className="breakdown-score-item">{resultsData.correct_count}</div></div>
-            <div className="breakdown-card-item"><div className="breakdown-icon-item">❌</div><h3>Incorrect</h3><div className="breakdown-score-item">{resultsData.incorrect_count}</div></div>
-            <div className="breakdown-card-item"><div className="breakdown-icon-item">⏱️</div><h3>Timeouts</h3><div className="breakdown-score-item">{resultsData.timeout_count}</div></div>
+        <div className="results-screen">
+          <div className="results-header-area">
+            <div className="trophy-icon">{pct>=75?'🏆':'🎉'}</div>
+            <h1>{pct>=75?'Excellent Detective!':'Great Try!'}</h1>
+            <p>You completed all {total} letter comparisons!</p>
+          </div>
+          {isSaving&&<div style={{textAlign:'center',color:'#3D5A4C',fontWeight:600,marginBottom:'.75rem',position:'relative',zIndex:10}}>💾 Saving your results…</div>}
+          {saveError&&!isSaving&&<div style={{textAlign:'center',color:'#f44336',fontWeight:600,marginBottom:'.75rem',position:'relative',zIndex:10}}>⚠️ {saveError}</div>}
+          <div className="final-score-area">
+            <div className="score-circle-big">
+              <span className="score-number-big">{correct}/{total}</span>
+              <span className="score-label-small">Correct</span>
+            </div>
+            <div className="score-circle-big" style={{background:pct>=75?'#4CAF50':pct>=50?'#FF9800':'#f44336'}}>
+              <span className="score-number-big">{pct}%</span>
+              <span className="score-label-small">Accuracy</span>
+            </div>
+          </div>
+
+          {/* New results breakdown – solid white cards, no outer box */}
+          <div className="category-breakdown-area">
+            <h2>Your Performance</h2>
+            <div className="breakdown-grid-area">
+              <div className="breakdown-card-item">
+                <div className="breakdown-icon-item">✅</div>
+                <h3>Correct</h3>
+                <div className="breakdown-score-item">{correct}</div>
+                <div className="breakdown-bar-item">
+                  <div className="bar-fill-item" style={{ width: `${(correct/total)*100}%` }} />
+                </div>
+              </div>
+              <div className="breakdown-card-item">
+                <div className="breakdown-icon-item">❌</div>
+                <h3>Incorrect</h3>
+                <div className="breakdown-score-item">{resultsData.incorrect_count}</div>
+                <div className="breakdown-bar-item">
+                  <div className="bar-fill-item" style={{ width: `${(resultsData.incorrect_count/total)*100}%` }} />
+                </div>
+              </div>
+              <div className="breakdown-card-item">
+                <div className="breakdown-icon-item">⏱️</div>
+                <h3>Timeouts</h3>
+                <div className="breakdown-score-item">{resultsData.timeout_count}</div>
+                <div className="breakdown-bar-item">
+                  <div className="bar-fill-item" style={{ width: `${(resultsData.timeout_count/total)*100}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="results-action-buttons">
+            <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
           </div>
         </div>
-        <div className="results-action-buttons">
-          <button className="btn-home-page" onClick={handleBack}>🏠 Back to Adventure</button>
-        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Assessment screen
-  const comp     = comparisons[currentIndex];
+  // Assessment screen (main gameplay)
+  const comp = comparisons[currentIndex];
   const progress = (currentIndex/comparisons.length)*100;
   if(!comp) return null;
   const g1 = comp.group1?.split(' ')||[];
@@ -337,10 +382,11 @@ export default function TaskThree() {
       <div className="task-three-bg"/><div className="dark-overlay"/>
       <div className="assessment-screen">
         <div className="assessment-header-bar">
-          <button className="nav-pause-btn" onClick={isPaused ? handleResume : handlePause}>
-            {isPaused ? '▶️ Resume' : '⏸️ Pause'}
-          </button>
           <div className="header-left">
+            <div className="task-logo-icon">DS</div>   {/* only badge */}
+            <button className="nav-pause-btn" onClick={isPaused ? handleResume : handlePause}>
+              {isPaused ? '▶️ Resume' : '⏸️ Pause'}
+            </button>
             <span className="category-name">📝 Comparison {currentIndex + 1} of {comparisons.length}</span>
           </div>
           <div className="header-center">
@@ -362,7 +408,7 @@ export default function TaskThree() {
             <div className="question-hint">🔍 Are these two groups the SAME or DIFFERENT?</div>
           </div>
           <div className="character-area">
-            <div className="character-thinking">🐵</div>
+            <div className="character-thinking">🦁</div>
             <div className="speech-bubble">
               {isPaused ? '⏸️ Game paused. Click Resume to continue!' : feedback ? {correct:'✅ Great job!',incorrect:'❌ Oops!',timeout:'⏰ Time is up!'}[feedback] : 'Are they the same or different?'}
             </div>

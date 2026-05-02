@@ -4,7 +4,7 @@
   position: relative;
   min-height: 100vh;
   width: 100%;
-  overflow: hidden;
+  overflow: clip; /* clips visually but doesn't trap scroll like overflow:hidden */
   display: flex;
   align-items: center;
   justify-content: center;

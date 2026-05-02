@@ -4,17 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   apiFetch,
   getCurrentUser,
-  logout,
   fetchMyResults,
   fetchMessages,
   sendMessage,
   updateParentProfile,
+  fetchAssignmentsForChild,
 } from '../../services/api';
 import './ParentDashboard.css';
 
-// ─────────────────────────────────────────────────────────────
-// SVG ICONS
-// ─────────────────────────────────────────────────────────────
+// =========================== ICONS ===========================
 const Icon = ({ d, size = 18, fill = 'none', stroke = 'currentColor', strokeWidth = 2 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={stroke}
     strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -28,12 +26,14 @@ const HomeIcon = () => (
     <polyline points="9 22 9 12 15 12 15 22" />
   </svg>
 );
+
 const ProfileIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
     <circle cx="12" cy="7" r="4" />
   </svg>
 );
+
 const ResultsIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="18" y1="20" x2="18" y2="10" />
@@ -41,20 +41,22 @@ const ResultsIcon = () => (
     <line x1="6" y1="20" x2="6" y2="14" />
   </svg>
 );
+
 const ActivitiesIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
   </svg>
 );
+
 const ChatIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
+
 const LogoutIcon = () => <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />;
 const AddIcon = () => <Icon d="M12 5v14M5 12h14" strokeWidth="2.5" />;
 const EditIcon = () => <Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />;
-const SaveIcon = () => <Icon d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8" />;
 const SendIcon = () => <Icon d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" size={16} />;
 const MailIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -96,12 +98,6 @@ const CheckIcon = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
-const LockIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <rect x="3" y="11" width="18" height="11" rx="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
-);
 const ArrowRightIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M5 12h14M12 5l7 7-7 7" />
@@ -118,21 +114,15 @@ const ClockIcon = () => (
     <polyline points="12 6 12 12 16 14" />
   </svg>
 );
-const SparkleIcon = () => (
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 3l1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3z" />
-  </svg>
-);
 
-// ─────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────
+// =========================== HELPERS ===========================
 const RISK_CONFIG = {
   Normal:   { color: '#1a6b40', bg: '#e6f5ee', label: 'Normal' },
   Mild:     { color: '#8a5a0a', bg: '#fef6e4', label: 'Mild' },
   Moderate: { color: '#8a3a10', bg: '#fff0e8', label: 'Moderate' },
   Severe:   { color: '#8a1f1f', bg: '#feeaea', label: 'Severe' },
 };
+
 const scoreColor = (s) => {
   if (s == null) return '#c4c2dc';
   if (s >= 85) return '#1a6b40';
@@ -140,12 +130,11 @@ const scoreColor = (s) => {
   if (s >= 50) return '#8a3a10';
   return '#8a1f1f';
 };
+
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
 
-// ─────────────────────────────────────────────────────────────
-// SCORE BAR COMPONENT
-// ─────────────────────────────────────────────────────────────
+// =========================== COMPONENTS ===========================
 function ScoreBar({ label, score }) {
   const color = scoreColor(score);
   return (
@@ -161,9 +150,6 @@ function ScoreBar({ label, score }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// ADD CHILD MODAL
-// ─────────────────────────────────────────────────────────────
 function AddChildModal({ onClose, onAdded }) {
   const [form, setForm] = useState({ full_name: '', grade: '', dob: '' });
   const [loading, setLoading] = useState(false);
@@ -224,9 +210,6 @@ function AddChildModal({ onClose, onAdded }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// PROFILE TAB
-// ─────────────────────────────────────────────────────────────
 function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ full_name: '', phone: '' });
@@ -348,16 +331,19 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// RESULTS TAB
-// ─────────────────────────────────────────────────────────────
 function ResultsTab() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
-    fetchMyResults().then(setResults).catch(console.error).finally(() => setLoading(false));
+    fetchMyResults()
+      .then(data => {
+        setResults(data);
+        localStorage.setItem('lastResultsView', Date.now().toString());
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading results...</div></div>;
@@ -405,123 +391,77 @@ function ResultsTab() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// ACTIVITIES TAB — FIXED VERSION (navigates to spelling game)
-// ─────────────────────────────────────────────────────────────
-function ActivitiesTab({ children }) {
+function ActivitiesTab({ children, assignments, onRefresh }) {
   const navigate = useNavigate();
-  const [selectedChild, setSelectedChild] = useState('');
+  const [selectedChildId, setSelectedChildId] = useState('');
+  const [localAssignments, setLocalAssignments] = useState(assignments || []);
 
-  const handleStart = (route, activityId) => {
-    if (children.length === 0) {
-      alert('Please add a child first.');
-      return;
-    }
-    const childId = selectedChild || children[0]?.id;
-    const child = children.find(c => String(c.id) === String(childId)) || children[0];
+  useEffect(() => {
+    setLocalAssignments(assignments);
+  }, [assignments]);
 
-    // FIX: treat both 'adventure' and '/spelling-bag' as the spelling game
-    if (route === 'adventure' || route === '/spelling-bag' || activityId === 'spelling-bag') {
-      navigate(`/spelling-bag?childId=${childId}`);
-    } else {
-      navigate(`/quiz?childId=${childId}&childName=${child?.full_name}&childGrade=${child?.grade}`);
-    }
+  const handleStart = (assignment) => {
+    const { id, child_id, type, config } = assignment;
+    let path = '';
+    if (type === 'matching') path = '/activity/word-picture';
+    else if (type === 'letter_sound') path = '/activity/letter-sound';
+    else if (type === 'reading') path = '/activity/reading';
+    else path = '/spelling-bag';
+    
+    navigate(path, { state: { assignmentId: id, childId: child_id, config } });
   };
 
-  const activities = [
-    {
-      id: 'spelling-bag',
-      tag: 'Phonics & Spelling',
-      title: 'Picture Spelling',
-      description: 'Look at the picture, tap the letters in order, and check your spelling. Hear the word, collect stars, and improve your phonics with fun animal friends!',
-      duration: '10–15 min',
-      level: 'Year 2–4',
-      color: 'var(--forest)',
-      accentBg: 'var(--forest-faint)',
-      badge: 'New: Picture + Letters',
-      badgeColor: 'forest',
-      illustration: (
-        <div className="act-illustration spelling-illustration">
-          <div className="act-ring r1" />
-          <div className="act-ring r2" />
-          <div className="act-ring r3" />
-          <span className="act-ring-center">📷</span>
-        </div>
-      ),
-      route: '/spelling-bag',
-    },
-    // You can add other activities here
-  ];
+  const handleChildChange = async (childId) => {
+    setSelectedChildId(childId);
+    const fresh = await fetchAssignmentsForChild(childId);
+    setLocalAssignments(fresh);
+    if (onRefresh) onRefresh();
+  };
 
   return (
     <div className="pane active">
-      <div className="page-eyebrow">Step 2 of 5</div>
+      <div className="page-eyebrow">Therapist‑Assigned</div>
       <h1 className="page-title">Learning <em>Activities</em></h1>
-      <p className="page-sub">Activities assigned by your therapist. Complete them to unlock your child's full assessment report.</p>
+      <p className="page-sub">Complete these tasks to build reading and phonics skills.</p>
 
       {children.length > 1 && (
         <div className="child-selector">
           <span className="child-selector-label">Activity for:</span>
-          <select className="child-select" value={selectedChild} onChange={(e) => setSelectedChild(e.target.value)}>
+          <select className="child-select" value={selectedChildId} onChange={e => handleChildChange(e.target.value)}>
+            <option value="">Select a child</option>
             {children.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
           </select>
         </div>
       )}
 
-      <div className="activities-grid">
-        {activities.map((act) => (
-          <div
-            key={act.id}
-            className={`activity-card activity-card--${act.badgeColor}`}
-            onClick={() => handleStart(act.route, act.id)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => e.key === 'Enter' && handleStart(act.route, act.id)}
-          >
-            <div className="ac-top">
-              <div className="ac-badge-row">
-                <span className={`ac-badge ac-badge--${act.badgeColor}`}>{act.badge}</span>
-              </div>
-              {act.illustration}
-            </div>
-
-            <div className="ac-body">
-              <div className="ac-tag">{act.tag}</div>
-              <h3 className="ac-title">{act.title}</h3>
-              <p className="ac-desc">{act.description}</p>
-
-              <div className="ac-meta-row">
-                <span className="ac-meta-item"><ClockIcon /> {act.duration}</span>
-                <span className="ac-meta-item"><StarIcon /> {act.level}</span>
-              </div>
-            </div>
-
-            <div className="ac-footer">
-              <button
-                className={`ac-cta ac-cta--${act.badgeColor}`}
-                onClick={(e) => { e.stopPropagation(); handleStart(act.route, act.id); }}
-              >
-                Begin Activity <ArrowRightIcon />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="coming-card">
-        <div className="coming-line"></div>
-        <div>
-          <div className="coming-title">More activities in development</div>
-          <div className="coming-sub">Number recall, audio exercises, sentence building — coming soon.</div>
+      {localAssignments.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>
+          No activities assigned yet. Your therapist will add activities here.
         </div>
-      </div>
+      ) : (
+        <div className="activities-grid">
+          {localAssignments.map(assign => (
+            <div key={assign.id} className="activity-card activity-card--forest" onClick={() => handleStart(assign)}>
+              <div className="ac-top">
+                <div className="ac-badge-row"><span className="ac-badge ac-badge--forest">Assigned</span></div>
+              </div>
+              <div className="ac-body">
+                <div className="ac-tag">{assign.type === 'matching' ? '📷 Matching' : assign.type === 'letter_sound' ? '🔊 Phonics' : '📖 Reading'}</div>
+                <h3 className="ac-title">{assign.name}</h3>
+                <p className="ac-desc">{assign.description}</p>
+                <div className="ac-meta-row"><span className="ac-meta-item">⭐ Level {assign.difficulty_level}</span></div>
+              </div>
+              <div className="ac-footer">
+                <button className="ac-cta ac-cta--forest" onClick={(e) => { e.stopPropagation(); handleStart(assign); }}>Start Activity →</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// CHAT TAB
-// ─────────────────────────────────────────────────────────────
 function ChatTab({ user }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -531,27 +471,33 @@ function ChatTab({ user }) {
   const pollRef = useRef(null);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (!loading && messages.length > 0) {
+      localStorage.setItem('lastMessagesRead', Date.now().toString());
+    }
+  }, [messages, loading]);
+
   const loadMessages = useCallback(async () => {
-    try { 
-      const msgs = await fetchMessages(); 
+    try {
+      const msgs = await fetchMessages();
       setMessages(msgs);
       setError('');
-    } catch (err) { 
+    } catch (err) {
       console.error(err);
       setError('Failed to load messages');
-    } finally { 
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  useEffect(() => { 
-    loadMessages(); 
-    pollRef.current = setInterval(loadMessages, 5000); 
-    return () => clearInterval(pollRef.current); 
+  useEffect(() => {
+    loadMessages();
+    pollRef.current = setInterval(loadMessages, 5000);
+    return () => clearInterval(pollRef.current);
   }, [loadMessages]);
 
-  useEffect(() => { 
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
@@ -559,23 +505,23 @@ function ChatTab({ user }) {
     if (!text || sending) return;
     setSending(true);
     setInput('');
-    try { 
-      const msg = await sendMessage(text); 
-      setMessages(prev => [...prev, msg]); 
-    } catch (err) { 
+    try {
+      const msg = await sendMessage(text);
+      setMessages(prev => [...prev, msg]);
+    } catch (err) {
       console.error(err);
-      setInput(text); // put back the text
+      setInput(text);
       alert('Failed to send message. Please try again.');
-    } finally { 
-      setSending(false); 
+    } finally {
+      setSending(false);
     }
   };
 
-  const handleKey = (e) => { 
-    if (e.key === 'Enter' && !e.shiftKey) { 
-      e.preventDefault(); 
-      handleSend(); 
-    } 
+  const handleKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading conversation...</div></div>;
@@ -628,12 +574,12 @@ function ChatTab({ user }) {
             <div ref={bottomRef} />
           </div>
           <div className="chat-footer">
-            <textarea 
-              className="chat-inp" 
-              placeholder="Write a message to Dr. Nwosu..." 
-              rows="1" 
-              value={input} 
-              onChange={(e) => setInput(e.target.value)} 
+            <textarea
+              className="chat-inp"
+              placeholder="Write a message to Dr. Nwosu..."
+              rows="1"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
               disabled={sending}
             />
@@ -663,18 +609,13 @@ function ChatTab({ user }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// HOME TAB — with updated navigation for Word Adventure
-// ─────────────────────────────────────────────────────────────
-function HomeTab({ parentInfo, children }) {
+function HomeTab({ parentInfo, children, assignedCount }) {
   const navigate = useNavigate();
   const progressPercent = 42;
 
-  const handleStartActivity = () => { 
-    if (children.length > 0) 
-      navigate(`/spelling-bag?childId=${children[0].id}`); 
-    else 
-      alert('Please add a child first.'); 
+  const handleStartActivity = () => {
+    if (children.length > 0) navigate(`/spelling-bag?childId=${children[0].id}`);
+    else alert('Please add a child first.');
   };
   const handleViewResults = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }));
   const handleMessage = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'chat' }));
@@ -684,18 +625,18 @@ function HomeTab({ parentInfo, children }) {
     <div className="pane active">
       <div className="page-eyebrow">Parent portal</div>
       <h1 className="page-title">Good morning, <em>{parentInfo?.full_name?.split(' ')[0] || 'Parent'}</em></h1>
-      <p className="page-sub">Here's an overview of your child's journey and what's next.</p>
+      <p className="page-sub">Here's an overview of your child's journey.</p>
 
       <div className="plan-banner">
         <div className="pb-icon"><CheckIcon /></div>
         <div style={{ flex: 1 }}>
           <div className="pb-label">Active Treatment Plan</div>
-          <div className="pb-name">With Dr. Amara Nwosu — Dyslexia Specialist</div>
-          <div className="pb-bar"><div className="pb-fill" style={{ width: `${progressPercent}%` }}></div></div>
+          <div className="pb-name">With Dr. Sarah Mohamed — Dyslexia Specialist</div>
+          <div className="pb-bar"><div className="pb-fill" style={{ width: `${progressPercent}%` }} /></div>
           <div className="pb-prog">{progressPercent}% of programme completed — Session 2 of 5</div>
         </div>
         <div className="pb-actions">
-          <button className="btn btn-ghost-light" onClick={handleMessage}>Message Dr. Nwosu</button>
+          <button className="btn btn-ghost-light" onClick={handleMessage}>Message Therapist</button>
           <button className="btn btn-ghost-light" onClick={handleViewResults}>View Results</button>
         </div>
       </div>
@@ -704,7 +645,7 @@ function HomeTab({ parentInfo, children }) {
         <div className="qa-card" onClick={handleActivities}>
           <div className="qa-icon" style={{ background: 'var(--forest-faint)' }}><ActivitiesIcon /></div>
           <div className="qa-name">Start Activity</div>
-          <div className="qa-sub">3 assigned by therapist</div>
+          <div className="qa-sub">{assignedCount} assigned by therapist</div>
         </div>
         <div className="qa-card" onClick={handleViewResults}>
           <div className="qa-icon" style={{ background: 'var(--sage-light)' }}><ResultsIcon /></div>
@@ -713,12 +654,11 @@ function HomeTab({ parentInfo, children }) {
         </div>
         <div className="qa-card" onClick={handleMessage}>
           <div className="qa-icon" style={{ background: 'var(--gold-light)' }}><ChatIcon /></div>
-          <div className="qa-name">1 New Message</div>
-          <div className="qa-sub">From Dr. Nwosu</div>
+          <div className="qa-name">Contact Therapist</div>
+          <div className="qa-sub">Dr. Sarah</div>
         </div>
       </div>
 
-      {/* Home Activities Preview — 2 cards */}
       <div className="home-activities-section">
         <div className="home-activities-header">
           <span className="home-activities-title">Today's Activities</span>
@@ -727,18 +667,10 @@ function HomeTab({ parentInfo, children }) {
         <div className="home-activities-grid">
           <div className="home-act-card" onClick={handleStartActivity}>
             <div className="hac-left">
-              <div className="hac-icon hac-icon--forest">
-                <BookIcon />
-              </div>
-              <div>
-                <div className="hac-tag">Reading · Task 1</div>
-                <div className="hac-name">Word Adventure</div>
-                <div className="hac-meta"><ClockIcon /> 10–15 min · Year 3</div>
-              </div>
+              <div className="hac-icon hac-icon--forest"><BookIcon /></div>
+              <div><div className="hac-tag">Spelling</div><div className="hac-name">Picture Spelling</div><div className="hac-meta"><ClockIcon /> 10 min</div></div>
             </div>
-            <button className="hac-btn hac-btn--forest" onClick={(e) => { e.stopPropagation(); handleStartActivity(); }}>
-              Start <ArrowRightIcon />
-            </button>
+            <button className="hac-btn hac-btn--forest" onClick={(e) => { e.stopPropagation(); handleStartActivity(); }}>Start →</button>
           </div>
         </div>
       </div>
@@ -746,9 +678,7 @@ function HomeTab({ parentInfo, children }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// MAIN COMPONENT
-// ─────────────────────────────────────────────────────────────
+// =========================== MAIN DASHBOARD ===========================
 const ParentDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
@@ -756,35 +686,75 @@ const ParentDashboard = () => {
   const [parentInfo, setParentInfo] = useState(null);
   const [children, setChildren] = useState([]);
   const [loadingInit, setLoadingInit] = useState(true);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [newResults, setNewResults] = useState(0);
+  const [assignedActivitiesCount, setAssignedActivitiesCount] = useState(0);
+  const [assignmentsList, setAssignmentsList] = useState([]);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [infoRes, childRes] = await Promise.all([
-        apiFetch('/api/parents/me'),
-        apiFetch('/api/children')
-      ]);
-
-      if (infoRes.ok) {
-        const infoData = await infoRes.json();
-        setParentInfo(infoData);
-      }
-
-      if (childRes.ok) {
-        const childData = await childRes.json();
-        setChildren(childData);
-      } else {
-        console.error('Failed to load children – status:', childRes.status);
-        if (childRes.status === 401) {
-          localStorage.clear();
-          navigate('/auth');
-        }
-      }
-    } catch (err) {
-      console.error('fetchAll error:', err);
-    } finally {
-      setLoadingInit(false);
-    }
+      const [infoRes, childRes] = await Promise.all([apiFetch('/api/parents/me'), apiFetch('/api/children')]);
+      if (infoRes.ok) setParentInfo(await infoRes.json());
+      if (childRes.ok) setChildren(await childRes.json());
+      else if (childRes.status === 401) { localStorage.clear(); navigate('/auth'); }
+    } catch (err) { console.error(err); } finally { setLoadingInit(false); }
   }, [navigate]);
+
+ const loadAssignments = useCallback(async () => {
+  if (children.length === 0) {
+    setAssignedActivitiesCount(0);
+    setAssignmentsList([]);
+    return;
+  }
+  // Use the first child's ID (or the selected one)
+  const firstChildId = children[0]?.id;
+  if (!firstChildId) return;
+  try {
+    const assignments = await fetchAssignmentsForChild(firstChildId);
+    console.log('Loaded assignments for child', firstChildId, assignments);
+    setAssignmentsList(assignments);
+    setAssignedActivitiesCount(assignments.length);
+  } catch (err) {
+    console.error('Error loading assignments:', err);
+  }
+}, [children]);
+
+  useEffect(() => { if (!loadingInit && children.length) loadAssignments(); }, [loadingInit, children, loadAssignments]);
+
+  const updateUnreadMessages = useCallback(async () => {
+    try {
+      const msgs = await fetchMessages();
+      const lastRead = parseInt(localStorage.getItem('lastMessagesRead') || '0', 10);
+      setUnreadMessages(msgs.filter(m => new Date(m.created_at).getTime() > lastRead).length);
+    } catch (err) {}
+  }, []);
+
+  const updateNewResults = useCallback(async () => {
+    try {
+      const res = await fetchMyResults();
+      const lastView = parseInt(localStorage.getItem('lastResultsView') || '0', 10);
+      setNewResults(res.filter(r => new Date(r.completed_at).getTime() > lastView).length);
+    } catch (err) {}
+  }, []);
+
+  useEffect(() => {
+    if (!loadingInit) {
+      updateUnreadMessages();
+      updateNewResults();
+      const interval = setInterval(() => { updateUnreadMessages(); updateNewResults(); }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [loadingInit]);
+
+  useEffect(() => {
+    if (activeTab === 'results') {
+      localStorage.setItem('lastResultsView', Date.now());
+      setNewResults(0);
+    } else if (activeTab === 'chat') {
+      localStorage.setItem('lastMessagesRead', Date.now());
+      setUnreadMessages(0);
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     fetchAll();
@@ -793,37 +763,39 @@ const ParentDashboard = () => {
     return () => window.removeEventListener('switchTab', handler);
   }, [fetchAll]);
 
-  const handleLogout = async () => { try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch {} localStorage.clear(); navigate('/auth'); };
+  const handleLogout = async () => {
+    try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch {}
+    localStorage.clear();
+    navigate('/auth');
+  };
+  const handleNotificationClick = () => {
+    localStorage.setItem('lastMessagesRead', Date.now());
+    localStorage.setItem('lastResultsView', Date.now());
+    setUnreadMessages(0);
+    setNewResults(0);
+    alert('Notifications cleared');
+  };
+
+  if (loadingInit) return <div className="loading-state"><div className="spinner" /><div>Loading portal...</div></div>;
 
   const displayName = parentInfo?.full_name || user?.name || 'Parent';
   const initial = displayName.charAt(0).toUpperCase();
-
-  if (loadingInit) return <div className="loading-state"><div className="spinner"></div><div>Loading your portal...</div></div>;
-
+  const totalNotifications = unreadMessages + newResults;
   const TABS = [
     { key: 'home', label: 'Home', icon: HomeIcon },
     { key: 'profile', label: 'Profile', icon: ProfileIcon },
     { key: 'results', label: 'Results', icon: ResultsIcon },
     { key: 'activities', label: 'Activities', icon: ActivitiesIcon },
-    { key: 'chat', label: 'Messages', icon: ChatIcon },
+    { key: 'chat', label: 'Messages', icon: ChatIcon }
   ];
 
   return (
     <div className="pd">
       <nav className="topnav">
-        <div className="brand">
-          <div className="brand-dot"><BookIcon /></div>
-          <span className="brand-name">Lexi<em>Care</em></span>
-        </div>
-        <div className="nav-tabs">
-          {TABS.map(tab => (
-            <button key={tab.key} className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}>
-              <tab.icon /> {tab.label}
-            </button>
-          ))}
-        </div>
+        <div className="brand"><div className="brand-dot"><BookIcon /></div><span className="brand-name">Lexi<em>Care</em></span></div>
+        <div className="nav-tabs">{TABS.map(tab => <button key={tab.key} className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}><tab.icon /> {tab.label}</button>)}</div>
         <div className="nav-right">
-          <button className="notif-btn"><BellIcon /><div className="notif-dot"></div></button>
+          <button className="notif-btn" onClick={handleNotificationClick}><BellIcon />{totalNotifications > 0 && <div className="notif-dot">{totalNotifications}</div>}</button>
           <div className="user-chip"><div className="user-av">{initial}</div><span className="user-name">{displayName}</span></div>
           <button className="user-chip" onClick={handleLogout}><LogoutIcon /><span>Sign out</span></button>
         </div>
@@ -840,30 +812,34 @@ const ParentDashboard = () => {
       <div className="layout">
         <aside className="sidebar">
           <div className="sidebar-section">Main</div>
-          {TABS.filter(t => t.key === 'home' || t.key === 'profile').map(tab => (
-            <button key={tab.key} className={`slink ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}><tab.icon /> {tab.label}</button>
-          ))}
+          <button className={`slink ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}><HomeIcon /> Home</button>
+          <button className={`slink ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}><ProfileIcon /> Profile</button>
           <div className="sidebar-section">Progress</div>
-          <button className={`slink ${activeTab === 'results' ? 'active' : ''}`} onClick={() => setActiveTab('results')}><ResultsIcon /> Assessment Results<span className="slink-badge">2</span></button>
-          <button className={`slink ${activeTab === 'activities' ? 'active' : ''}`} onClick={() => setActiveTab('activities')}><ActivitiesIcon /> Activities<span className="slink-badge gold">3</span></button>
+          <button className={`slink ${activeTab === 'results' ? 'active' : ''}`} onClick={() => setActiveTab('results')}><ResultsIcon /> Assessment Results{newResults > 0 && <span className="slink-badge">{newResults}</span>}</button>
+          <button className={`slink ${activeTab === 'activities' ? 'active' : ''}`} onClick={() => setActiveTab('activities')}><ActivitiesIcon /> Activities{assignedActivitiesCount > 0 && <span className="slink-badge gold">{assignedActivitiesCount}</span>}</button>
           <div className="sidebar-section">Care</div>
-          <button className={`slink ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><ChatIcon /> Messages<span className="slink-badge">1</span></button>
+          <button className={`slink ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><ChatIcon /> Messages{unreadMessages > 0 && <span className="slink-badge">{unreadMessages}</span>}</button>
           {children.length > 0 && (
             <div className="child-summary">
               <div className="cs-label">Active child</div>
               <div className="cs-name">{children[0]?.full_name}</div>
-              <div className="cs-meta">Year {children[0]?.grade} • Age {children[0]?.dob ? new Date().getFullYear() - new Date(children[0].dob).getFullYear() : '—'}</div>
+              <div className="cs-meta">Year {children[0]?.grade}</div>
               <div className="cs-bar"><div className="cs-bar-fill"></div></div>
               <div className="cs-prog">42% treatment complete</div>
             </div>
           )}
         </aside>
-
         <main className="main">
-          {activeTab === 'home' && <HomeTab parentInfo={parentInfo} children={children} />}
+          {activeTab === 'home' && <HomeTab parentInfo={parentInfo} children={children} assignedCount={assignedActivitiesCount} />}
           {activeTab === 'profile' && <ProfileTab user={user} parentInfo={parentInfo} children={children} onChildrenChange={fetchAll} />}
           {activeTab === 'results' && <ResultsTab />}
-          {activeTab === 'activities' && <ActivitiesTab children={children} />}
+          {activeTab === 'activities' && 
+  <ActivitiesTab 
+    children={children} 
+    assignments={assignmentsList} 
+    onRefresh={loadAssignments} 
+  />
+}
           {activeTab === 'chat' && <ChatTab user={user} />}
         </main>
       </div>

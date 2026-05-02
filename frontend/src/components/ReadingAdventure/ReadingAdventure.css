@@ -521,3 +521,51 @@
   margin-top: 0.2rem;
   letter-spacing: 0.5px;
 }
+/* Logo only – positioned top-left, no navbar */
+.adventure-logo {
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.adventure-logo-icon {
+  width: 36px;
+  height: 36px;
+  background: #FFB84D;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: #1E2D25;
+}
+
+.adventure-logo-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Optional: adjust for mobile */
+@media (max-width: 768px) {
+  .adventure-logo {
+    top: 1rem;
+    left: 1rem;
+  }
+  .adventure-logo-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.75rem;
+  }
+  .adventure-logo-text {
+    font-size: 0.85rem;
+  }
+}

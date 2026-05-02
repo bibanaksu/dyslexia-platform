@@ -58,7 +58,6 @@ export default function ReadingAdventure() {
   const handleQuestClick = (quest) => {
     if (quest.status === 'locked') return;
     localStorage.setItem('current_quest', JSON.stringify(quest));
-    // Regular navigation (not replace) - this allows back button to work correctly
     navigate(quest.taskPath);
   };
 
@@ -70,6 +69,12 @@ export default function ReadingAdventure() {
 
   return (
     <div className="reading-adventure">
+      {/* Logo only – no back button, no navbar */}
+      <div className="adventure-logo">
+        <div className="adventure-logo-icon">DS</div>
+        <span className="adventure-logo-text">Dyslexia Support</span>
+      </div>
+
       <div className="adventure-background">
         <img src="/assets/levels2.png" alt="Reading Adventure" className="background-image" />
         <div className="background-overlay" />

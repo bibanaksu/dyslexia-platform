@@ -16,7 +16,7 @@ import { CTA } from './components/CTA/CTA';
 import { Footer } from './components/Footer/Footer';
 import Dashboard from './components/Dashboard/Dashboard';
 import ReadingAdventure from './components/ReadingAdventure/ReadingAdventure';
-import ParentDashboard from './components/ParentDashboard/ParentDashboard';
+import ParentDashboard from './components/ParentDashboard/ParentDashboard'; // ✅ default import (no braces)
 import StartAssessment from './components/Startassessment/Startassessment';
 import ChildInfo from './components/ChildInfoPage/ChildInfo.jsx';
 import QuizPage from './components/QuizPage/QuizPage';
@@ -29,7 +29,10 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import AuditLog from './pages/AuditLog';
 import { PrivateRoute, RoleRoute, PublicRoute } from './components/RouteGuards';
-import SpellingBagGame from './components/ParentDashboard/SpellingBagGame'; // adjust path as needed
+import SpellingBagGame from './components/ParentDashboard/SpellingBagGame';
+import WordPictureMatching from './components/Activities/WordPictureMatching';
+import LetterSoundMatching from './components/Activities/LetterSoundMatching';
+import ReadingComprehension from './components/Activities/ReadingComprehension';
 
 function App() {
   const [scrollY, setScrollY] = useState(0);
@@ -50,7 +53,6 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
-          {/* Landing page routes */}
           <Route path="/" element={
             <>
               <Navigation scrollY={scrollY} />
@@ -66,29 +68,23 @@ function App() {
           
           <Route path="/home" element={<Navigate to="/" replace />} />
           
-          {/* Assessment flow routes */}
           <Route path="/child-info" element={<ChildInfo />} />
           <Route path="/start-assessment" element={<StartAssessment />} />
           <Route path="/start" element={<Navigate to="/start-assessment" replace />} />
           <Route path="/adventure" element={<ReadingAdventure />} />
           
-          {/* Task routes */}
           <Route path="/tasks/task-one" element={<TaskOne />} />
           <Route path="/tasks/enhanced-voice" element={<EnhancedVoiceReading />} />
           <Route path="/tasks/task-three" element={<TaskThree />} />
           <Route path="/tasks/task-four" element={<TaskFour />} />
           
-          {/* Assessment results */}
           <Route path="/assessment/results" element={<AssessmentResults />} />
           <Route path="/assessment/summary" element={<Navigate to="/assessment/results" replace />} />
           
-          {/* Quiz route */}
           <Route path="/quiz" element={<QuizPage />} />
           
-          {/* Spelling Bag Game route */}
           <Route path="/spelling-bag" element={<SpellingBagGame />} />
           
-          {/* Auth routes */}
           <Route path="/auth" element={
             <PublicRoute>
               <Auth />
@@ -107,7 +103,6 @@ function App() {
             </PublicRoute>
           } />
           
-          {/* Protected routes */}
           <Route path="/dashboard" element={
             <RoleRoute allowedRole="therapist">
               <Dashboard />
@@ -120,13 +115,16 @@ function App() {
             </RoleRoute>
           } />
           
+          <Route path="/activity/word-picture" element={<WordPictureMatching />} />
+          <Route path="/activity/letter-sound" element={<LetterSoundMatching />} />
+          <Route path="/activity/reading" element={<ReadingComprehension />} />
+
           <Route path="/parent-dashboard" element={
             <RoleRoute allowedRole="parent">
               <ParentDashboard />
             </RoleRoute>
           } />
           
-          {/* 404 redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

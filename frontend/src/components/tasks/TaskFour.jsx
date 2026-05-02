@@ -9,22 +9,23 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TASK4_URL = `${API_URL}/api/task4/submit`;
 
 const NUMBER_SEQUENCES = [
-  { id:1, numbers:[4,7],         length:2, responseTime:10 },
-  { id:2, numbers:[3,8,1],       length:3, responseTime:15 },
-  { id:3, numbers:[6,2,9,5],     length:4, responseTime:20 },
-  { id:4, numbers:[1,4,7,2,8],   length:5, responseTime:25 },
-  { id:5, numbers:[5,0,9,3,6,1], length:6, responseTime:30 },
-  { id:6, numbers:[2,6,4,8,0,7,3],length:7,responseTime:35 },
-  { id:7, numbers:[9,2],         length:2, responseTime:10 },
-  { id:8, numbers:[1,5,3],       length:3, responseTime:15 },
-  { id:9, numbers:[7,0,6,2,4],   length:5, responseTime:25 },
-  { id:10,numbers:[8,3,1,9,5,2], length:6, responseTime:30 },
+  { id:1,  numbers:[4,7],          length:2, responseTime:10 },
+  { id:2,  numbers:[3,8,1],        length:3, responseTime:15 },
+  { id:3,  numbers:[6,2,9,5],      length:4, responseTime:20 },
+  { id:4,  numbers:[1,4,7,2,8],    length:5, responseTime:25 },
+  { id:5,  numbers:[5,0,9,3,6,1],  length:6, responseTime:30 },
+  { id:6,  numbers:[2,6,4,8,0,7,3],length:7, responseTime:35 },
+  { id:7,  numbers:[9,2],          length:2, responseTime:10 },
+  { id:8,  numbers:[1,5,3],        length:3, responseTime:15 },
+  { id:9,  numbers:[7,0,6,2,4],    length:5, responseTime:25 },
+  { id:10, numbers:[8,3,1,9,5,2],  length:6, responseTime:30 },
 ];
 
 const PROGRESS_KEY = 'task4_progress';
-const saveLocal   = (idx, results, fi, ri, fs, rs, fc, rc) => localStorage.setItem(PROGRESS_KEY, JSON.stringify({ currentIndex:idx, results, forwardInput:fi, reverseInput:ri, forwardSubmitted:fs, reverseSubmitted:rs, forwardCorrect:fc, reverseCorrect:rc, savedAt:Date.now() }));
-const loadLocal   = () => { try { const r=localStorage.getItem(PROGRESS_KEY); return r?JSON.parse(r):null; } catch{return null;} };
-const clearLocal  = () => localStorage.removeItem(PROGRESS_KEY);
+const saveLocal  = (idx, results, fi, ri, fs, rs, fc, rc) =>
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify({ currentIndex:idx, results, forwardInput:fi, reverseInput:ri, forwardSubmitted:fs, reverseSubmitted:rs, forwardCorrect:fc, reverseCorrect:rc, savedAt:Date.now() }));
+const loadLocal  = () => { try { const r=localStorage.getItem(PROGRESS_KEY); return r?JSON.parse(r):null; } catch{return null;} };
+const clearLocal = () => localStorage.removeItem(PROGRESS_KEY);
 
 const markQuestCompleted = () => {
   const q = JSON.parse(localStorage.getItem('current_quest')||'{}');
@@ -49,55 +50,36 @@ const cmpArrays = (input, expected) => {
   return nums.length===expected.length && nums.every((n,i)=>n===expected[i]);
 };
 
-// Contact Modal (unchanged)
-const ContactModal = ({ isOpen, onClose, onSubmit }) => {
-  const [form, setForm] = useState({ parentName:'', childName:'', childAge:'', email:'', phone:'', concerns:'' });
-  if (!isOpen) return null;
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e=>e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>✕</button>
-        <h2>Contact a Therapist</h2>
-        <p>Fill out the form and our team will reach out within 24 hours.</p>
-        <form onSubmit={e=>{e.preventDefault();onSubmit(form);}}>
-          {[['parentName','Parent Full Name'],['childName',"Child's Name"],['email','Email Address']].map(([k,l])=>(
-            <div key={k} className="form-group">
-              <label>{l} *</label>
-              <input type={k==='email'?'email':'text'} required value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})}/>
-            </div>
-          ))}
-          <div className="form-group"><label>Child's Age</label><input type="number" value={form.childAge} onChange={e=>setForm({...form,childAge:e.target.value})}/></div>
-          <div className="form-group"><label>Phone</label><input type="tel" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></div>
-          <div className="form-group"><label>Concerns</label><textarea rows="3" value={form.concerns} onChange={e=>setForm({...form,concerns:e.target.value})} placeholder="Describe any specific concerns…"/></div>
-          <button type="submit" className="submit-request-btn">Send Request</button>
-        </form>
-      </div>
-    </div>
-  );
-};
-
 export default function TaskFour() {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.width = '100%';
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+    };
+  }, []);
+
   const navigate = useNavigate();
-  const [sequences]        = useState(NUMBER_SEQUENCES);
-  const [currentIndex,     setCurrentIndex]     = useState(0);
-  const [forwardInput,     setForwardInput]     = useState('');
-  const [reverseInput,     setReverseInput]     = useState('');
-  const [forwardSubmitted, setForwardSubmitted] = useState(false);
-  const [reverseSubmitted, setReverseSubmitted] = useState(false);
-  const [forwardCorrect,   setForwardCorrect]   = useState(null);
-  const [reverseCorrect,   setReverseCorrect]   = useState(null);
-  const [results,          setResults]          = useState([]);
-  const [isComplete,       setIsComplete]       = useState(false);
-  const [isPlaying,        setIsPlaying]        = useState(false);
-  const [isPaused,         setIsPaused]         = useState(false);
-  const [saving,           setSaving]           = useState(false);
-  const [saveError,        setSaveError]        = useState('');
-  const [resultsData,      setResultsData]      = useState(null);
-  const [showModal,        setShowModal]        = useState(false);
-  const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [pendingProgress,  setPendingProgress]  = useState(null);
-  const [markedCompleted,  setMarkedCompleted]  = useState(false);
-  const [showSkipConfirm,  setShowSkipConfirm]  = useState(false);
+  const [sequences]         = useState(NUMBER_SEQUENCES);
+  const [currentIndex,      setCurrentIndex]      = useState(0);
+  const [forwardInput,      setForwardInput]      = useState('');
+  const [reverseInput,      setReverseInput]      = useState('');
+  const [forwardSubmitted,  setForwardSubmitted]  = useState(false);
+  const [reverseSubmitted,  setReverseSubmitted]  = useState(false);
+  const [forwardCorrect,    setForwardCorrect]    = useState(null);
+  const [reverseCorrect,    setReverseCorrect]    = useState(null);
+  const [results,           setResults]           = useState([]);
+  const [isPlaying,         setIsPlaying]         = useState(false);
+  const [isPaused,          setIsPaused]          = useState(false);
+  const [saving,            setSaving]            = useState(false);
+  const [saveError,         setSaveError]         = useState('');
+  const [showResumePrompt,  setShowResumePrompt]  = useState(false);
+  const [pendingProgress,   setPendingProgress]   = useState(null);
+  const [markedCompleted,   setMarkedCompleted]   = useState(false);
+  const [showSkipConfirm,   setShowSkipConfirm]   = useState(false);
 
   const isPausedRef   = useRef(false);
   const playTokenRef  = useRef(0);
@@ -106,9 +88,9 @@ export default function TaskFour() {
   const pausedAtRef   = useRef(null);
   const autoAdvRef    = useRef(null);
   const isMountedRef  = useRef(true);
-  // No savedIdRef – we always POST
 
   const currentSeq = sequences[currentIndex];
+  const progress   = (currentIndex / sequences.length) * 100;
 
   useEffect(() => { isMountedRef.current = true; return () => { isMountedRef.current = false; }; }, []);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
@@ -142,8 +124,11 @@ export default function TaskFour() {
   useEffect(() => {
     startTimeRef.current = Date.now();
     const p = loadLocal();
-    if (p && p.currentIndex>0 && p.currentIndex<sequences.length) { setPendingProgress(p); setShowResumePrompt(true); }
-    else { setTimeout(()=>playSequence([...NUMBER_SEQUENCES[0].numbers]),500); }
+    if (p && p.currentIndex>0 && p.currentIndex<sequences.length) {
+      setPendingProgress(p); setShowResumePrompt(true);
+    } else {
+      setTimeout(()=>playSequence([...NUMBER_SEQUENCES[0].numbers]),500);
+    }
     return () => stopSpeech();
   }, []);
 
@@ -159,6 +144,7 @@ export default function TaskFour() {
     setReverseCorrect(pendingProgress.reverseCorrect||null);
     setShowResumePrompt(false); setPendingProgress(null);
   };
+
   const handleStartFresh = () => {
     clearLocal(); setShowResumePrompt(false); setPendingProgress(null);
     setCurrentIndex(0); setResults([]);
@@ -186,20 +172,16 @@ export default function TaskFour() {
   };
 
   useEffect(() => {
-    if (forwardSubmitted && reverseSubmitted && !isComplete) {
+    if (forwardSubmitted && reverseSubmitted) {
       autoAdvRef.current = setTimeout(handleNext, 1500);
     }
     return () => { if(autoAdvRef.current) clearTimeout(autoAdvRef.current); };
   }, [forwardSubmitted, reverseSubmitted]);
 
-  const buildPayload = useCallback((res, isPartial) => {
+  const buildPayload = useCallback((res) => {
     const childSessionId = getCurrentChildSessionId();
     if (!childSessionId) throw new Error('No active child session ID');
-
     const user = getUserInfo();
-    const childInfo = getChildInfo();
-
-    const totalPossible = sequences.length * 2;
     let correctCount = 0;
     res.forEach(r => { if(r.forward_correct) correctCount++; if(r.reverse_correct) correctCount++; });
     const pct = res.length > 0 ? Math.round((correctCount / (res.length * 2)) * 100) : 0;
@@ -209,7 +191,6 @@ export default function TaskFour() {
     else if (pct >= 60) perf = 'Good Start!';
     else if (pct >= 40) perf = 'Keep Going!';
     const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedMs.current) / 1000);
-
     return {
       child_session_id:   parseInt(childSessionId, 10),
       child_id:           user?.childId ? parseInt(user.childId, 10) : null,
@@ -238,15 +219,11 @@ export default function TaskFour() {
     try {
       const payload = buildPayload(res, isPartial);
       const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      };
-      const response = await axios.post(TASK4_URL, payload, { headers });
-      if (response.data?.resultId) console.log('✅ Task4 saved, id:', response.data.resultId);
+      await axios.post(TASK4_URL, payload, {
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
     } catch (err) {
-      console.error('Task4 save error:', err);
-      setSaveError('Network error – progress saved locally only.');
+      setSaveError('Progress saved locally.');
       localStorage.setItem('task4_results_backup', JSON.stringify({ ...res, savedAt: new Date().toISOString() }));
     } finally { setSaving(false); }
   }, [buildPayload]);
@@ -266,12 +243,12 @@ export default function TaskFour() {
     const updated = [...results, newResult];
     setResults(updated);
     await saveResultsToDB(updated, true);
-
     if (currentIndex+1 >= sequences.length) {
-      await finishAssessment(updated);
+      await finishAndRedirect(updated);
     } else {
       const next = currentIndex+1;
-      setCurrentIndex(next); setForwardInput(''); setReverseInput('');
+      setCurrentIndex(next);
+      setForwardInput(''); setReverseInput('');
       setForwardSubmitted(false); setReverseSubmitted(false);
       setForwardCorrect(null); setReverseCorrect(null);
       clearLocal();
@@ -279,260 +256,237 @@ export default function TaskFour() {
     }
   }, [currentIndex, forwardCorrect, reverseCorrect, forwardInput, reverseInput, results, sequences, stopSpeech, playSequence, saveResultsToDB]);
 
-  const finishAssessment = async finalResults => {
+  const finishAndRedirect = async (finalResults) => {
     stopSpeech(); clearLocal();
     const totalPossible = sequences.length * 2;
     let correctCount = 0;
     finalResults.forEach(r => { if(r.forward_correct) correctCount++; if(r.reverse_correct) correctCount++; });
     const pct = Math.round((correctCount / totalPossible) * 100);
-    let perf = 'Needs Practice', rec = 'Start with 2-number sequences and practice!';
-    if (pct >= 90) { perf = 'Excellent!'; rec = 'Amazing memory skills!'; }
-    else if (pct >= 75) { perf = 'Very Good!'; rec = 'Great job remembering the numbers!'; }
-    else if (pct >= 60) { perf = 'Good Start!'; rec = 'Keep practicing number sequences!'; }
-    else if (pct >= 40) { perf = 'Keep Going!'; rec = 'Practice with shorter sequences first.'; }
-    const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedMs.current) / 1000);
     const data = {
-      totalPossible, correctCount, percentage: pct, performanceLevel: perf, recommendation: rec,
-      totalTimeSeconds: elapsed, sequenceDetails: finalResults
+      totalPossible, correctCount, percentage: pct,
+      totalTimeSeconds: Math.floor((Date.now() - startTimeRef.current - totalPausedMs.current) / 1000),
+      sequenceDetails: finalResults
     };
-    setResultsData(data);
     localStorage.setItem('task4_results', JSON.stringify(data));
     if (pct >= 40 && !markedCompleted) { markQuestCompleted(); setMarkedCompleted(true); }
     await saveResultsToDB(finalResults, false);
-    setIsComplete(true);
+    navigate('/assessment/results');
   };
 
-  const handleContactTherapist = form => { alert(`Thank you ${form.parentName}! A therapist will contact you at ${form.email} within 24 hours.`); setShowModal(false); };
-  const handlePause = async () => {
-    if(isComplete) return;
-    stopSpeech(); pausedAtRef.current=Date.now(); setIsPaused(true);
-    saveLocal(currentIndex, results, forwardInput, reverseInput, forwardSubmitted, reverseSubmitted, forwardCorrect, reverseCorrect);
-    if (results.length > 0) await saveResultsToDB(results, true);
-  };
-  const handleResume = () => {
-    if(isComplete) return;
-    if(pausedAtRef.current){totalPausedMs.current+=Date.now()-pausedAtRef.current;pausedAtRef.current=null;}
-    setIsPaused(false);
-  };
-  const handleQuit   = () => { stopSpeech(); saveLocal(currentIndex, results, forwardInput, reverseInput, forwardSubmitted, reverseSubmitted, forwardCorrect, reverseCorrect); navigate('/adventure'); };
-  const handleBack   = () => { stopSpeech(); navigate('/adventure'); };
   const handleSkipToResults = async () => {
     stopSpeech();
     if (autoAdvRef.current) clearTimeout(autoAdvRef.current);
     let finalResults = [...results];
     if (forwardSubmitted) {
-      const currentResult = {
+      const current = {
         sequence_id: currentSeq.id, original_numbers:[...currentSeq.numbers],
         forward_correct: forwardCorrect, reverse_correct: reverseCorrect,
         forward_user_input: forwardInput, reverse_user_input: reverseInput,
         sequence_length: currentSeq.length
       };
-      const alreadyAdded = finalResults.some(r => r.sequence_id === currentSeq.id);
-      if (!alreadyAdded) finalResults.push(currentResult);
+      if (!finalResults.some(r => r.sequence_id === currentSeq.id)) finalResults.push(current);
     }
-    await finishAssessment(finalResults);
+    await finishAndRedirect(finalResults);
   };
 
-  const progress = (currentIndex / sequences.length) * 100;
+  const handlePause = async () => {
+    if (isPaused) {
+      if(pausedAtRef.current){totalPausedMs.current+=Date.now()-pausedAtRef.current;pausedAtRef.current=null;}
+      setIsPaused(false);
+    } else {
+      stopSpeech(); pausedAtRef.current=Date.now(); setIsPaused(true);
+      saveLocal(currentIndex, results, forwardInput, reverseInput, forwardSubmitted, reverseSubmitted, forwardCorrect, reverseCorrect);
+      if (results.length > 0) await saveResultsToDB(results, true);
+    }
+  };
 
-  // ─── Resume prompt screen ─────────────────────────────────────
+  const handleBack = () => { stopSpeech(); navigate('/adventure'); };
+
   if (showResumePrompt) return (
-    <div className="task-four-container">
-      <div className="task-four-bg"/><div className="dark-overlay"/>
-      <div className="resume-prompt-container" style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh',position:'relative',zIndex:10}}>
-        <div style={{background:'white',padding:'2.5rem',borderRadius:'2rem',textAlign:'center',maxWidth:'400px',boxShadow:'0 8px 32px rgba(0,0,0,0.2)'}}>
-          <div style={{fontSize:'3rem',marginBottom:'1rem'}}>💾</div>
-          <h2 style={{color:'#3D5A4C',marginBottom:'0.5rem'}}>Welcome Back!</h2>
-          <p style={{color:'#666',marginBottom:'1.5rem'}}>You were on sequence <strong>{pendingProgress?.currentIndex+1}</strong> of {sequences.length}. Continue?</p>
-          <div style={{display:'flex',gap:'1rem',justifyContent:'center'}}>
-            <button onClick={handleResumeSaved} style={{background:'#4CAF50',color:'white',border:'none',borderRadius:'1rem',padding:'0.75rem 1.5rem',fontSize:'1rem',fontWeight:700,cursor:'pointer'}}>Continue</button>
-            <button onClick={handleStartFresh}  style={{background:'#f44336',color:'white',border:'none',borderRadius:'1rem',padding:'0.75rem 1.5rem',fontSize:'1rem',fontWeight:700,cursor:'pointer'}}>Start Over</button>
+    <div className="t4-shell">
+      <div className="t4-bg"/><div className="t4-overlay"/>
+      <div className="t4-modal-center">
+        <div className="t4-dialog">
+          <div className="t4-dialog-icon">💾</div>
+          <h2>Welcome Back!</h2>
+          <p>You were on sequence <strong>{pendingProgress?.currentIndex+1}</strong> of {sequences.length}.</p>
+          <div className="t4-dialog-btns">
+            <button className="t4-btn t4-btn--green" onClick={handleResumeSaved}>Continue</button>
+            <button className="t4-btn t4-btn--red"   onClick={handleStartFresh}>Start Over</button>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // ─── RESULTS SCREEN (TaskOne‑style header) ─────────────────────
-  if (isComplete && resultsData) {
-    return (
-      <div className="task-four-container">
-        <div className="task-four-bg"/><div className="dark-overlay"/>
-        <div className="assessment-header-bar" style={{
-          position: 'relative', zIndex: 20,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '0.8rem 2rem', background: 'rgba(255,255,255,0.95)', borderBottom: '2px solid rgba(61,90,76,0.2)'
-        }}>
-          <div className="header-left">
-            <button className="nav-back-btn" onClick={handleBack} style={{background:'#3D5A4C',color:'white',border:'none',padding:'0.5rem 1rem',borderRadius:'2rem',fontWeight:600,cursor:'pointer'}}>← Back</button>
-            <span className="category-name" style={{marginLeft:'1rem',fontWeight:700,color:'#3D5A4C'}}>🎯 Number Memory</span>
-          </div>
-          <div className="header-center">
-            <div className="progress-display" style={{fontWeight:700,color:'#3D5A4C'}}>✨ Results ✨</div>
-          </div>
-          <div className="header-right">
-            <div className="timer" style={{background:'#3D5A4C',color:'white',padding:'0.5rem 1rem',borderRadius:'1.5rem',fontWeight:800}}>✓ Completed</div>
-          </div>
-        </div>
-
-        <div className="results-screen" style={{display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center',height:'calc(100vh - 70px)',position:'relative',zIndex:10,padding:'2rem',overflowY:'auto'}}>
-          <div className="results-header-area" style={{textAlign:'center'}}>
-            <div className="trophy-icon" style={{fontSize:'4rem'}}>{resultsData.percentage>=75?'🏆':'🎉'}</div>
-            <h1 style={{color:'white',fontSize:'2rem',marginBottom:'0.5rem'}}>{resultsData.percentage>=75?'Number Memory Champion!':'Assessment Complete!'}</h1>
-            <p style={{color:'rgba(255,255,255,0.9)'}}>You completed {resultsData.sequenceDetails.length} of {sequences.length} number sequences!</p>
-            <p className="score-preview" style={{color:'#FFD700',fontSize:'1.2rem',marginTop:'0.5rem'}}>Your Score: {resultsData.correctCount}/{resultsData.totalPossible} ({resultsData.percentage}%)</p>
-          </div>
-          {saving && <div style={{textAlign:'center',color:'#fff',marginTop:'1rem'}}>💾 Saving results...</div>}
-          {saveError && !saving && <div style={{textAlign:'center',color:'#ffaa00',marginTop:'1rem'}}>⚠️ {saveError}</div>}
-          <div className="results-action-buttons" style={{display:'flex',gap:'1rem',marginTop:'2rem',flexWrap:'wrap',justifyContent:'center'}}>
-            <button className="btn-check-results" onClick={() => navigate('/assessment/results')} style={{background:'#3D5A4C',color:'white',border:'none',padding:'0.8rem 1.5rem',borderRadius:'2rem',fontWeight:700,cursor:'pointer',minWidth:'180px'}}>View Full Assessment Report</button>
-            <button className="btn-home-page" onClick={handleBack} style={{background:'#a8d0db',color:'#3D5A4C',border:'none',padding:'0.8rem 1.5rem',borderRadius:'2rem',fontWeight:700,cursor:'pointer'}}>Back to Adventure</button>
-          </div>
-        </div>
-        <ContactModal isOpen={showModal} onClose={()=>setShowModal(false)} onSubmit={handleContactTherapist}/>
-      </div>
-    );
-  }
-
-  // ─── Skip confirmation modal ───────────────────────────────────
   if (showSkipConfirm) return (
-    <div className="task-four-container">
-      <div className="task-four-bg"/><div className="dark-overlay"/>
-      <div className="skip-confirm-container" style={{display:'flex',justifyContent:'center',alignItems:'center',height:'100vh',position:'relative',zIndex:10}}>
-        <div style={{background:'white',padding:'2rem',borderRadius:'2rem',textAlign:'center',maxWidth:'400px',boxShadow:'0 8px 32px rgba(0,0,0,0.2)'}}>
-          <div style={{fontSize:'3rem',marginBottom:'0.5rem'}}>⏭️</div>
-          <h2 style={{color:'#3D5A4C',marginBottom:'0.5rem'}}>Skip to Results?</h2>
-          <p style={{color:'#666',marginBottom:'0.5rem'}}>You've completed {results.length} of {sequences.length} sequences.</p>
-          <p style={{color:'#FF9800',fontSize:'0.85rem',marginBottom:'1.5rem'}}>Your results will be calculated based on completed sequences only.</p>
-          <div style={{display:'flex',gap:'1rem',justifyContent:'center'}}>
-            <button onClick={()=>{setShowSkipConfirm(false);}} style={{background:'#a8d0db',color:'#3D5A4C',border:'none',borderRadius:'1rem',padding:'0.75rem 1.5rem',fontSize:'1rem',fontWeight:700,cursor:'pointer'}}>Cancel</button>
-            <button onClick={handleSkipToResults} style={{background:'#FF9800',color:'white',border:'none',borderRadius:'1rem',padding:'0.75rem 1.5rem',fontSize:'1rem',fontWeight:700,cursor:'pointer'}}>Yes, Show Results</button>
+    <div className="t4-shell">
+      <div className="t4-bg"/><div className="t4-overlay"/>
+      <div className="t4-modal-center">
+        <div className="t4-dialog">
+          <div className="t4-dialog-icon">⏭</div>
+          <h2>Skip to Results?</h2>
+          <p>{results.length} of {sequences.length} sequences completed.</p>
+          <p className="t4-dialog-warn">Results will be based on completed sequences only.</p>
+          <div className="t4-dialog-btns">
+            <button className="t4-btn t4-btn--ghost" onClick={()=>setShowSkipConfirm(false)}>Cancel</button>
+            <button className="t4-btn t4-btn--amber" onClick={handleSkipToResults}>Yes, Show Results</button>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // ─── MAIN ASSESSMENT SCREEN (TaskOne‑style header + progress bar) ──
+  // MAIN ASSESSMENT SCREEN with DS logo exactly like TaskOne
   return (
-    <div className="task-four-container">
-      <div className="task-four-bg"/><div className="dark-overlay"/>
+    <div className="t4-shell">
+      <div className="t4-bg"/><div className="t4-overlay"/>
 
-      {/* TaskOne‑style header bar */}
       <div className="assessment-header-bar">
         <div className="header-left">
-          <button className="nav-back-btn" onClick={handleBack}>← Back</button>
-          <span className="sequence-info">Sequence {currentIndex+1} of {sequences.length}</span>
+          {/* DS logo exactly like TaskOne */}
+          <div className="task-logo-icon">DS</div>
+          <button className="btn-pause" onClick={handlePause}>
+            {isPaused ? '▶ Resume' : '⏸ Pause'}
+          </button>
+          <span className="category-name">Number Memory</span>
         </div>
         <div className="header-center">
-          {isPlaying && (
-            <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-              <div className="sound-wave-small"><span/><span/><span/><span/></div>
-              <span style={{fontSize:'0.85rem',fontWeight:700,color:'#3D5A4C'}}>Listening…</span>
-            </div>
-          )}
+          <div className="progress-display">
+            {isPlaying ? (
+              <span className="t4-listening-pulse">Listening…</span>
+            ) : (
+              `Sequence ${currentIndex+1} of ${sequences.length}`
+            )}
+          </div>
         </div>
         <div className="header-right">
-          <button className="replay-btn" onClick={()=>!isPlaying&&!isPaused&&playSequence([...currentSeq.numbers])} disabled={isPlaying||isPaused}>🔊 Replay</button>
-          <button className="nav-pause-btn" onClick={handlePause}>{isPaused ? '▶️ Resume' : '⏸️ Pause'}</button>
-          <button className="nav-skip-btn" onClick={()=>setShowSkipConfirm(true)}>⏭️ Skip</button>
+          <button
+            className="t4-replay-btn"
+            onClick={()=>!isPlaying&&!isPaused&&playSequence([...currentSeq.numbers])}
+            disabled={isPlaying||isPaused}
+          >
+            Replay
+          </button>
+          <button className="t4-skip-btn" onClick={()=>setShowSkipConfirm(true)}>
+            Skip to Results
+          </button>
         </div>
       </div>
 
-      {/* Progress bar (immediately below header) */}
-      <div className="assessment-progress-bar" style={{margin:'0 0 0.5rem 0'}}>
-        <div className="assessment-progress-fill" style={{width:`${progress}%`}} />
+      <div className="assessment-progress-bar">
+        <div className="assessment-progress-fill" style={{ width:`${progress}%` }}/>
       </div>
 
-      <div className="assessment-screen">
+      <div className="t4-content">
+
         {isPlaying && (
-          <div className="playing-indicator">
-            <div className="sound-wave-small"><span/><span/><span/><span/></div>
-            <p>Listen carefully! (1 second between numbers)</p>
+          <div className="t4-listening-banner">
+            <div className="t4-soundwave">
+              <span/><span/><span/><span/><span/>
+            </div>
+            <span>Listen carefully — one second between numbers</span>
           </div>
         )}
 
-        <div className="writing-area">
-          {/* Forward card */}
-          <div className={`writing-card forward-card ${forwardSubmitted?(forwardCorrect?'correct':'incorrect'):''}`}>
-            <div className="card-header">
-              <span className="direction-icon">➡️</span>
-              <h3>Forward Order</h3>
-              <span className="direction-label">Left → Right</span>
+        <div className="t4-seq-info">
+          <span className="t4-seq-dots">
+            {currentSeq.numbers.map((_, i) => (
+              <span key={i} className="t4-dot"/>
+            ))}
+          </span>
+          <span className="t4-seq-label">{currentSeq.length} numbers</span>
+        </div>
+
+        <div className="t4-cards">
+          <div className={`t4-card${forwardSubmitted ? (forwardCorrect ? ' t4-card--correct' : ' t4-card--wrong') : ''}`}>
+            <div className="t4-card-head">
+              <div className="t4-card-tag t4-card-tag--fwd">Forward</div>
+              <span className="t4-card-dir">Same order you heard</span>
             </div>
-            <div className="writing-box">
-              <div className="writing-line">
-                {forwardSubmitted&&forwardCorrect&&<span className="check-mark">✓</span>}
-                {forwardSubmitted&&forwardCorrect===false&&<span className="x-mark">✗</span>}
-                <input type="text" className={`writing-input ${forwardSubmitted?(forwardCorrect?'correct-input':'incorrect-input'):''}`}
-                  value={forwardInput} placeholder="Type numbers in order (e.g. 4 7)"
-                  onChange={e=>!forwardSubmitted&&setForwardInput(e.target.value)}
-                  disabled={forwardSubmitted||isPlaying}/>
+            <div className="t4-input-wrap">
+              <input
+                type="text"
+                className={`t4-input${forwardSubmitted ? (forwardCorrect ? ' t4-input--ok' : ' t4-input--err') : ''}`}
+                value={forwardInput}
+                placeholder="e.g. 4 7"
+                onChange={e=>!forwardSubmitted&&setForwardInput(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&handleForwardSubmit()}
+                disabled={forwardSubmitted||isPlaying}
+              />
+              {forwardSubmitted && (
+                <span className={`t4-result-icon${forwardCorrect?' t4-result-icon--ok':' t4-result-icon--err'}`}>
+                  {forwardCorrect ? '✓' : '✗'}
+                </span>
+              )}
+            </div>
+            {!forwardSubmitted ? (
+              <button
+                className="t4-submit-btn t4-submit-btn--fwd"
+                onClick={handleForwardSubmit}
+                disabled={!forwardInput.trim()||isPlaying}
+              >
+                Submit Forward
+              </button>
+            ) : (
+              <div className={`t4-feedback${forwardCorrect ? ' t4-feedback--ok' : ' t4-feedback--err'}`}>
+                {forwardCorrect ? 'Correct!' : `Answer: ${currentSeq.numbers.join(' ')}`}
               </div>
-              <div className="writing-hint">Write the numbers in the SAME order you heard</div>
-            </div>
-            {!forwardSubmitted&&<button className="submit-btn forward-btn" onClick={handleForwardSubmit} disabled={!forwardInput.trim()||isPlaying}>✅ Submit Forward</button>}
-            {forwardSubmitted&&forwardCorrect&&<div className="feedback-badge correct-badge">🎉 Correct!</div>}
-            {forwardSubmitted&&forwardCorrect===false&&<div className="feedback-badge incorrect-badge">Correct order: {currentSeq.numbers.join(' → ')}</div>}
+            )}
           </div>
 
-          {/* Reverse card */}
-          <div className={`writing-card reverse-card ${reverseSubmitted?(reverseCorrect?'correct':'incorrect'):''}`}>
-            <div className="card-header">
-              <span className="direction-icon">⬅️</span>
-              <h3>Reverse Order</h3>
-              <span className="direction-label">Right → Left</span>
+          <div className={`t4-card${reverseSubmitted ? (reverseCorrect ? ' t4-card--correct' : ' t4-card--wrong') : ''}`}>
+            <div className="t4-card-head">
+              <div className="t4-card-tag t4-card-tag--rev">Reverse</div>
+              <span className="t4-card-dir">Backwards — last to first</span>
             </div>
-            <div className="writing-box">
-              <div className="writing-line">
-                {reverseSubmitted&&reverseCorrect&&<span className="check-mark">✓</span>}
-                {reverseSubmitted&&reverseCorrect===false&&<span className="x-mark">✗</span>}
-                <input type="text" className={`writing-input ${reverseSubmitted?(reverseCorrect?'correct-input':'incorrect-input'):''}`}
-                  value={reverseInput} placeholder="Type numbers BACKWARDS (e.g. 7 4)"
-                  onChange={e=>!reverseSubmitted&&setReverseInput(e.target.value)}
-                  disabled={reverseSubmitted||isPlaying}/>
+            <div className="t4-input-wrap">
+              <input
+                type="text"
+                className={`t4-input${reverseSubmitted ? (reverseCorrect ? ' t4-input--ok' : ' t4-input--err') : ''}`}
+                value={reverseInput}
+                placeholder="e.g. 7 4"
+                onChange={e=>!reverseSubmitted&&setReverseInput(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&handleReverseSubmit()}
+                disabled={reverseSubmitted||isPlaying}
+              />
+              {reverseSubmitted && (
+                <span className={`t4-result-icon${reverseCorrect?' t4-result-icon--ok':' t4-result-icon--err'}`}>
+                  {reverseCorrect ? '✓' : '✗'}
+                </span>
+              )}
+            </div>
+            {!reverseSubmitted ? (
+              <button
+                className="t4-submit-btn t4-submit-btn--rev"
+                onClick={handleReverseSubmit}
+                disabled={!reverseInput.trim()||isPlaying}
+              >
+                Submit Reverse
+              </button>
+            ) : (
+              <div className={`t4-feedback${reverseCorrect ? ' t4-feedback--ok' : ' t4-feedback--err'}`}>
+                {reverseCorrect ? 'Correct!' : `Answer: ${[...currentSeq.numbers].reverse().join(' ')}`}
               </div>
-              <div className="writing-hint">Write the numbers in REVERSE order (last to first)</div>
-            </div>
-            {!reverseSubmitted&&<button className="submit-btn reverse-btn" onClick={handleReverseSubmit} disabled={!reverseInput.trim()||isPlaying}>🔄 Submit Reverse</button>}
-            {reverseSubmitted&&reverseCorrect&&<div className="feedback-badge correct-badge">🎉 Correct!</div>}
-            {reverseSubmitted&&reverseCorrect===false&&<div className="feedback-badge incorrect-badge">Correct reverse: {[...currentSeq.numbers].reverse().join(' → ')}</div>}
+            )}
           </div>
         </div>
 
-        <div className="character-area">
-          <div className="character-thinking">🐵</div>
-          <div className="speech-bubble">
-            {isPlaying?'🎤 Listen carefully!':!forwardSubmitted?'✏️ Write the numbers FORWARD first!':!reverseSubmitted?'🔄 Now write them in REVERSE!':'🎉 Moving to next sequence…'}
-          </div>
-        </div>
-
-        {isPaused&&(
-          <div className="pause-overlay-full">
-            <div className="pause-content-card">
-              <h2>⏸️ Game Paused</h2>
-              <p>Your progress has been saved!</p>
-              <button className="btn-resume-game" onClick={handleResume}>▶️ Resume</button>
-              <button className="btn-quit-game" onClick={handleQuit}>🏠 Save & Quit</button>
-            </div>
-          </div>
-        )}
-        {saving&&<div className="saving-overlay">💾 Saving...</div>}
-        {saveError&&!saving&&<div className="error-notice">⚠️ {saveError}</div>}
+        {saving    && <div className="t4-notice t4-notice--saving">Saving…</div>}
+        {saveError && !saving && <div className="t4-notice t4-notice--error">{saveError}</div>}
       </div>
 
-      <style>{`
-        @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .sound-wave-small span { 
-          display: inline-block; width: 4px; background: #3D5A4C; border-radius: 2px; 
-          animation: soundWave 0.8s ease-in-out infinite; 
-        }
-        .sound-wave-small span:nth-child(1) { height: 12px; }
-        .sound-wave-small span:nth-child(2) { height: 20px; animation-delay: 0.1s; }
-        .sound-wave-small span:nth-child(3) { height: 16px; animation-delay: 0.2s; }
-        .sound-wave-small span:nth-child(4) { height: 10px; animation-delay: 0.3s; }
-        @keyframes soundWave { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(1.8); } }
-      `}</style>
+      {isPaused && (
+        <div className="t4-pause-overlay">
+          <div className="t4-pause-card">
+            <div className="t4-pause-icon">⏸</div>
+            <h2>Paused</h2>
+            <p>Your progress has been saved.</p>
+            <button className="t4-btn t4-btn--green t4-btn--wide" onClick={handlePause}>Resume</button>
+            <button className="t4-btn t4-btn--ghost t4-btn--wide" onClick={handleBack}>Save & Quit</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
