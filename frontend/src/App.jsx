@@ -16,7 +16,7 @@ import { CTA } from './components/CTA/CTA';
 import { Footer } from './components/Footer/Footer';
 import Dashboard from './components/Dashboard/Dashboard';
 import ReadingAdventure from './components/ReadingAdventure/ReadingAdventure';
-import ParentDashboard from './components/ParentDashboard/ParentDashboard'; // ✅ default import (no braces)
+import ParentDashboard from './components/ParentDashboard/ParentDashboard'; 
 import StartAssessment from './components/Startassessment/Startassessment';
 import ChildInfo from './components/ChildInfoPage/ChildInfo.jsx';
 import QuizPage from './components/QuizPage/QuizPage';
@@ -30,9 +30,8 @@ import ResetPassword from './pages/ResetPassword';
 import AuditLog from './pages/AuditLog';
 import { PrivateRoute, RoleRoute, PublicRoute } from './components/RouteGuards';
 import SpellingBagGame from './components/ParentDashboard/SpellingBagGame';
-import WordPictureMatching from './components/Activities/WordPictureMatching';
-import LetterSoundMatching from './components/Activities/LetterSoundMatching';
-import ReadingComprehension from './components/Activities/ReadingComprehension';
+import AlphabetSwipe from "./components/Activities/AlphabetSwipe";
+import SyllableBreaking from "./components/Activities/SyllableBreaking";
 
 function App() {
   const [scrollY, setScrollY] = useState(0);
@@ -115,10 +114,10 @@ function App() {
             </RoleRoute>
           } />
           
-          <Route path="/activity/word-picture" element={<WordPictureMatching />} />
-          <Route path="/activity/letter-sound" element={<LetterSoundMatching />} />
-          <Route path="/activity/reading" element={<ReadingComprehension />} />
-
+        
+         <Route path="/activity/syllable-breaking" element={<SyllableBreaking />} />
+              <Route path="/activity/letter-sound" element={<AlphabetSwipe />} />
+              <Route path="/activity/syllable-breaking" element={<SyllableBreaking />} />
           <Route path="/parent-dashboard" element={
             <RoleRoute allowedRole="parent">
               <ParentDashboard />

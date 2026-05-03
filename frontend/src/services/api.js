@@ -134,7 +134,7 @@ export async function apiFetch(path, options = {}, _retry = false) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// AUTH ENDPOINTS (unchanged)
+// AUTH ENDPOINTS
 // ─────────────────────────────────────────────────────────────
 export async function login(email, password) {
     const res = await fetch(`${BASE_URL}/api/auth/login`, {
@@ -183,7 +183,7 @@ export async function resetPassword(token, newPassword) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CHILD SESSION (unchanged)
+// CHILD SESSION
 // ─────────────────────────────────────────────────────────────
 export async function saveChildSession(sessionData) {
     const user = getCurrentUser();
@@ -231,7 +231,7 @@ export function clearChildSession() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// PARENT ENDPOINTS (with fallbacks)
+// PARENT ENDPOINTS
 // ─────────────────────────────────────────────────────────────
 export async function registerParent(fullName, email, phone, password, child_session_id, child_name) {
     const res = await fetch(`${BASE_URL}/api/parents/register`, {
@@ -316,7 +316,7 @@ export async function fetchParentInfo() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// ASSESSMENT RESULTS (unchanged)
+// ASSESSMENT RESULTS
 // ─────────────────────────────────────────────────────────────
 export async function fetchMyResults() {
     const res = await apiFetch('/api/parents/me/results');
@@ -339,7 +339,7 @@ export async function fetchAssessmentSummary(childSessionId) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// TASK SUBMISSION (unchanged)
+// TASK SUBMISSION
 // ─────────────────────────────────────────────────────────────
 export async function submitTask1(taskData) {
     const childSessionId = getCurrentChildSessionId();
@@ -374,7 +374,7 @@ export async function submitTask4(taskData) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// QUIZ ENDPOINTS (unchanged)
+// QUIZ ENDPOINTS
 // ─────────────────────────────────────────────────────────────
 export async function fetchQuizQuestions() {
     const res = await fetch(`${BASE_URL}/api/quiz/questions`);
@@ -396,7 +396,7 @@ export async function submitQuiz(quizData) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// MESSAGES (unchanged)
+// MESSAGES
 // ─────────────────────────────────────────────────────────────
 export async function fetchMessages(parentId = null) {
     let url = '/api/messages';
@@ -483,80 +483,78 @@ export async function fetchActivities() {
     } catch (err) { console.error(err); return { activities: [] }; }
 }
 
-// -- localStorage helpers (defined once) --
-const getStorageKey = () => 'mock_assignments';
+// ─────────────────────────────────────────────────────────────
+// ASSIGNMENTS (Therapist & Parent) – Fixed for syllable support
+// ─────────────────────────────────────────────────────────────
+const ASSIGNMENTS_STORAGE_KEY = 'lexicare_assignments';
 
-// Helper to get all assignments from localStorage
+// Default activities with proper configs for both types
+const DEFAULT_ACTIVITIES = {
+    1: { 
+        id: 1, 
+        name: 'Alphabet Swiping', 
+        type: 'letter_sound', 
+        difficulty_level: 1,
+        config: { letters: ['E','B','G','O','C'], words: ['Elephant','Butterfly','Giraffe','Owl','Cow'] } 
+    },
+    2: { 
+        id: 2, 
+        name: 'Syllable Breaking', 
+        type: 'syllable', 
+        difficulty_level: 1,
+        config: { words: ['Banana','Apple','Tiger','Robot','Elephant'] } 
+    },
+};
+
 function getStoredAssignments() {
-    const stored = localStorage.getItem(getStorageKey());
+    const stored = localStorage.getItem(ASSIGNMENTS_STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
 }
 
-// Helper to save assignments to localStorage
 function saveStoredAssignments(assignments) {
-    localStorage.setItem(getStorageKey(), JSON.stringify(assignments));
+    localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(assignments));
 }
 
-// Helper to get assignments for a child with config attached
-function getAssignmentsForChild(childId) {
-    const all = getStoredAssignments();
-    const defaultActivities = [
-        { id: 1, name: 'Word-Picture Matching', type: 'matching', config: { pairs: [{ word: 'cat', image: 'https://placehold.co/200?text=🐱' }, { word: 'dog', image: 'https://placehold.co/200?text=🐶' }] } },
-        { id: 2, name: 'Letter & Sound Match', type: 'letter_sound', config: { items: [{ letter: 'A', sound: '/sounds/a.mp3', image: 'https://placehold.co/100?text=🍎' }] } },
-        { id: 3, name: 'Reading Comprehension', type: 'reading', config: { passage: 'Ali has a red ball.', questions: [{ text: 'What color?', options: ['Blue','Red','Green'], correct: 1 }] } }
-    ];
-    const childAssignments = all.filter(a => a.child_id === parseInt(childId));
-    return childAssignments.map(assign => {
-        const act = defaultActivities.find(a => a.id === assign.activity_id);
-        return { ...assign, config: act?.config || null };
-    });
-}
-
-// ─────────────────────────────────────────────────────────────
-// Assignments (Therapist view)
-// ─────────────────────────────────────────────────────────────
+// For therapist dashboard: get all assignments
 export async function fetchAssignments() {
     try {
         const res = await apiFetch('/api/therapist/assignments');
-        if (!res.ok) { if (res.status === 404) return getStoredAssignments(); throw new Error('Failed to fetch assignments'); }
+        if (!res.ok) {
+            if (res.status === 404) return getStoredAssignments();
+            throw new Error('Failed to fetch assignments');
+        }
         const data = await res.json();
         return data.assignments || [];
     } catch (err) {
-        console.warn('⚠️ Backend fetchAssignments failed, using localStorage');
+        console.warn('⚠️ Using localStorage for assignments');
         return getStoredAssignments();
     }
 }
 
-export async function assignActivity(childId, activityId) {
+// For therapist dashboard: assign an activity to a child
+export async function assignActivity(childId, activityId, difficulty = 1) {
     try {
         const res = await apiFetch('/api/therapist/assignments', {
             method: 'POST',
-            body: JSON.stringify({ child_id: childId, activity_id: activityId }),
+            body: JSON.stringify({ child_id: childId, activity_id: activityId, difficulty_level: difficulty }),
         });
         if (!res.ok) throw new Error('Server error');
         return res.json();
     } catch (err) {
-        console.warn('⚠️ Backend assignment failed, using localStorage fallback');
-        
-        const existing = getStoredAssignments();
-        // Prevent duplicate assignments for same child+activity
-        const alreadyAssigned = existing.some(a => a.child_id === parseInt(childId) && a.activity_id === parseInt(activityId));
+        console.warn('⚠️ Backend assignment failed, using localStorage');
+        const assignments = getStoredAssignments();
+        const alreadyAssigned = assignments.some(a => a.child_id == childId && a.activity_id == activityId);
         if (alreadyAssigned) {
             console.warn('Activity already assigned to this child');
             return { success: true, alreadyAssigned: true };
         }
-        
-        const defaultActivities = [
-            { id: 1, name: 'Word-Picture Matching', type: 'matching', difficulty_level: 1,
-              config: { pairs: [{ word: 'cat', image: 'https://placehold.co/200?text=🐱' }, { word: 'dog', image: 'https://placehold.co/200?text=🐶' }] } },
-            { id: 2, name: 'Letter & Sound Match', type: 'letter_sound', difficulty_level: 1,
-              config: { items: [{ letter: 'A', sound: '/sounds/a.mp3', image: 'https://placehold.co/100?text=🍎' }] } },
-            { id: 3, name: 'Reading Comprehension', type: 'reading', difficulty_level: 1,
-              config: { passage: 'Ali has a red ball.', questions: [{ text: 'What color?', options: ['Blue','Red','Green'], correct: 1 }] } }
-        ];
-        const activity = defaultActivities.find(a => a.id === parseInt(activityId)) || 
-                         { id: activityId, name: `Activity ${activityId}`, type: 'matching', difficulty_level: 1, config: {} };
-        
+        const activity = DEFAULT_ACTIVITIES[activityId] || {
+            id: activityId,
+            name: `Activity ${activityId}`,
+            type: 'syllable',
+            difficulty_level: difficulty,
+            config: {}
+        };
         const newAssignment = {
             id: Date.now(),
             child_id: parseInt(childId),
@@ -566,28 +564,25 @@ export async function assignActivity(childId, activityId) {
             child_name: `Child ${childId}`,
             activity_name: activity.name,
             type: activity.type,
-            difficulty_level: activity.difficulty_level,
-            description: activity.name + ' - assigned by therapist',
+            difficulty_level: difficulty,
+            description: `${activity.name} - assigned by therapist`,
             config: activity.config,
         };
-        
-        existing.push(newAssignment);
-        saveStoredAssignments(existing);
+        assignments.push(newAssignment);
+        saveStoredAssignments(assignments);
         return { success: true, assignment: newAssignment };
     }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Parent endpoints
-// ─────────────────────────────────────────────────────────────
+// For parent dashboard: get assignments for a specific child
 export async function fetchAssignmentsForChild(childId) {
     if (!childId) return [];
     try {
         const res = await apiFetch(`/api/assignments/child/${childId}`);
         if (!res.ok) {
             if (res.status === 404) {
-                console.warn('⚠️ fetchAssignmentsForChild: endpoint missing, using localStorage');
-                return getAssignmentsForChild(childId);
+                console.warn('⚠️ /api/assignments/child missing, using localStorage');
+                return getLocalAssignmentsForChild(childId);
             }
             throw new Error('Failed to fetch assignments for child');
         }
@@ -595,10 +590,27 @@ export async function fetchAssignmentsForChild(childId) {
         return data.assignments || [];
     } catch (err) {
         console.warn('⚠️ fetchAssignmentsForChild error, using localStorage');
-        return getAssignmentsForChild(childId);
+        return getLocalAssignmentsForChild(childId);
     }
 }
 
+// Helper to get assignments from localStorage and merge default configs
+function getLocalAssignmentsForChild(childId) {
+    const all = getStoredAssignments();
+    const numericChildId = parseInt(childId);
+    return all
+        .filter(a => a.child_id === numericChildId)
+        .map(assign => {
+            const activity = DEFAULT_ACTIVITIES[assign.activity_id];
+            return {
+                ...assign,
+                config: assign.config || activity?.config || null,
+                type: assign.type || activity?.type || 'syllable',
+            };
+        });
+}
+
+// Alias for parent dashboard
 export const fetchAssignedActivities = fetchAssignmentsForChild;
 
 export async function completeAssignment(assignmentId, score, resultData = null) {
@@ -610,7 +622,9 @@ export async function completeAssignment(assignmentId, score, resultData = null)
     return res.json();
 }
 
-// Additional dashboard endpoints (unchanged but with fallbacks)
+// ─────────────────────────────────────────────────────────────
+// Additional dashboard endpoints (fallbacks only)
+// ─────────────────────────────────────────────────────────────
 export async function fetchStudents() {
     try {
         const res = await apiFetch('/api/dashboard/students');

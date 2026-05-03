@@ -1,0 +1,605 @@
+/* SyllableBreaking.css */
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700;800;900&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Lexend', sans-serif;
+  background: #FFF8EE;
+  overflow: hidden;
+}
+
+/* ================================================================
+   APP SHELL
+================================================================ */
+.sy-app {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #EAF9F8 0%, #FFF8EE 60%, #FFF0DC 100%);
+  overflow: hidden;
+}
+
+/* ================================================================
+   HEADER
+================================================================ */
+.sy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.sy-home-top-btn {
+  background: #1E2E5C;
+  color: white;
+  border: none;
+  border-radius: 40px;
+  padding: 8px 18px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: 'Lexend', sans-serif;
+  transition: transform 0.1s;
+}
+.sy-home-top-btn:hover { transform: scale(1.02); }
+
+.sy-hcenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+}
+
+.sy-htitle {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #1E2E5C;
+  opacity: 0.65;
+}
+
+.sy-bar-track {
+  width: 160px;
+  height: 7px;
+  background: rgba(30,46,92,0.12);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.sy-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3DBFB8, #6DE8E0);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+.sy-stars-btn {
+  background: #FFF3D0;
+  border: 2px solid #F5A623;
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #A06000;
+  cursor: default;
+}
+
+/* ================================================================
+   CARD COUNTER
+================================================================ */
+.sy-counter {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1E2E5C;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   STAGE
+================================================================ */
+.sy-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 6px 16px;
+  min-height: 0;       /* critical – prevents overflow */
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+.sy-arrow {
+  width: 54px;
+  height: 54px;
+  background: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 32px;
+  cursor: pointer;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.10);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1E2E5C;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  font-family: 'Lexend', sans-serif;
+}
+.sy-arrow:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+.sy-arrow:disabled { opacity: 0.3; cursor: default; }
+
+.sy-card-area {
+  flex: 1;
+  max-width: 680px;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ================================================================
+   FLASHCARD
+================================================================ */
+.sy-card {
+  width: 100%;
+  max-width: 650px;
+  border-radius: 52px;
+  padding: 26px 24px 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 24px 44px rgba(0,0,0,0.12);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.sy-card:hover { transform: translateY(-3px); }
+.sy-card:active { transform: scale(0.985); }
+
+.sy-card-blob {
+  position: absolute;
+  top: -35px;
+  right: -25px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sy-word {
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 14px;
+  letter-spacing: -0.5px;
+}
+
+.sy-image-circle {
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 0 16px;
+}
+
+.sy-emoji-big {
+  font-size: 100px;
+  line-height: 1;
+  user-select: none;
+}
+
+/* For real image fallback */
+.sy-picture-img {
+  width: 190px;
+  height: 190px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+/* ================================================================
+   AUDIO PILL
+================================================================ */
+.sy-audio-pill {
+  background: #E0F7F6;
+  border: 2.5px solid rgba(61,191,184,0.4);
+  border-radius: 60px;
+  padding: 10px 22px;
+  font-size: 17px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 6px 0 16px;
+  font-family: 'Lexend', sans-serif;
+}
+.sy-audio-pill:active { transform: scale(0.97); }
+.sy-audio-pill.playing {
+  background: #3DBFB8;
+  color: white;
+  border-color: #3DBFB8;
+}
+
+/* ================================================================
+   WAVE BARS
+================================================================ */
+.sy-wave {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  height: 18px;
+}
+.sy-wave-bar {
+  width: 4px;
+  background: currentColor;
+  border-radius: 4px;
+  animation: waveAnim 0.9s infinite;
+}
+@keyframes waveAnim {
+  0%, 100% { height: 5px; }
+  50%       { height: 18px; }
+}
+
+/* ================================================================
+   SYLLABLE BUTTONS
+================================================================ */
+.sy-syllables-row {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.sy-syllable-btn {
+  border-radius: 44px;
+  padding: 10px 22px;
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 2.5px solid;
+  transition: 0.1s;
+  font-family: 'Lexend', sans-serif;
+}
+.sy-syllable-btn:active { transform: scale(0.95); }
+
+/* ================================================================
+   BUILD BUTTON (last card only)
+================================================================ */
+.sy-build-under-btn {
+  margin-top: 4px;
+  padding: 13px 28px;
+  border-radius: 55px;
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+  font-family: 'Lexend', sans-serif;
+  transition: transform 0.1s;
+}
+.sy-build-under-btn:hover { transform: scale(1.02); }
+.sy-build-under-btn:active { transform: scale(0.98); }
+
+/* ================================================================
+   SLIDE ANIMATIONS
+================================================================ */
+.sy-card.slide-in-right  { animation: slideInRight 0.35s forwards; }
+.sy-card.slide-in-left   { animation: slideInLeft 0.35s forwards; }
+.sy-card.slide-out-right { animation: slideOutRight 0.24s forwards; }
+.sy-card.slide-out-left  { animation: slideOutLeft 0.24s forwards; }
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(70px) scale(0.93); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-70px) scale(0.93); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(70px); }
+}
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-70px); }
+}
+
+/* ================================================================
+   BOTTOM DOTS NAV
+================================================================ */
+.sy-bottom {
+  display: flex;
+  justify-content: center;
+  padding: 10px 20px 16px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.sy-dots { display: flex; gap: 8px; }
+
+.sy-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #C0CFE0;
+  transition: all 0.2s;
+}
+.sy-dot.act  { width: 28px; border-radius: 10px; background: #3DBFB8; }
+.sy-dot.done { background: #3DBFB8; opacity: 0.5; }
+
+/* ================================================================
+   BUILDING PHASE
+================================================================ */
+.sy-building-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 18px;
+  padding: 16px 20px 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.sy-building-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.sy-building-emoji {
+  font-size: 90px;
+  line-height: 1;
+}
+
+.sy-building-title {
+  font-size: 26px;
+  font-weight: 800;
+}
+
+/* Syllable slot groups */
+.sy-slots-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 640px;
+}
+
+.sy-slot-group {
+  background: rgba(255,255,255,0.85);
+  border-radius: 24px;
+  padding: 12px 14px;
+  min-width: 120px;
+  text-align: center;
+  border: 3px solid transparent;
+  transition: all 0.2s;
+}
+.sy-slot-group.active-slot {
+  border-color: #F5A623;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(245,166,35,0.25);
+}
+.sy-slot-group.done-slot {
+  opacity: 0.65;
+  border-color: #4CAF82;
+}
+
+.sy-slot-label {
+  font-size: 24px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.sy-slot-letters {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sy-slot-letter-box {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.sy-slot-letter {
+  font-size: 36px;
+  font-weight: 800;
+}
+
+.sy-slot-blank {
+  font-size: 28px;
+  color: #ccc;
+}
+
+/* Letter bank tiles */
+.sy-letters-bank {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  max-width: 560px;
+}
+
+.sy-letter-tile {
+  width: 82px;
+  height: 82px;
+  border-radius: 24px;
+  font-size: 44px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 4px solid;
+  transition: 0.08s;
+  font-family: 'Lexend', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sy-letter-tile:active { transform: scale(0.93); }
+
+.sy-letter-tile.shake {
+  animation: shakeAnim 0.22s ease-in-out 0s 2;
+}
+.sy-letter-tile.flash-red {
+  background: #ffcccc !important;
+}
+
+@keyframes shakeAnim {
+  0%   { transform: translateX(0); }
+  25%  { transform: translateX(-6px); }
+  75%  { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}
+
+/* Completion toast */
+.sy-complete-toast {
+  position: fixed;
+  bottom: 28%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4CAF82;
+  color: white;
+  padding: 12px 26px;
+  border-radius: 55px;
+  font-size: 22px;
+  font-weight: 800;
+  animation: toastAnim 1.5s forwards;
+  z-index: 200;
+  white-space: nowrap;
+  font-family: 'Lexend', sans-serif;
+}
+@keyframes toastAnim {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  80%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-40px); }
+}
+
+/* ================================================================
+   CELEBRATION
+================================================================ */
+.sy-celebrate {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  gap: 12px;
+}
+
+.sy-cel-trophy { font-size: 90px; animation: bounceIn 0.6s; }
+.sy-cel-title  { font-size: 44px; font-weight: 900; color: #1E2E5C; }
+.sy-cel-sub    { font-size: 22px; color: #555; margin-top: 4px; }
+
+.sy-stars-row  { display: flex; gap: 14px; margin: 8px 0; }
+.sy-star-pop   {
+  font-size: 56px;
+  animation: starPop 0.4s forwards;
+  opacity: 0;
+}
+
+@keyframes starPop {
+  from { opacity: 0; transform: scale(0); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes bounceIn {
+  from { transform: scale(0.3); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+.sy-celebrate-buttons {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.sy-replay-btn {
+  background: linear-gradient(135deg, #3DBFB8, #2A9990);
+  color: white;
+  border: none;
+  border-radius: 44px;
+  padding: 14px 32px;
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: 'Lexend', sans-serif;
+}
+
+/* ================================================================
+   CONFETTI
+================================================================ */
+.sy-confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.sy-confetti-piece {
+  position: absolute;
+  top: -20px;
+  border-radius: 3px;
+  animation: confettiFall linear forwards;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+
+/* ================================================================
+   RESPONSIVE
+================================================================ */
+@media (max-width: 800px) {
+  .sy-card        { max-width: 560px; padding: 22px 18px 18px; }
+  .sy-word        { font-size: 40px; }
+  .sy-image-circle{ width: 180px; height: 180px; }
+  .sy-emoji-big   { font-size: 80px; }
+  .sy-syllable-btn{ font-size: 19px; padding: 9px 18px; }
+  .sy-build-under-btn { font-size: 19px; padding: 11px 22px; }
+  .sy-arrow       { width: 48px; height: 48px; font-size: 28px; }
+}
+
+@media (max-width: 600px) {
+  .sy-card        { max-width: 100%; border-radius: 36px; padding: 18px 14px 16px; }
+  .sy-word        { font-size: 32px; }
+  .sy-image-circle{ width: 150px; height: 150px; }
+  .sy-emoji-big   { font-size: 64px; }
+  .sy-syllable-btn{ font-size: 16px; padding: 8px 14px; }
+  .sy-arrow       { width: 42px; height: 42px; font-size: 24px; }
+  .sy-slot-letter-box { width: 48px; height: 48px; }
+  .sy-slot-letter { font-size: 28px; }
+  .sy-letter-tile { width: 68px; height: 68px; font-size: 36px; }
+  .sy-building-emoji { font-size: 72px; }
+}

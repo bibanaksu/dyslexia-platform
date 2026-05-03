@@ -1,4 +1,4 @@
-// Dashboard.jsx — LexiCare Clinical Portal (Fully Fixed)
+// Dashboard.jsx — LexiCare Clinical Portal (Old Design, Only Alphabet Swiping & Syllable Breaking)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -59,7 +59,7 @@ const Icons = {
   plus:      'M12 5v14M5 12h14',
   check:     'M20 6L9 17l-5-5',
   chevron:   'M6 9l6 6 6-6',
-  user:      'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  user:      'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   bell:      'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0',
   clock:     'M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zM12 6v6l4 2',
   star:      'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
@@ -116,7 +116,7 @@ function RiskBadge({ score }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// HOME TAB (Corrected table)
+// HOME TAB
 // ══════════════════════════════════════════════════════════════
 function HomeTab({ patients, onViewPatient }) {
   const completed = patients.filter(p => p.overall_score != null);
@@ -208,7 +208,7 @@ function HomeTab({ patients, onViewPatient }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// PATIENTS TAB (unchanged, correct)
+// PATIENTS TAB
 // ══════════════════════════════════════════════════════════════
 function PatientsTab({ patients, onViewPatient }) {
   const [search, setSearch] = useState('');
@@ -311,7 +311,7 @@ function PatientsTab({ patients, onViewPatient }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// PATIENT DETAIL PANEL (slide-in)
+// PATIENT DETAIL PANEL
 // ══════════════════════════════════════════════════════════════
 function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
   const [notes, setNotes] = useState([]);
@@ -431,7 +431,7 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// CHAT TAB (unchanged, but correct)
+// CHAT TAB
 // ══════════════════════════════════════════════════════════════
 function ChatTab({ patients, defaultParent, onMessagesRead }) {
   const [conversations, setConversations] = useState([]);
@@ -570,7 +570,7 @@ function ChatTab({ patients, defaultParent, onMessagesRead }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// NOTES TAB (unchanged)
+// NOTES TAB
 // ══════════════════════════════════════════════════════════════
 function NotesTab({ patients }) {
   const [notes, setNotes] = useState([]);
@@ -654,13 +654,12 @@ function NotesTab({ patients }) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ACTIVITIES TAB (Therapist view) – Hardcoded activities, fixed table
+// ACTIVITIES TAB – Only two activities, fixed table syntax
 // ══════════════════════════════════════════════════════════════
 function ActivitiesTab({ patients }) {
   const defaultActivities = [
-    { id: 1, name: 'Word-Picture Matching', description: 'Match the word to the correct picture', type: 'matching', difficulty_level: 1 },
-    { id: 2, name: 'Letter & Sound Match', description: 'Listen and select the correct letter', type: 'letter_sound', difficulty_level: 1 },
-    { id: 3, name: 'Reading Comprehension: Ali\'s Ball', description: 'Read a short story and answer questions', type: 'reading', difficulty_level: 1 },
+    { id: 1, name: 'Alphabet Swiping', description: 'Swipe through animal flashcards, then match the first letter to the animal picture. Builds phonemic awareness and letter‑sound association.', type: 'letter_sound', difficulty_level: 1 },
+    { id: 2, name: 'Syllable Breaking', description: 'Break words into syllables, hear each part, then build the word by dragging letters into the correct syllable slots. Teaches word segmentation.', type: 'syllable', difficulty_level: 1 },
   ];
 
   const [activities, setActivities] = useState(defaultActivities);
@@ -674,7 +673,8 @@ function ActivitiesTab({ patients }) {
     fetchAssignments().then(data => setAssignments(Array.isArray(data) ? data : [])).catch(() => setAssignments([]));
     fetchActivities().then(data => {
       const acts = data?.activities || (Array.isArray(data) ? data : []);
-      if (acts && acts.length > 0) setActivities(acts);
+      const filtered = acts.filter(a => a.type === 'letter_sound' || a.type === 'syllable');
+      if (filtered.length > 0) setActivities(filtered);
     }).catch(() => {});
   }, []);
 
@@ -758,8 +758,16 @@ function ActivitiesTab({ patients }) {
                   <tr key={i}>
                     <td><div style={{ fontWeight: 600 }}>{a.child_name || `Child #${a.child_id}`}</div></td>
                     <td>{a.activity_name || `Activity #${a.activity_id}`}</td>
-                    <td><span className="td-diff-pill" data-level={a.difficulty_level}>{DIFF_LABELS[a.difficulty_level] || '—'}</span></td>
-                    <td><span className={`td-status-pill ${a.completed ? 'done' : 'pending'}`}>{a.completed ? 'Completed' : 'In Progress'}</span></td>
+                    <td>
+                      <span className="td-diff-pill" data-level={a.difficulty_level}>
+                        {DIFF_LABELS[a.difficulty_level] || '—'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`td-status-pill ${a.completed ? 'done' : 'pending'}`}>
+                        {a.completed ? 'Completed' : 'In Progress'}
+                      </span>
+                    </td>
                     <td>{fmtDate(a.created_at)}</td>
                   </tr>
                 ))}
