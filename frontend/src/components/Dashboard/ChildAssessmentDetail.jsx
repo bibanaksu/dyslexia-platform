@@ -1,6 +1,5 @@
-// frontend/src/components/Dashboard/ChildAssessmentDetail.jsx
-import React, { useState, useEffect } from 'react';
-import { fetchChildTaskDetails } from '../../services/api';
+import React, { useState, useEffect, Component } from 'react';
+import { fetchTaskDetails } from '../../services/api';
 
 // ─── PALETTE: Blue & White clinical theme ─────────────────────
 const P = {
@@ -147,7 +146,6 @@ function SectionHeader({ title, count }) {
 
 // ── SCORE BAR ─────────────────────────────────────────────────
 function ScoreBar({ label, score }) {
-  // FIX: ensure score is a number
   const numericScore = score != null ? Number(score) : null;
   const r = getRisk(numericScore);
   return (
@@ -201,18 +199,42 @@ function DataTable({ rows, columns, emptyMessage = 'No data recorded.' }) {
 }
 
 // ── HELPER: Normalize word details from API ──────────────────
-// Inside ChildAssessmentDetail.jsx
 function normalizeWordDetails(raw) {
   if (!raw) return [];
-  let arr = Array.isArray(raw) ? raw : Object.values(raw);
-  return arr.map(item => {
-    // Handle different possible field names from backend
+  
+  let details;
+  if (typeof raw === 'string') {
+    try {
+      details = JSON.parse(raw);
+    } catch (e) {
+      console.warn('Failed to parse word_details JSON:', e);
+      return [];
+    }
+  } else {
+    details = Array.isArray(raw) ? raw : Object.values(raw);
+  }
+  
+  if (Array.isArray(details) && details[0]?.index !== undefined) {
+    const allWords = ['She','eats','bread','and','drinks','outside','to','play','with','her','friend','Sara','in','Lina','finds','Sara','and','they','are','very','happy.','After','playing,','they','sit','under','a','tree'];
+    return allWords.map((expected, i) => {
+      const errorItem = details.find(d => d.index === i);
+      const spoken = errorItem?.spoken || '';
+      const correct = !errorItem;
+      return {
+        word: expected,
+        correct,
+        userAnswer: spoken || '—',
+        correctAnswer: expected,
+      };
+    });
+  }
+  
+  return (Array.isArray(details) ? details : Object.values(details)).map(item => {
     const word = item.word || item.expected || item.target || item.stimulus || '';
     let correct = item.correct === true || item.isCorrect === true || item.is_correct === true;
     const userAnswer = item.userAnswer || item.answer || item.response || item.spoken || '';
     const expectedAnswer = item.expected || item.correctAnswer || item.target || '';
     
-    // Override if case‑insensitive match
     if (!correct && userAnswer && expectedAnswer && userAnswer.toLowerCase() === expectedAnswer.toLowerCase()) {
       correct = true;
     }
@@ -225,35 +247,16 @@ function normalizeWordDetails(raw) {
     };
   });
 }
-// ══════════════════════════════════════════════════════════════
-// TASK PANELS
-// ══════════════════════════════════════════════════════════════
-
 
 // ── TASK 1: Word Explorer ─────────────────────────────────────
 function Task1Detail({ data }) {
+  console.log('🔍 RAW Task1 DATA:', data);
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.percentage);
 
-  // FIXED: Better detection of raw counts vs percentages
-  const getCategoryData = (scoreKey, totalKey) => {
-    const score = Number(data[scoreKey]);
-    const total = Number(data[totalKey] || data.totalWords);
-    
-    // If score looks like percentage (0-100 range and > total or no total)
-    if (score >= 0 && score <= 100 && (total === 0 || score > total || total == null)) {
-      return score;
-    }
-    // Raw count - compute percentage
-    if (total > 0 && score <= total) {
-      return Math.round((score / total) * 100);
-    }
-    return score || 0;
-  };
-
-  const similarPct    = getCategoryData('similarWordsScore',    'totalSimilarWords');
-  const nonSimilarPct = getCategoryData('nonSimilarWordsScore', 'totalNonSimilarWords');
-  const pseudoPct     = getCategoryData('pseudoWordsScore',     'totalPseudoWords');
+  const similarPct    = Math.round((Number(data.similar_words_score    || 0) / 20) * 100);
+  const nonSimilarPct = Math.round((Number(data.non_similar_words_score || 0) / 20) * 100);
+  const pseudoPct     = Math.round((Number(data.pseudo_words_score     || 0) / 20) * 100);
 
   const errors = data.errorPatterns;
   const errorRows = (() => {
@@ -286,7 +289,7 @@ function Task1Detail({ data }) {
         emptyMessage="No errors recorded — perfect score on this task."
         columns={[
           { key: 'shown',    label: 'Word Shown',     render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: P.blue800 }}>{v ?? '—'}</span> },
-          { key: 'answered', label: "Child's Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
+{ key: 'answered', label: "Child\\'s Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
           { key: 'correct',  label: 'Status',         render: (v, row) => <StatusPill correct={!!row.correct} /> },
         ]}
       />
@@ -296,6 +299,7 @@ function Task1Detail({ data }) {
 
 // ── TASK 2: Story Reader ──────────────────────────────────────
 function Task2Detail({ data }) {
+  console.log('🔍 RAW Task2 DATA:', data);
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.percentage);
   const allWords = normalizeWordDetails(data.wordDetails);
@@ -329,44 +333,63 @@ function Task2Detail({ data }) {
       </div>
 
       <SectionHeader title="Incorrect Words (Detailed)" count={wrongWords.length} />
-      {/* FIXED: Removed Time column completely */}
       <DataTable
         rows={wrongWords}
         emptyMessage="No incorrect words — all words read correctly."
         columns={[
           { key: 'word',          label: 'Word Shown',     render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: P.blue800 }}>{v || '—'}</span> },
-          { key: 'userAnswer',    label: "Child's Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
+          { key: 'userAnswer',    label:"Child's Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
           { key: 'correctAnswer', label: 'Correct Answer', render: v => <span style={{ fontFamily: 'monospace', color: P.riskNormal.text, fontWeight: 600 }}>{v || '—'}</span> },
-          // Time column REMOVED
         ]}
       />
     </div>
   );
 }
-// ── TASK 3: Letter Detective ──────────────────────────────────
-// ── TASK 3: Letter Detective ──────────────────────────────────
+
+// ── TASK 3: Letter Detective ────────────────────────────────── (🔧 FIXED)
 function Task3Detail({ data }) {
+  console.log('🔍 RAW Task3 DATA:', JSON.stringify(data, null, 2));
+  
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.percentage);
 
-  const rawDetails = data.comparisonDetails || data.comparisons || data.letterComparisons || data.details || data.items || [];
-  const allItems = Array.isArray(rawDetails) ? rawDetails : Object.values(rawDetails);
-  const wrongItems = allItems.filter(d => d && !(d.correct || d.isCorrect));
-
-  // FIXED: More comprehensive letter field detection
-  const getLetter = (item, side) => {
-    const fieldsA = ['letterA', 'letter_a', 'left', 'stimulus1', 'stimulusA', 'charA', 'char1', 'presented1', 'optionA', 'letter1'];
-    const fieldsB = ['letterB', 'letter_b', 'right', 'stimulus2', 'stimulusB', 'charB', 'char2', 'presented2', 'optionB', 'letter2'];
-    
-    if (side === 'A') {
-      for (const field of fieldsA) {
-        if (item[field] != null) return item[field];
-      }
-    } else {
-      for (const field of fieldsB) {
-        if (item[field] != null) return item[field];
-      }
+  // 🛡️ UNIVERSAL DATA EXTRACTOR (handles string/object/array)
+  const safeParseData = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return []; }
     }
+    if (typeof raw === 'object') {
+      // Try snake_case first (DB fields)
+      return raw.comparison_details || raw.details || raw.items || Object.values(raw);
+    }
+    return [];
+  };
+
+  const rawDetails = safeParseData(data.comparison_details || data.comparisonDetails || data.comparisons || data.letterComparisons || data.details || data.items || data.comparison_details);
+  console.log('🔍 Task3 EXTRACTED rawDetails:', rawDetails);
+  
+  const allItems = Array.isArray(rawDetails) ? rawDetails : Object.values(rawDetails || {});
+  const isItemCorrect = (item) => {
+    if (item.is_correct !== undefined) return item.is_correct === 1 || item.is_correct === true;
+    if (item.correct !== undefined) return item.correct;
+    if (item.isCorrect !== undefined) return item.isCorrect;
+
+    // fallback (rare)
+    if (item.user_answer && item.expected_same !== undefined) {
+      const expected = item.expected_same === 1 ? "same" : "different";
+      return item.user_answer.toLowerCase() === expected;
+    }
+
+    return false;
+  };
+
+  const wrongItems = allItems.filter(d => d && !isItemCorrect(d));
+
+  const getLetter = (item, side) => {
+    if (side === 'A') return item.group1 || item.letterA || item.left || null;
+    if (side === 'B') return item.group2 || item.letterB || item.right || null;
     return null;
   };
 
@@ -386,7 +409,7 @@ function Task3Detail({ data }) {
         {allItems.map((item, i) => {
           const la = getLetter(item, 'A');
           const lb = getLetter(item, 'B');
-          const correct = !!(item.correct || item.isCorrect);
+          const correct = isItemCorrect(item);
           const displayLabel = la && lb ? `${la} vs ${lb}` : `Pair ${i + 1}`;
           return <WordTag key={i} label={displayLabel} correct={correct} />;
         })}
@@ -434,45 +457,88 @@ function Task3Detail({ data }) {
     </div>
   );
 }
-// ── TASK 4: Number Memory ─────────────────────────────────────
-// ── TASK 4: Number Memory ─────────────────────────────────────
+
 // ── TASK 4 SUBSECTION (REUSABLE) ──────────────────────────────
 function Task4SubSection({ sub, title, detailsRaw }) {
+  console.log('🔍 Task4SubSection RAW:', { sub, detailsRaw });
+  
   if (!sub) return null;
 
-  let allItems = [];
-  const rawDetails = detailsRaw || sub.details;
-  if (rawDetails) {
-    if (Array.isArray(rawDetails)) {
-      allItems = rawDetails;
-    } else if (typeof rawDetails === 'object') {
-      allItems = Object.values(rawDetails);
+  // 🛡️ REUSE safeParseData from Task3 (move up later)
+  const safeParseData = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === 'string') {
+      try { return JSON.parse(raw); } catch { return []; }
     }
+    if (typeof raw === 'object') {
+      // Backend seq_details/rev_details
+      return raw.seq_details || raw.rev_details || raw.details || raw.items || Object.values(raw);
+    }
+    return [];
+  };
+
+  let allItems = [];
+  const rawDetailsStr = detailsRaw || sub.details || sub.seq_details || sub.rev_details;
+  const rawDetails = safeParseData(rawDetailsStr);
+  console.log('🔍 Task4 EXTRACTED rawDetails:', rawDetails);
+  
+  // Handle nested forward/reverse OR flat array
+  if (Array.isArray(rawDetails)) {
+    allItems = rawDetails;
+  } else if (rawDetails.forward || rawDetails.reverse) {
+    allItems = [];
+    if (rawDetails.forward) allItems.push({ ...rawDetails.forward, type: 'forward', source: 'nested' });
+    if (rawDetails.reverse) allItems.push({ ...rawDetails.reverse, type: 'reverse', source: 'nested' });
+  } else {
+    allItems = Object.values(rawDetails || {});
   }
 
-  // Flatten forward/reverse wrappers
   allItems = allItems.map(item => {
-    if (item && (item.forward || item.reverse)) return item.forward || item.reverse;
+    if (item.forward) {
+      return {
+        ...item.forward,
+        type: 'forward',
+        rawInput: item.forward.input || item.forward_user_input,
+        expected: item.original_numbers
+      };
+    } else if (item.reverse) {
+      return {
+        ...item.reverse,
+        type: 'reverse', 
+        rawInput: item.reverse.input || item.reverse_user_input,
+        expected: item.original_numbers ? item.original_numbers.reverse() : []
+      };
+    }
     return item;
   }).filter(Boolean);
 
-  // FIXED: Better correctness resolution + preserve raw child input
   allItems = allItems.map(item => {
-    const seqVal   = item.sequence || item.shown || item.stimulus || item.expected || item.target || item.question;
-    const rawInput = item.rawInput || item.inputRaw || item.userInput || 
-                    item.input || item.userAnswer || item.answer || item.response || item.childAnswer;
-    const expectVal = item.expected || item.correctAnswer || item.target || seqVal;
+    const seqVal   = item.sequence || item.original_numbers || item.shown || item.stimulus || item.expected || item.target || item.question;
+    const rawInput = item.rawInput || item.forward_user_input || item.reverse_user_input || item.input || item.userAnswer || item.answer;
+    const expectVal = Array.isArray(item.expected) ? item.expected : (item.expected || item.original_numbers || item.target || seqVal);
 
-    let correct = !!(item.correct || item.isCorrect);
-    if (!correct && rawInput != null && expectVal != null) {
-      correct = seqMatch(rawInput, expectVal);
+    let correct = false;
+
+    if (item.is_correct !== undefined) {
+      correct = item.is_correct === 1 || item.is_correct === true;
+    } else if (item.correct !== undefined) {
+      correct = item.correct;
+    } else if (item.isCorrect !== undefined) {
+      correct = item.isCorrect;
+    } else if (item.forward_correct !== undefined) {
+      correct = item.forward_correct;
+    } else if (item.reverse_correct !== undefined) {
+      correct = item.reverse_correct;
+    } else if (item.rawInput && item.expected) {
+      correct = seqMatch(item.rawInput, item.expected);
     }
 
     return { 
       ...item, 
       _resolvedCorrect: correct,
       _rawChildAnswer: rawInput,
-      _displaySeq: seqVal
+      _displaySeq: seqVal || expectVal
     };
   });
 
@@ -560,6 +626,7 @@ function Task4SubSection({ sub, title, detailsRaw }) {
 
 // ── TASK 4 MAIN COMPONENT ─────────────────────────────────────
 function Task4Detail({ data }) {
+  console.log('🔍 RAW Task4 DATA:', data);
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.overallPercentage);
 
@@ -585,6 +652,59 @@ function Task4Detail({ data }) {
   );
 }
 
+// ── TASK4 UTILITIES ───────────────────────────────────────────
+function normaliseSeq(seq) {
+  console.log('🔍 normaliseSeq input:', seq, typeof seq);
+  if (!seq) return '—';
+  if (Array.isArray(seq)) return `[${seq.join(', ')}]`;
+  if (typeof seq === 'string') {
+    try {
+      const parsed = JSON.parse(seq);
+      return normaliseSeq(parsed);
+    } catch {
+      // Clean string formats: "1,2,3" or "1 2 3"
+      return seq.replace(/[\[\]\"\']+/g, '').trim();
+    }
+  }
+  return String(seq).replace(/[\[\]\"\']+/g, '').trim();
+}
+
+function seqMatch(childInput, expected) {
+  const normChild = normaliseSeq(childInput).replace(/[^0-9]/g, '');
+  const normExpected = normaliseSeq(expected).replace(/[^0-9]/g, '');
+  return normChild === normExpected;
+}
+
+// ── ERROR BOUNDARY ────────────────────────────────────────────
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('💥 Task render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 24, background: P.riskSevere.bg, borderRadius: 12, border: `2px solid ${P.riskSevere.border}`, color: P.riskSevere.text, textAlign: 'center' }}>
+          <Icon d="M12 9v4M12 17h.01M21 21H3M18 7H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z" size={32} color={P.riskSevere.text} />
+          <h3 style={{ margin: '12px 0 8px', fontSize: 16 }}>Render Error</h3>
+          <p style={{ fontSize: 13, marginBottom: 16 }}>{this.state.error?.message || 'Task failed to render'}</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '8px 20px', background: P.blue500, color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}>Reload Page</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ══════════════════════════════════════════════════════════════
 // MAIN EXPORT
 // ══════════════════════════════════════════════════════════════
@@ -596,9 +716,17 @@ export default function ChildAssessmentDetail({ childSessionId, childName, activ
   useEffect(() => {
     if (!childSessionId) return;
     setLoading(true); setError('');
-    fetchChildTaskDetails(childSessionId)
-      .then(data => { setDetails(data); setLoading(false); })
-      .catch(err  => { setError(err.message); setLoading(false); });
+    fetchTaskDetails(childSessionId)
+      .then(data => { 
+        console.log('📊 Dashboard loaded details:', data); 
+        setDetails(data); 
+        setLoading(false); 
+      })
+      .catch(err  => { 
+        console.error('💥 Dashboard fetch error:', err); 
+        setError(err.message); 
+        setLoading(false); 
+      });
   }, [childSessionId]);
 
   // Loading state
@@ -631,77 +759,79 @@ export default function ChildAssessmentDetail({ childSessionId, childName, activ
   const safeTab = tabList.includes(activeTab) ? activeTab : 'task1';
 
   return (
-    <div style={{
-      margin: '16px 0',
-      background: P.white,
-      borderRadius: '0 0 12px 12px',
-      border: `1px solid ${P.gray200}`,
-      boxShadow: '0 4px 24px rgba(15,39,68,0.07)',
-    }}>
-      {/* TAB BAR */}
-      <div style={{ display: 'flex', background: P.gray50, borderBottom: `1px solid ${P.gray200}`, overflowX: 'auto' }}>
-        {tabList.map(t => {
-          const meta   = TASKS[t];
-          const rawScore = t === 'task4' ? details[t]?.overallPercentage : details[t]?.percentage;
-          const score = rawScore != null ? Number(rawScore) : null;
-          const rc     = getRisk(score);
-          const active = safeTab === t;
-          return (
-            <button
-              key={t}
-              onClick={() => onTabChange(t)}
-              style={{
-                flex: '1 1 0',
-                minWidth: 110,
-                padding: '14px 10px 12px',
-                border: 'none',
-                borderBottom: active ? `2px solid ${P.blue500}` : '2px solid transparent',
-                background: active ? P.white : 'transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                transition: 'background 0.15s',
-              }}
-            >
-              <div style={{ width: 28, height: 28, borderRadius: 7, background: active ? P.blue100 : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
-                <Icon d={meta.icon} size={14} color={active ? P.blue600 : P.gray400} />
-              </div>
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? P.blue800 : P.gray600, whiteSpace: 'nowrap', textAlign: 'center' }}>{meta.label}</span>
-              {score != null ? (
-                <span style={{ fontSize: 10, fontWeight: 700, color: rc.text, background: rc.bg, border: `1px solid ${rc.border}`, borderRadius: 10, padding: '1px 7px' }}>{fmt(score)}</span>
-              ) : (
-                <span style={{ fontSize: 10, color: P.gray400, background: P.gray100, borderRadius: 10, padding: '1px 7px' }}>N/A</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* TASK SUB-HEADER */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px 12px', borderBottom: `1px solid ${P.gray100}`, background: P.white }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: P.blue100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Icon d={TASKS[safeTab]?.icon} size={15} color={P.blue600} />
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: P.blue900 }}>{TASKS[safeTab]?.label}</div>
-            <div style={{ fontSize: 11, color: P.gray400, marginTop: 1 }}>{TASKS[safeTab]?.sub}</div>
-          </div>
+    <ErrorBoundary>
+      <div style={{
+        margin: '16px 0',
+        background: P.white,
+        borderRadius: '0 0 12px 12px',
+        border: `1px solid ${P.gray200}`,
+        boxShadow: '0 4px 24px rgba(15,39,68,0.07)',
+      }}>
+        {/* TAB BAR */}
+        <div style={{ display: 'flex', background: P.gray50, borderBottom: `1px solid ${P.gray200}`, overflowX: 'auto' }}>
+          {tabList.map(t => {
+            const meta   = TASKS[t];
+            const rawScore = t === 'task4' ? details[t]?.overallPercentage : details[t]?.percentage;
+            const score = rawScore != null ? Number(rawScore) : null;
+            const rc     = getRisk(score);
+            const active = safeTab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => onTabChange(t)}
+                style={{
+                  flex: '1 1 0',
+                  minWidth: 110,
+                  padding: '14px 10px 12px',
+                  border: 'none',
+                  borderBottom: active ? `2px solid ${P.blue500}` : '2px solid transparent',
+                  background: active ? P.white : 'transparent',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  transition: 'background 0.15s',
+                }}
+              >
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: active ? P.blue100 : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
+                  <Icon d={meta.icon} size={14} color={active ? P.blue600 : P.gray400} />
+                </div>
+                <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? P.blue800 : P.gray600, whiteSpace: 'nowrap', textAlign: 'center' }}>{meta.label}</span>
+                {score != null ? (
+                  <span style={{ fontSize: 10, fontWeight: 700, color: rc.text, background: rc.bg, border: `1px solid ${rc.border}`, borderRadius: 10, padding: '1px 7px' }}>{fmt(score)}</span>
+                ) : (
+                  <span style={{ fontSize: 10, color: P.gray400, background: P.gray100, borderRadius: 10, padding: '1px 7px' }}>N/A</span>
+                )}
+              </button>
+            );
+          })}
         </div>
-        {details[safeTab] && (
-          <RiskBadge score={safeTab === 'task4' ? details[safeTab]?.overallPercentage : details[safeTab]?.percentage} />
-        )}
-      </div>
 
-      {/* TASK CONTENT */}
-      <div style={{ padding: '20px 24px 28px', overflowX: 'auto' }}>
-        {safeTab === 'task1' && <Task1Detail data={details.task1} />}
-        {safeTab === 'task2' && <Task2Detail data={details.task2} />}
-        {safeTab === 'task3' && <Task3Detail data={details.task3} />}
-        {safeTab === 'task4' && <Task4Detail data={details.task4} />}
+        {/* TASK SUB-HEADER */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px 12px', borderBottom: `1px solid ${P.gray100}`, background: P.white }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: P.blue100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Icon d={TASKS[safeTab]?.icon} size={15} color={P.blue600} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: P.blue900 }}>{TASKS[safeTab]?.label}</div>
+              <div style={{ fontSize: 11, color: P.gray400, marginTop: 1 }}>{TASKS[safeTab]?.sub}</div>
+            </div>
+          </div>
+          {details[safeTab] && (
+            <RiskBadge score={safeTab === 'task4' ? details[safeTab]?.overallPercentage : details[safeTab]?.percentage} />
+          )}
+        </div>
+
+        {/* TASK CONTENT */}
+        <div style={{ padding: '20px 24px 28px', overflowX: 'auto' }}>
+          {safeTab === 'task1' && <Task1Detail data={details.task1} />}
+          {safeTab === 'task2' && <Task2Detail data={details.task2} />}
+          {safeTab === 'task3' && <Task3Detail data={details.task3} />}
+          {safeTab === 'task4' && <Task4Detail data={details.task4} />}
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

@@ -111,12 +111,14 @@ export function Auth() {
 
   const verifyTokenWorks = async () => {
     try {
-      const res = await apiFetch('/api/children');
+      const role = localStorage.getItem('userRole') || 'parent';
+      const endpoint = role === 'therapist' ? '/api/therapist/patients' : '/api/children';
+      const res = await apiFetch(endpoint);
       if (res.ok) {
-        console.log('✅ Token works! Auth successful.');
+        console.log(`✅ Token works for ${role}! Auth successful.`);
         return true;
       } else {
-        console.error('❌ Token verification failed:', res.status);
+        console.error(`❌ Token verification failed for ${role}:`, res.status);
         return false;
       }
     } catch (err) {

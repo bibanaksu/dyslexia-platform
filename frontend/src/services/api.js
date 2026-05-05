@@ -647,6 +647,43 @@ export async function completeAssignment(assignmentId, score, resultData = null)
 }
 
 // ─────────────────────────────────────────────────────────────
+// TASK DETAILS (Public endpoint for Dashboard)
+// ─────────────────────────────────────────────────────────────
+export async function fetchTaskDetails(childSessionId) {
+    try {
+        console.log('🔍 Fetching task details for session:', childSessionId);
+        const res = await apiFetch(`/api/task-details/${childSessionId}`);
+        if (!res.ok) {
+            const text = await res.text();
+            console.error('🚨 Backend error response (raw):', text.substring(0, 500));
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                data = { error: `HTTP ${res.status}: ${text.substring(0, 200)}` };
+            }
+            throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        
+        // 🛡️ SAFE JSON WITH RAW FALLBACK
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (parseErr) {
+            console.error('🚨 Invalid JSON from backend (raw):', text.substring(0, 500));
+            throw new Error('Backend returned invalid JSON response');
+        }
+        
+        console.log('✅ Fetched task details:', data);
+        return data.details || data;
+    } catch (err) {
+        console.error('❌ fetchTaskDetails error:', err);
+        throw err;
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // Additional dashboard endpoints (fallbacks only)
 // ─────────────────────────────────────────────────────────────
 export async function fetchStudents() {
