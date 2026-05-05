@@ -7,14 +7,10 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Lexend', sans-serif;
-  background: #FFF8EE;
-  overflow: hidden;
-}
-
 /* ================================================================
    APP SHELL
+   font-family, background and overflow are scoped here, NOT on body,
+   so they don't leak and change fonts/layout on other pages
 ================================================================ */
 .sy-app {
   width: 100%;
@@ -23,6 +19,7 @@ body {
   flex-direction: column;
   background: linear-gradient(160deg, #EAF9F8 0%, #FFF8EE 60%, #FFF0DC 100%);
   overflow: hidden;
+  font-family: 'Lexend', sans-serif;
 }
 
 /* ================================================================

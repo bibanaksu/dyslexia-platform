@@ -524,7 +524,8 @@ export async function fetchAssignments() {
             throw new Error('Failed to fetch assignments');
         }
         const data = await res.json();
-        return data.assignments || [];
+        // The backend returns an array directly (not { assignments: [] })
+        return Array.isArray(data) ? data : (data.assignments || []);
     } catch (err) {
         console.warn('⚠️ Using localStorage for assignments');
         return getStoredAssignments();
@@ -577,21 +578,30 @@ export async function assignActivity(childId, activityId, difficulty = 1) {
 // For parent dashboard: get assignments for a specific child
 export async function fetchAssignmentsForChild(childId) {
     if (!childId) return [];
+
+    // First try: backend endpoint (must be added in your server)
+    let backendAssignments = [];
     try {
         const res = await apiFetch(`/api/assignments/child/${childId}`);
-        if (!res.ok) {
-            if (res.status === 404) {
-                console.warn('⚠️ /api/assignments/child missing, using localStorage');
-                return getLocalAssignmentsForChild(childId);
+        if (res.ok) {
+            const data = await res.json();
+            backendAssignments = data.assignments || [];
+            // If we got assignments from the backend, return them with the type field
+            if (backendAssignments.length > 0) {
+                return backendAssignments.map(assign => ({
+                    ...assign,
+                    // Ensure type field exists (it should because we SELECT a.type)
+                    type: assign.type || DEFAULT_ACTIVITIES[assign.activity_id]?.type || 'syllable',
+                }));
             }
-            throw new Error('Failed to fetch assignments for child');
         }
-        const data = await res.json();
-        return data.assignments || [];
     } catch (err) {
-        console.warn('⚠️ fetchAssignmentsForChild error, using localStorage');
-        return getLocalAssignmentsForChild(childId);
+        console.warn('Backend assignments endpoint not available, using localStorage fallback', err);
     }
+
+    // Fallback to localStorage
+    const localAssignments = getLocalAssignmentsForChild(childId);
+    return localAssignments;
 }
 
 // Helper to get assignments from localStorage and merge default configs

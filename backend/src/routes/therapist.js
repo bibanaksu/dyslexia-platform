@@ -164,4 +164,21 @@ router.post('/assignments', async (req, res) => {
   }
 });
 
+// ✅ NEW ROUTE: Get assignments for a specific child (used by parent dashboard)
+router.get('/assignments/child/:childId', async (req, res) => {
+  try {
+    const { childId } = req.params;
+    const [rows] = await pool.query(`
+      SELECT cap.*, a.name AS activity_name, a.type, a.description, a.difficulty_level
+      FROM child_activity_progress cap
+      JOIN activity a ON a.id = cap.activity_id
+      WHERE cap.child_id = ?
+    `, [childId]);
+    res.json({ assignments: rows });
+  } catch (err) {
+    console.error('GET /therapist/assignments/child/:childId error:', err);
+    res.status(500).json({ error: 'Failed to fetch child assignments' });
+  }
+});
+
 module.exports = router;

@@ -10,8 +10,10 @@ const TASK2_URL = `${API}/api/assessments/task2/submit`;
 
 // ===== UPDATED READING PASSAGE =====
 const READING_PASSAGE = {
-  title: "Sam and Max",
-  text: `Sam has a small red ball. He plays in the yard every day. His dog Max runs after the ball. Sam laughs when Max jumps high. One sunny morning, the ball rolls near a tree. Max finds it fast. Sam is happy and gives Max a treat. Then they sit under the tree to rest. Sam drinks water, and Max wags his tail. They love playing together outside.`,
+  title: "Lina's Morning",
+  text: `Lina wakes up in the morning. She eats bread and drinks milk then goes outside to play with her friend Sara in the yard. They run, laugh, and play hide and seek near the trees. Lina finds Sara and they are very happy. After playing, they sit under a tree and rest together. 
+
+`,
 };
 
 const allWords = READING_PASSAGE.text.split(/\s+/).filter(w => w.length > 0);

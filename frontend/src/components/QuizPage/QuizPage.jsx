@@ -4,34 +4,37 @@ import './QuizPage.css';
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+// ✅ New professional messages (no risk framing)
+const RESULT_MESSAGES = {
+  LOW: 'Your responses do not show strong indicators of reading difficulty at this stage. If you have any concerns, a professional reading assessment can provide reassurance and further guidance.',
+
+  MODERATE: 'Some of your responses suggest it may be helpful to explore your child’s reading development further. A professional assessment is recommended to better understand their learning profile.',
+
+  HIGH: 'Based on your responses, we recommend a professional reading and learning assessment to better understand your child’s needs and provide appropriate support.'
+};
+// ✅ Updated labels – action-oriented, not risk levels
 const RISK_CONFIG = {
   LOW: {
     color: '#3AB07A',
     bg: '#E8F8F0',
     ringColor: '#3AB07A',
     headerBg: 'linear-gradient(135deg, #E8F8F0, #F0FAF4)',
-    label: 'Low Risk',
+    label: 'No immediate concerns',
   },
   MODERATE: {
     color: '#E8A234',
     bg: '#FFF3DC',
     ringColor: '#E8A234',
     headerBg: 'linear-gradient(135deg, #FFF3DC, #FFF8EC)',
-    label: 'Moderate Risk',
+    label: 'Further evaluation recommended',
   },
   HIGH: {
     color: '#D64545',
     bg: '#FDEAEA',
     ringColor: '#D64545',
     headerBg: 'linear-gradient(135deg, #FDEAEA, #FEF2F2)',
-    label: 'High Risk',
+    label: 'Assessment strongly recommended',
   },
-};
-
-const RESULT_MESSAGES = {
-  LOW: 'Your child shows few risk factors for dyslexia. Continue monitoring their development and consult with a professional if you notice any changes.',
-  MODERATE: 'Your child shows some risk factors. A professional evaluation is recommended to determine appropriate support strategies.',
-  HIGH: 'Your child shows several risk factors. We strongly recommend a comprehensive evaluation by a dyslexia specialist as soon as possible.',
 };
 
 const FALLBACK_QUESTIONS = [
@@ -172,28 +175,27 @@ export default function QuizPage() {
 
     return (
       <div className="quiz-page">
-        <QuizHeader onBack={resetQuiz} label="← Take Again" />
+        <QuizHeader onBack={resetQuiz} label="← " />
         <div className="quiz-page__results-wrapper">
           <div className="quiz-results">
             <div className="quiz-results__header" style={{ '--header-bg': cfg.headerBg }}>
-              {/* No SVG icon */}
-              <h2 className="quiz-results__title">Quiz Complete</h2>
-              <p className="quiz-results__subtitle">Dyslexia Risk Screening Results</p>
+              <h2 className="quiz-results__title">Quiz Complete</h2>               
+                  
             </div>
 
             <div className="quiz-results__body">
               <div className="quiz-results__ring-wrap">
                 <div className="quiz-results__score-ring" style={{ '--ring-color': cfg.ringColor }}>
                   <span className="quiz-results__pct">{result.percentage}%</span>
-                  <span className="quiz-results__pct-label">Risk Score</span>
+                  
                 </div>
                 <div className="quiz-results__badge" style={{ color: cfg.color, borderColor: cfg.color, background: cfg.bg }}>
-                  {cfg.label}
+                  {cfg.label}                                                           {/* ✅ Uses new action labels */}
                 </div>
               </div>
 
               <div className="quiz-results__message" style={{ '--msg-bg': cfg.bg, '--ring-color': cfg.ringColor }}>
-                {RESULT_MESSAGES[result.riskLevel]}
+                {RESULT_MESSAGES[result.riskLevel]}                                     {/* ✅ New professional messages */}
               </div>
 
               <div className="quiz-results__stats">
@@ -219,7 +221,7 @@ export default function QuizPage() {
 
               {!childSessionId && (
                 <div className="quiz-results__cta">
-                  <p>For a complete, structured evaluation with a detailed action plan, create a child profile and begin the full assessment.</p>
+                  <p>For a complete, structured evaluation with a detailed action plan, begin the full assessment.</p>
                   <button className="quiz-results__cta-btn" onClick={() => navigate('/child-info')}>
                     Start Free Assessment →
                   </button>
@@ -237,7 +239,7 @@ export default function QuizPage() {
 
               <div className="quiz-results__actions">
                 <button className="quiz-results__btn quiz-results__btn--outline" onClick={resetQuiz}>
-                  Take Again
+                Back
                 </button>
               </div>
             </div>
@@ -252,9 +254,9 @@ export default function QuizPage() {
       <QuizHeader onBack={() => navigate('/')} />
       <div className="quiz-page__container">
         <div className="quiz-page__hero">
-          <div className="quiz-page__hero-eyebrow">Early Detection Assessment</div>
-          <h1>Dyslexia Screening Tool</h1>
-          <p>Answer the following questions about your child. Each page contains 4 questions.</p>
+          
+          <h1>Parent Dyslexia Quiz</h1>
+          <p>Answer the following questions about your child.</p>
         </div>
         {error && <div className="quiz-page__error">{error}</div>}
         <div className="quiz-page__questions">

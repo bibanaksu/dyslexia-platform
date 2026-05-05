@@ -820,15 +820,23 @@ const TherapistDashboard = () => {
     navigate('/auth');
   };
 
-  const assignActivityHandler = async (childId, activityId) => {
-    try {
-      await assignActivity(childId, activityId);
-      alert('Activity assigned!');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to assign activity.');
+const assignActivityHandler = async (childId, activityId) => {
+  try {
+    const res = await apiFetch('/api/therapist/assignments', {
+      method: 'POST',
+      body: JSON.stringify({ child_id: childId, activity_id: activityId }),
+    });
+    if (res.ok) {
+      alert('Activity assigned successfully!');
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to assign');
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert('Network error');
+  }
+};
 
   const openChat = (patient) => {
     setChatDefaultParent(patient);

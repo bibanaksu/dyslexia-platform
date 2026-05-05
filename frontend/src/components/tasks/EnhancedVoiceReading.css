@@ -911,3 +911,21 @@
     font-size: 1.5rem;
   }
 }
+/* Incorrect words – turn orange */
+.passage-word.done-wrong {
+  color: #ff8c00 !important;           /* bright orange text */
+  background-color: rgba(255, 140, 0, 0.15); /* soft orange background */
+  border-radius: 6px;
+  padding: 0 2px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #ff8c00;
+  text-underline-offset: 4px;
+}
+
+/* Optional: make it pop more on hover */
+.passage-word.done-wrong:hover {
+  background-color: rgba(255, 140, 0, 0.3);
+  cursor: help;  /* because you show tooltip with spoken word */
+}

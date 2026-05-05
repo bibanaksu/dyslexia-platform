@@ -12,23 +12,19 @@ const parentsRouter           = require('./routes/parents');
 const childrenRouter          = require('./routes/children');
 const assessmentsRouter       = require('./routes/assessments');
 const activitiesRouter        = require('./routes/activities');
-const therapistRouter        = require('./routes/therapist');
-const dashboardRouter         = require('./routes/dashboard');
+const therapistRouter        = require('./routes/therapist');const dashboardRouter         = require('./routes/dashboard');
 const quizRouter              = require('./routes/quiz');
 const taskThreeRouter         = require('./routes/taskThree');
 const taskFourRouter          = require('./routes/Taskfour');
 const childInfoRoutes         = require('./routes/childInfoRoutes');
 const task1Routes             = require('./routes/Task1routes');
 const task2Routes             = require('./routes/Task2routes');
-const assessmentSummaryRoutes = require('./routes/Assessmentsummaryroutes.js');
+const assessmentSummaryRoutes = require('./routes/assessmentSummaryRoutes.js');
 const authRouter              = require('./routes/auth');
 const messagesRouter          = require('./routes/messages');
 
 // ✨ Spelling activity routes
 const spellingActivityRoutes  = require('./routes/spellingActivityRoutes');
-
-// ✨ NEW: Therapist dashboard routes
-const therapistRoutes         = require('./routes/therapist');
 
 const { generateToken } = require('./middleware/auth');
 const app = express();
@@ -72,16 +68,13 @@ app.use('/api/task4',              taskFourRouter);
 app.use('/api/parents',            parentsRouter);
 app.use('/api/children',           childrenRouter);
 app.use('/api/activities',         activitiesRouter);
-app.use('/api/therapist',         therapistRouter);
+app.use('/api/therapist',          therapistRouter);
 app.use('/api/dashboard',          dashboardRouter);
 app.use('/api/quiz',               quizRouter);
 app.use('/api/child-info',         childInfoRoutes);
 app.use('/api/assessment',         assessmentSummaryRoutes);
 app.use('/api/messages',           messagesRouter);
 app.use('/api/spelling',           spellingActivityRoutes);
-
-// ✅ NEW: Therapist dashboard routes (mounted here)
-app.use('/api/therapist',          therapistRoutes);
 
 app.get('/api/db-status', async (req, res) => {
   try {

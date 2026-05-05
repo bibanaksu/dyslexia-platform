@@ -354,7 +354,7 @@ export default function TaskOne() {
         <div className="task-bg" /><div className="dark-overlay" />
         <div className="task-brand">
           <div className="task-logo-icon">DS</div>
-          <span className="task-logo-text">Dyslexia Support</span>
+          
         </div>
         <div className="categories-grid">
           {EXERCISES.map((category) => {
@@ -466,7 +466,7 @@ export default function TaskOne() {
         <div className="task-bg" /><div className="dark-overlay" />
         <div className="task-brand">
           <div className="task-logo-icon">DS</div>
-          <span className="task-logo-text">Dyslexia Support</span>
+        
         </div>
         <div className="results-header-area">
           <div className="trophy-icon">🤩</div>

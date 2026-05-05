@@ -1,14 +1,6 @@
 import './Footer.css';
 
-// Icons
-const LogoIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 2L2 7L12 12L22 7L12 2Z" strokeLinejoin="round"/>
-    <path d="M2 17L12 22L22 17" strokeLinejoin="round"/>
-    <path d="M2 12L12 17L22 12" strokeLinejoin="round"/>
-  </svg>
-);
-
+// Icons (unchanged, TwitterIcon removed)
 const EmailIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -35,12 +27,6 @@ const FacebookIcon = () => (
   </svg>
 );
 
-const TwitterIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M23 3C22.0424 3.67548 20.9821 4.19211 19.86 4.53C19.2577 3.83751 18.4573 3.34669 17.567 3.12393C16.6767 2.90116 15.7395 2.95724 14.8821 3.28545C14.0247 3.61366 13.2884 4.19631 12.773 4.95376C12.2575 5.71122 11.9877 6.60555 12 7.52V8.52C10.2426 8.57557 8.50127 8.18581 6.93101 7.39545C5.36074 6.60509 4.01032 5.44368 3 4C3 4 -1 13 5 17C2.94053 18.398 0.48716 19.0989 -2 19C5 23 13 23 19 19C23 16 24 10 23 7C23.5 6.5 24 5.5 24 4.5L23 3Z" />
-  </svg>
-);
-
 const InstagramIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="2" y="2" width="20" height="20" rx="5" />
@@ -55,62 +41,68 @@ export function Footer() {
   return (
     <footer className="Footer">
       <div className="Footer__container">
-        {/* Brand Section */}
-        <div className="Footer__brand">
+        {/* Left column: Logo + Tagline (logo above tagline) */}
+        <div className="Footer__left">
           <div className="Footer__logo-wrapper">
-            <div className="Footer__logo-icon">
-              <LogoIcon />
+            <div 
+              className="Footer__logo-icon"
+              style={{
+                width: 36,
+                height: 36,
+                background: '#FFB84D',
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: '0.8rem',
+                color: '#1E2D25',
+                fontFamily: "'DM Serif Display', serif"
+              }}
+              aria-label="Dyslexia Support logo"
+            >
+              DS
             </div>
             <span className="Footer__logo-text">DyslexiaSupport</span>
           </div>
           <p className="Footer__tagline">
             Empowering children with dyslexia through evidence-based tools and compassionate support.
           </p>
-          
+        </div>
+
+        {/* Middle column: Contact details (email, phone, address) */}
+        <div className="Footer__middle">
           <div className="Footer__contact">
             <div className="Footer__contact-item">
               <EmailIcon />
-              <a href="mailto:hello@dyslexiasupport.org">hello@dyslexiasupport.org</a>
+              <a href="mailto:Orthophoniste.Ach.K@gmail.com">Orthophoniste.Ach.K@gmail.com</a>
             </div>
             <div className="Footer__contact-item">
               <PhoneIcon />
-              <a href="tel:+1-888-READ-NOW">1-888-READ-NOW</a>
+              <a href="tel:0797 22 15 32">0797 22 15 32</a>
             </div>
             <div className="Footer__contact-item">
               <LocationIcon />
-              <span>Boston, Massachusetts</span>
+              <span>Cité 24 Février Bloc 04 N° 13 Staoueli</span>
             </div>
           </div>
         </div>
 
-        {/* Company Section */}
-        <div className="Footer__section">
-          <h4 className="Footer__section-title">Company</h4>
-          <ul className="Footer__links">
-            <li><a href="#about">About Us</a></li>
-            <li><a href="#mission">Our Mission</a></li>
-            <li><a href="#team">Our Team</a></li>
-            <li><a href="#careers">Careers</a></li>
-            <li><a href="#press">Press</a></li>
-          </ul>
+        {/* Right column: Platform section with updated links */}
+        <div className="Footer__right">
+          <div className="Footer__section">
+            <h4 className="Footer__section-title">Platform</h4>
+            <ul className="Footer__links">
+              <li><a href="#features">Features</a></li>
+              <li><a href="#how-it-works">How it works</a></li>
+              <li><a href="#about">About</a></li>
+              <li><a href="#signin">Sign in</a></li>
+            </ul>
+          </div>
         </div>
-
-        {/* Resources Section */}
-        <div className="Footer__section">
-          <h4 className="Footer__section-title">Resources</h4>
-          <ul className="Footer__links">
-            <li><a href="#blog">Blog</a></li>
-            <li><a href="#research">Research</a></li>
-            <li><a href="#guides">Parent Guides</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="#support">Support</a></li>
-          </ul>
-        </div>
-
-        
       </div>
 
-      {/* Bottom Bar */}
+      {/* Bottom Bar - Twitter icon removed */}
       <div className="Footer__bottom">
         <p className="Footer__copyright">
           © {currentYear} DyslexiaSupport. All rights reserved.
@@ -118,9 +110,6 @@ export function Footer() {
         <div className="Footer__social">
           <a href="#" className="Footer__social-link" aria-label="Facebook">
             <FacebookIcon />
-          </a>
-          <a href="#" className="Footer__social-link" aria-label="Twitter">
-            <TwitterIcon />
           </a>
           <a href="#" className="Footer__social-link" aria-label="Instagram">
             <InstagramIcon />

@@ -202,7 +202,7 @@ export function Auth() {
             <p>
               {isSignIn
                 ? 'Sign in to continue your journey.'
-                : 'Start your journey with intelligent dyslexia support tools.'}
+                : 'Start your journey with dyslexia support tools.'}
             </p>
           </div>
 
@@ -235,7 +235,7 @@ export function Auth() {
                     <input
                       type="text"
                       className="Auth__input"
-                      placeholder="John Doe"
+                      placeholder="Enter your full name"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
@@ -246,11 +246,10 @@ export function Auth() {
                 <div className="Auth__field">
                   <label>Child's Name</label>
                   <div className="Auth__input-wrapper">
-                    <span className="Auth__input-icon">🧒</span>
                     <input
                       type="text"
                       className="Auth__input"
-                      placeholder="Enter your child's name"
+                      placeholder="Enter your child’s name"
                       value={childName}
                       onChange={(e) => setChildName(e.target.value)}
                       required
@@ -267,7 +266,7 @@ export function Auth() {
                 <input
                   type="email"
                   className="Auth__input"
-                  placeholder="name@example.com"
+                  placeholder=" Enter your email "
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -277,7 +276,7 @@ export function Auth() {
 
             {!isSignIn && (
               <div className="Auth__field">
-                <label>Phone Number (Optional)</label>
+                <label>Phone Number</label>
                 <div className="Auth__input-wrapper">
                   <span className="Auth__input-icon"><PhoneIcon /></span>
                   <input
@@ -298,7 +297,7 @@ export function Auth() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="Auth__input"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

@@ -1,4 +1,4 @@
-// ParentDashboard.jsx — LexiCare Parent Portal (Redesigned)
+// ParentDashboard.jsx — LexiCare Parent Portal (Redesigned & Connected)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -27,14 +27,12 @@ const HomeIcon = () => (
     <polyline points="9 22 9 12 15 12 15 22" />
   </svg>
 );
-
 const ProfileIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
     <circle cx="12" cy="7" r="4" />
   </svg>
 );
-
 const ResultsIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <line x1="18" y1="20" x2="18" y2="10" />
@@ -42,31 +40,26 @@ const ResultsIcon = () => (
     <line x1="6" y1="20" x2="6" y2="14" />
   </svg>
 );
-
 const ActivitiesIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
   </svg>
 );
-
 const ChatIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
-
 const GamesIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M6 11h4M8 9v4M15 12h.01M18 10h.01M17.32 5H6.68a4 4 0 0 0-3.978 3.59C2.2 10.07 2 11.03 2 12c0 2.21 2.02 4 4.5 4 .67 0 1.3-.14 1.86-.4 1.06-.5 1.92-1.33 2.39-2.3.32-.65.82-1.23 1.42-1.68.6-.45 1.27-.73 1.97-.87.7-.14 1.41-.13 2.1.02.68.16 1.31.45 1.85.86.53.41.96.93 1.25 1.52.28.59.41 1.23.41 1.88 0 2.48-2.02 4.5-4.5 4.5a4.5 4.5 0 0 1-3.85-2.16" />
   </svg>
 );
-
 const ProgressTabIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M2 12h4l3-9 4 18 3-9h4" />
   </svg>
 );
-
 const LogoutIcon = () => <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />;
 const AddIcon = () => <Icon d="M12 5v14M5 12h14" strokeWidth="2.5" />;
 const EditIcon = () => <Icon d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />;
@@ -95,12 +88,6 @@ const BellIcon = () => (
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
   </svg>
 );
-const BookIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-  </svg>
-);
 const ChevronIcon = ({ open }) => (
   <svg className={`chevron ${open ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M6 9l6 6 6-6" />
@@ -111,20 +98,9 @@ const CheckIcon = () => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
-const ArrowRightIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <path d="M5 12h14M12 5l7 7-7 7" />
-  </svg>
-);
-const StarIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-);
-const ClockIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10" />
-    <polyline points="12 6 12 12 16 14" />
+const XIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M18 6L6 18M6 6l12 12" />
   </svg>
 );
 
@@ -144,10 +120,50 @@ const scoreColor = (s) => {
   return '#8a1f1f';
 };
 
+const getRiskFromScore = (score) => {
+  if (score == null) return 'Normal';
+  if (score >= 85) return 'Normal';
+  if (score >= 70) return 'Mild';
+  if (score >= 50) return 'Moderate';
+  return 'Severe';
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+};
+
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
 
-// =========================== COMPONENTS ===========================
+// =========================== TOAST SYSTEM ===========================
+function Toast({ toasts, removeToast }) {
+  return (
+    <div className="toast-container">
+      {toasts.map(t => (
+        <div key={t.id} className={`toast toast--${t.type}`}>
+          <span>{t.message}</span>
+          <button className="toast-close" onClick={() => removeToast(t.id)}><XIcon /></button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((message, type = 'success', duration = 3500) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
+  }, []);
+  const removeToast = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  return { toasts, addToast, removeToast };
+}
+
+// =========================== SCORE BAR ===========================
 function ScoreBar({ label, score }) {
   const color = scoreColor(score);
   return (
@@ -163,7 +179,8 @@ function ScoreBar({ label, score }) {
   );
 }
 
-function AddChildModal({ onClose, onAdded }) {
+// =========================== ADD CHILD MODAL ===========================
+function AddChildModal({ onClose, onAdded, addToast }) {
   const [form, setForm] = useState({ full_name: '', grade: '', dob: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -176,6 +193,7 @@ function AddChildModal({ onClose, onAdded }) {
       const res = await apiFetch('/api/children', { method: 'POST', body: JSON.stringify(form) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to add child');
+      addToast('Child registered successfully!', 'success');
       onAdded();
       onClose();
     } catch (err) {
@@ -223,11 +241,11 @@ function AddChildModal({ onClose, onAdded }) {
   );
 }
 
-function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
+// =========================== PROFILE TAB ===========================
+function ProfileTab({ user, parentInfo, children, onChildrenChange, addToast }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ full_name: '', phone: '' });
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState('');
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
@@ -236,14 +254,12 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
 
   const handleSave = async () => {
     setSaving(true);
-    setSaveMsg('');
     try {
       await apiFetch(`/api/parents/${user.userId}`, { method: 'PUT', body: JSON.stringify(form) });
-      setSaveMsg('Profile updated successfully.');
+      addToast('Profile updated successfully.', 'success');
       setEditing(false);
-      setTimeout(() => setSaveMsg(''), 3500);
     } catch {
-      setSaveMsg('Failed to save changes.');
+      addToast('Failed to save changes.', 'error');
     } finally {
       setSaving(false);
     }
@@ -264,11 +280,8 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
           <div className="ph-name">{displayName}</div>
           <div className="ph-role">Parent Account</div>
           <div className="ph-plan">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <div>
-              <div className="ph-plan-txt">Active Treatment Plan</div>
-              <div className="ph-plan-sub">With Dr. Amara Nwosu — 42% complete</div>
-            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+            <div><div className="ph-plan-txt">Active Treatment Plan</div></div>
           </div>
         </div>
         <div className="ph-actions">
@@ -280,35 +293,34 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
         </div>
       </div>
 
-      {saveMsg && <div className="success-msg show" style={{ marginBottom: '14px' }}>{saveMsg}</div>}
-
       <div className="two-col">
         <div className="card">
           <div className="card-header"><span className="card-title">Account details</span></div>
-          <div id="profile-view" style={{ display: editing ? 'none' : 'block' }}>
-            <div className="info-row">
-              <div className="ir-icon"><ProfileIcon /></div>
-              <div><div className="ir-label">Full name</div><div className="ir-val">{parentInfo?.full_name || '—'}</div></div>
-            </div>
-            <div className="info-row">
-              <div className="ir-icon"><MailIcon /></div>
-              <div><div className="ir-label">Email</div><div className="ir-val">{parentInfo?.email || '—'}</div></div>
-            </div>
-            <div className="info-row">
-              <div className="ir-icon"><PhoneIcon /></div>
-              <div><div className="ir-label">Phone</div><div className="ir-val">{parentInfo?.phone || 'Not provided'}</div></div>
-            </div>
-            <div className="info-row">
-              <div className="ir-icon"><CalendarIcon /></div>
-              <div><div className="ir-label">Member since</div><div className="ir-val">{fmtDate(parentInfo?.created_at)}</div></div>
-            </div>
-          </div>
-          {editing && (
+          {!editing ? (
+            <>
+              <div className="info-row">
+                <div className="ir-icon"><ProfileIcon /></div>
+                <div><div className="ir-label">Full name</div><div className="ir-val">{parentInfo?.full_name || '—'}</div></div>
+              </div>
+              <div className="info-row">
+                <div className="ir-icon"><MailIcon /></div>
+                <div><div className="ir-label">Email</div><div className="ir-val">{parentInfo?.email || '—'}</div></div>
+              </div>
+              <div className="info-row">
+                <div className="ir-icon"><PhoneIcon /></div>
+                <div><div className="ir-label">Phone</div><div className="ir-val">{parentInfo?.phone || 'Not provided'}</div></div>
+              </div>
+              <div className="info-row">
+                <div className="ir-icon"><CalendarIcon /></div>
+                <div><div className="ir-label">Member since</div><div className="ir-val">{fmtDate(parentInfo?.created_at)}</div></div>
+              </div>
+            </>
+          ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '4px' }}>
               <div className="field"><label>Full name</label><input type="text" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></div>
               <div className="field"><label>Phone</label><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>Save changes</button>
+                <button className="btn btn-primary btn-sm" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
               </div>
             </div>
@@ -329,7 +341,7 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
                 <div>
                   <div className="cr-name">{child.full_name}</div>
                   <div className="cr-meta">
-                    {child.dob ? `Age ${new Date().getFullYear() - new Date(child.dob).getFullYear()}` : ''}
+                    {child.dob ? `Age ${new Date().getFullYear() - new Date(child.dob).getFullYear()} · ` : ''}
                     <span className="year-pill">Year {child.grade}</span>
                   </div>
                 </div>
@@ -339,19 +351,60 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange }) {
         </div>
       </div>
 
-      {showModal && <AddChildModal onClose={() => setShowModal(false)} onAdded={() => { setShowModal(false); onChildrenChange(); }} />}
+      {showModal && (
+        <AddChildModal
+          onClose={() => setShowModal(false)}
+          onAdded={() => { setShowModal(false); onChildrenChange(); }}
+          addToast={addToast}
+        />
+      )}
     </div>
   );
 }
 
-function ResultsTab() {
-  const [results, setResults] = useState([]);
+// =========================== RESULTS TAB ===========================
+// =========================== RESULTS TAB (FIXED) ===========================
+function ResultsTab({ allResults, onNavigate }) {
   const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState([]);
   const [expanded, setExpanded] = useState(null);
+
+  // Helper to extract a subtask score from a result object
+  const getSubtaskScore = (result, taskKey) => {
+    // Try multiple possible field names
+    const fieldMap = {
+      wordExplore: ['letter_score', 'task1_score', 'word_explorer', 'word_explorer_score'],
+      storyReader: ['word_score', 'task2_score', 'story_reader', 'story_reader_score'],
+      letterDetective: ['comprehension_score', 'task3_score', 'letter_detective', 'letter_detective_score'],
+      numberMemory: ['fluency_score', 'task4_score', 'number_memory', 'number_memory_score'],
+    };
+    const possibleKeys = fieldMap[taskKey];
+    for (let key of possibleKeys) {
+      if (result[key] !== undefined && result[key] !== null) {
+        return result[key];
+      }
+    }
+    // Also check nested `tasks` object if present
+    if (result.tasks) {
+      const nestedMap = {
+        wordExplore: 'task1',
+        storyReader: 'task2',
+        letterDetective: 'task3',
+        numberMemory: 'task4',
+      };
+      const task = result.tasks[nestedMap[taskKey]];
+      if (task && typeof task.score === 'number') return task.score;
+    }
+    return null;
+  };
 
   useEffect(() => {
     fetchMyResults()
       .then(data => {
+        // Log the first result to see what fields exist (remove after debugging)
+        if (data && data.length > 0) {
+          console.log('Sample assessment result:', data[0]);
+        }
         setResults(data);
         localStorage.setItem('lastResultsView', Date.now().toString());
       })
@@ -361,58 +414,101 @@ function ResultsTab() {
 
   if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading results...</div></div>;
 
+  // Compute stats
+  const latestResult = results.length > 0
+    ? results.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0]
+    : null;
+  const latestScore = latestResult?.overall_score ?? latestResult?.summary?.overallScore ?? null;
+  const latestRisk = latestResult?.risk_level ?? latestResult?.summary?.riskLevel ?? '—';
+  const prevResult = results.length > 1 ? results[1] : null;
+  const prevScore = prevResult?.overall_score ?? prevResult?.summary?.overallScore ?? null;
+  const scoreDiff = (latestScore != null && prevScore != null) ? latestScore - prevScore : null;
+
   return (
     <div className="pane active">
       <div className="page-eyebrow">Step 3 of 5</div>
       <h1 className="page-title">Assessment <em>Results</em></h1>
       <p className="page-sub">View your child's reading assessment scores and progress over time.</p>
 
+      {/* Stats cards */}
       <div className="three-col" style={{ marginBottom: '24px' }}>
-        <div className="stat-card"><div className="stat-val">{results.length}</div><div className="stat-lbl">Sessions completed</div><div className="stat-change up">+1 this month</div></div>
-        <div className="stat-card"><div className="stat-val">78%</div><div className="stat-lbl">Latest overall score</div><div className="stat-change up">↑ 6% from last session</div></div>
-        <div className="stat-card"><div className="stat-val">Mild</div><div className="stat-lbl">Current risk level</div><div className="stat-change neutral">Stable</div></div>
+        <div className="stat-card">
+          <div className="stat-val">{results.length}</div>
+          <div className="stat-lbl">Assessments completed</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-val" style={{ color: scoreColor(latestScore) }}>
+            {latestScore != null ? `${latestScore}%` : '—'}
+          </div>
+          <div className="stat-lbl">Latest overall score</div>
+          <div className={`stat-change ${scoreDiff > 0 ? 'up' : scoreDiff < 0 ? 'down' : 'neutral'}`}>
+            {scoreDiff != null ? `${scoreDiff > 0 ? '↑' : '↓'} ${Math.abs(scoreDiff)}% from last` : 'First assessment'}
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-val" style={{ fontSize: '1.5rem', color: RISK_CONFIG[latestRisk]?.color || 'var(--forest)' }}>
+            {latestRisk}
+          </div>
+          <div className="stat-lbl">Current risk level</div>
+        </div>
       </div>
 
       {results.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>No assessment results yet.</div>
-      ) : results.map((r, i) => {
-        const risk = RISK_CONFIG[r.risk_level] || RISK_CONFIG.Normal;
-        const isOpen = expanded === i;
-        return (
-          <div key={r.id || i} className="session-card">
-            <div className="session-top" onClick={() => setExpanded(isOpen ? null : i)}>
-              <div className="session-av" style={{ background: risk.bg, color: risk.color }}>{r.risk_level?.[0] || 'N'}</div>
-              <div style={{ flex: 1 }}>
-                <div className="session-name">Session {results.length - i} — {fmtDate(r.completed_at)}</div>
-                <div className="session-meta">{r.child_name || 'Child'} · {r.risk_level || 'Normal'} risk</div>
+        <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>
+          <div style={{ marginBottom: '12px', fontSize: '2rem' }}>📋</div>
+          <div style={{ fontWeight: 700, marginBottom: '8px' }}>No assessment results yet</div>
+          <p style={{ fontSize: '13px', marginBottom: '16px' }}>Complete activities assigned by your therapist to start seeing results.</p>
+          <button className="btn btn-primary" onClick={() => onNavigate('activities')}>Go to Activities</button>
+        </div>
+      ) : (
+        results.map((r, i) => {
+          const risk = RISK_CONFIG[r.risk_level] || RISK_CONFIG[r.riskLevel] || RISK_CONFIG.Normal;
+          const isOpen = expanded === i;
+          // Get subtask scores using our helper
+          const wordExploreScore = getSubtaskScore(r, 'wordExplore');
+          const storyReaderScore = getSubtaskScore(r, 'storyReader');
+          const letterDetectiveScore = getSubtaskScore(r, 'letterDetective');
+          const numberMemoryScore = getSubtaskScore(r, 'numberMemory');
+
+          return (
+            <div key={r.id || i} className="session-card">
+              <div className="session-top" onClick={() => setExpanded(isOpen ? null : i)}>
+                <div className="session-av" style={{ background: risk.bg, color: risk.color }}>
+                  {r.risk_level?.[0] || r.riskLevel?.[0] || 'N'}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div className="session-name">
+                    Assessment {results.length - i} — {fmtDate(r.completed_at)}
+                  </div>
+                  <div className="session-meta">
+                    {r.child_name || 'Child'} · {r.risk_level || r.riskLevel || 'Normal'} risk
+                  </div>
+                </div>
+                <div className="session-score" style={{ color: scoreColor(r.overall_score ?? r.summary?.overallScore) }}>
+                  {r.overall_score != null ? `${r.overall_score}%` : r.summary?.overallScore != null ? `${r.summary.overallScore}%` : '—'}
+                </div>
+                <ChevronIcon open={isOpen} />
               </div>
-              <div className="session-score" style={{ color: scoreColor(r.overall_score) }}>{r.overall_score != null ? `${r.overall_score}%` : '—'}</div>
-              <ChevronIcon open={isOpen} />
+              {isOpen && (
+                <div className="session-body">
+                  <ScoreBar label="Word Explore" score={wordExploreScore} />
+                  <ScoreBar label="Story Reader" score={storyReaderScore} />
+                  <ScoreBar label="Letter Detective" score={letterDetectiveScore} />
+                  <ScoreBar label="Number Memory" score={numberMemoryScore} />
+                </div>
+              )}
             </div>
-            {isOpen && (
-              <div className="session-body">
-                <ScoreBar label="Letter Recognition" score={r.letter_score} />
-                <ScoreBar label="Word Reading" score={r.word_score} />
-                <ScoreBar label="Comprehension" score={r.comprehension_score} />
-                <ScoreBar label="Fluency" score={r.fluency_score} />
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </div>
   );
 }
 
-// Modal to show assignment progress percentages (tasks percentages)
+// =========================== ASSIGNMENT PROGRESS MODAL ===========================
 function AssignmentProgressModal({ child, onClose }) {
   const [loading, setLoading] = useState(true);
-  const [scores, setScores] = useState({
-    letter_score: null,
-    word_score: null,
-    comprehension_score: null,
-    fluency_score: null,
-  });
+  const [scores, setScores] = useState({ letter_score: null, word_score: null, comprehension_score: null, fluency_score: null });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -425,14 +521,14 @@ function AssignmentProgressModal({ child, onClose }) {
           setLoading(false);
           return;
         }
-        const latest = childResults.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at))[0];
+        const latest = childResults.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0];
         setScores({
           letter_score: latest.letter_score,
           word_score: latest.word_score,
           comprehension_score: latest.comprehension_score,
           fluency_score: latest.fluency_score,
         });
-      } catch (err) {
+      } catch {
         setError('Could not load progress data.');
       } finally {
         setLoading(false);
@@ -463,7 +559,7 @@ function AssignmentProgressModal({ child, onClose }) {
             </div>
           )}
         </div>
-        <div className="modal-actions">
+        <div className="modal-actions" style={{ padding: '0 24px 24px' }}>
           <button className="btn btn-primary" onClick={onClose}>Close</button>
         </div>
       </div>
@@ -471,27 +567,39 @@ function AssignmentProgressModal({ child, onClose }) {
   );
 }
 
-// ===================== ACTIVITIES TAB (UPDATED FOR SYLLABLE) =====================
-function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, onRefresh }) {
+// =========================== ACTIVITIES TAB ===========================
+
+function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, onRefresh, onNavigate, addToast }) {
   const navigate = useNavigate();
   const [localAssignments, setLocalAssignments] = useState(assignments || []);
   const [progressModalChild, setProgressModalChild] = useState(null);
 
   useEffect(() => {
-    console.log('ActivitiesTab received assignments:', assignments);
     setLocalAssignments(assignments);
   }, [assignments]);
 
+  // Helper to get a default one‑line description based on activity type
+  const getActivityDescription = (assignment) => {
+    if (assignment.description && assignment.description.trim() !== '') {
+      return assignment.description; // use therapist's description if provided
+    }
+    // Fallback descriptions
+    if (assignment.type === 'letter_sound') {
+      return 'Match each letter to its animal picture – a fun phonics game.';
+    }
+    if (assignment.type === 'syllable') {
+      return 'Tap syllables, listen, then drag letters to build each word.';
+    }
+    return 'Complete this activity to build reading skills.';
+  };
+
   const handleStart = (assignment) => {
-    console.log('Starting assignment:', assignment);
     const { id, child_id, type, config } = assignment;
     let path = '';
-    if (type === 'letter_sound') {
-      path = '/activity/letter-sound';
-    } else if (type === 'syllable') {
-      path = '/activity/syllable-breaking';
-    } else {
-      console.warn('Unknown activity type:', type);
+    if (type === 'letter_sound') path = '/activity/letter-sound';
+    else if (type === 'syllable') path = '/activity/syllable-breaking';
+    else {
+      addToast('Unknown activity type. Please contact your therapist.', 'error');
       return;
     }
     navigate(path, { state: { assignmentId: id, childId: child_id, config } });
@@ -502,18 +610,8 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
     if (onRefresh) onRefresh(childId);
   };
 
-  const handleViewProgress = (child) => {
-    setProgressModalChild(child);
-  };
-
   const showSelector = children.length > 1;
-
-  // Filter only letter_sound and syllable
-  const filteredAssignments = localAssignments.filter(
-    a => a.type === 'letter_sound' || a.type === 'syllable'
-  );
-
-  console.log('Filtered assignments for display:', filteredAssignments);
+  const filteredAssignments = localAssignments.filter(a => a.type === 'letter_sound' || a.type === 'syllable');
 
   return (
     <div className="pane active">
@@ -531,9 +629,18 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
         </div>
       )}
 
-      {filteredAssignments.length === 0 ? (
+      {children.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>
-          No activities assigned yet. Your therapist will add activities here.
+          <div style={{ fontSize: '2rem', marginBottom: '12px' }}>👶</div>
+          <div style={{ fontWeight: 700, marginBottom: '8px' }}>No children registered yet</div>
+          <p style={{ fontSize: '13px', marginBottom: '16px' }}>Register a child in your profile to see activities.</p>
+          <button className="btn btn-primary" onClick={() => onNavigate('profile')}>Go to Profile</button>
+        </div>
+      ) : filteredAssignments.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>
+          <div style={{ fontWeight: 700, marginBottom: '8px' }}>No activities assigned yet</div>
+          <p style={{ fontSize: '13px', marginBottom: '16px' }}>The therapist will add activities here. You can message them to ask about your plan.</p>
+          <button className="btn btn-primary" onClick={() => onNavigate('chat')}>Message Therapist</button>
         </div>
       ) : (
         <div className="activities-grid">
@@ -543,6 +650,7 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
             if (assign.type === 'letter_sound') typeLabel = 'Alphabet Swiping';
             else if (assign.type === 'syllable') typeLabel = 'Syllable Breaking';
             else typeLabel = 'Activity';
+
             return (
               <div key={assign.id} className="activity-card activity-card--forest">
                 <div className="ac-top">
@@ -551,14 +659,18 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
                 <div className="ac-body">
                   <div className="ac-tag">{typeLabel}</div>
                   <h3 className="ac-title">{assign.name}</h3>
-                  <p className="ac-desc">{assign.description}</p>
+                  {/* One‑line description – either custom or default */}
+                  <p className="ac-desc">{getActivityDescription(assign)}</p>
                   <div className="ac-meta-row"><span className="ac-meta-item">Level {assign.difficulty_level}</span></div>
                 </div>
-                <div className="ac-footer" style={{ justifyContent: 'space-between' }}>
-                  <button className="ac-cta ac-cta--forest" onClick={(e) => { e.stopPropagation(); handleStart(assign); }}>Start Activity →</button>
-                  {childForAssign && (
-                    <button className="btn btn-outline btn-sm" onClick={() => handleViewProgress(childForAssign)}>View Progress</button>
-                  )}
+                <div className="ac-footer" style={{ display: 'flex', gap: '10px', padding: '0 28px 24px' }}>
+                  <button
+                    className="ac-cta ac-cta--forest"
+                    style={{ flex: 1 }}
+                    onClick={(e) => { e.stopPropagation(); handleStart(assign); }}
+                  >
+                    Start Activity →
+                  </button>
                 </div>
               </div>
             );
@@ -573,14 +685,16 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
   );
 }
 
-function ChatTab({ user }) {
+// =========================== CHAT TAB ===========================
+// =========================== CHAT TAB (WIDER, DARKER BORDERS, NO SIDEBAR) ===========================
+function ChatTab({ user, addToast }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const bottomRef = useRef(null);
   const pollRef = useRef(null);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!loading && messages.length > 0) {
@@ -593,9 +707,8 @@ function ChatTab({ user }) {
       const msgs = await fetchMessages();
       setMessages(msgs);
       setError('');
-    } catch (err) {
-      console.error(err);
-      setError('Failed to load messages');
+    } catch {
+      setError('Failed to load messages. Check your connection.');
     } finally {
       setLoading(false);
     }
@@ -619,97 +732,131 @@ function ChatTab({ user }) {
     try {
       const msg = await sendMessage(text);
       setMessages(prev => [...prev, msg]);
-    } catch (err) {
-      console.error(err);
+    } catch {
       setInput(text);
-      alert('Failed to send message. Please try again.');
+      addToast('Failed to send message. Please try again.', 'error');
     } finally {
       setSending(false);
     }
   };
 
   const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
   if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading conversation...</div></div>;
 
   return (
     <div className="pane active">
-      <div className="page-eyebrow">Steps 4 & 5 — Treatment & ongoing care</div>
+      <div className="page-eyebrow">Treatment Plan</div>
       <h1 className="page-title">Messages with your <em>Therapist</em></h1>
-      <p className="page-sub">Direct communication with Dr. Amara Nwosu, your assigned dyslexia specialist.</p>
+      <p className="page-sub">Direct communication with your assigned dyslexia specialist.</p>
 
-      {error && <div className="error-msg show">{error}</div>}
+      {error && <div className="error-msg show" style={{ marginBottom: '16px' }}>{error}</div>}
 
-      <div className="journey-banner" style={{ marginBottom: '20px' }}>
-        <div className="jb-icon"><CheckIcon /></div>
-        <div className="jb-text">
-          <div className="jb-title">Step 4: Confirm your treatment plan</div>
-          <div className="jb-desc">Based on your child's results, a 5-session programme is recommended. Reply below to confirm enrollment.</div>
-        </div>
-      </div>
+      {/* Full-width chat window, no sidebar */}
+      <div className="chat-window" style={{
+        width: '100%',
+        height: '620px',
+        border: '1.5px solid #3D5A4C',           // darker border
+        borderRadius: 'var(--radius-xl)',
+        boxShadow: '0 6px 20px rgba(61,90,76,0.15)'
+      }}>
+        <div className="chat-topbar" style={{
+          borderBottom: '1.5px solid rgba(61,90,76,0.3)', // darker separator
+          background: 'var(--bg-beige)'
+        }}>
+          <div className="therapist-av">Dr</div>
+          <div>
+            <div className="therapist-name">Dr. Acheb Kenza</div>
+            <div className="therapist-role">Speech Therapist
 
-      <div className="chat-layout">
-        <div className="chat-window" style={{ maxWidth: '100%', marginRight: 0 }}>
-          <div className="chat-topbar">
-            <div className="therapist-av">Dr</div>
-            <div>
-              <div className="therapist-name">Dr. Amara Nwosu</div>
-              <div className="therapist-role">Dyslexia Specialist</div>
             </div>
-            <div className="online-badge"><div className="green-dot"></div>Online</div>
           </div>
-          <div className="chat-messages">
-            {messages.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--ink-soft)' }}>
-                No messages yet. Introduce yourself to your therapist.
-              </div>
-            ) : (
-              messages.map((m) => {
-                const isParent = m.sender_role === 'parent';
-                return (
-                  <div key={m.id} className={`msg-wrap ${isParent ? 'right' : ''}`}>
-                    {!isParent && <div className="msg-av">Dr</div>}
-                    <div>
-                      <div className={`bubble ${isParent ? 'p' : 't'}`}>{m.content}</div>
-                      <div className={`msg-time ${isParent ? 'r' : ''}`}>{fmtTime(m.created_at)}</div>
+          <div className="online-badge">
+            
+          </div>
+        </div>
+
+        <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+          {messages.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-soft)' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>💬</div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px' }}>No messages yet</div>
+              <p style={{ fontSize: '14px' }}>Introduce yourself to your therapist below.</p>
+            </div>
+          ) : (
+            messages.map((m) => {
+              const isParent = m.sender_role === 'parent';
+              return (
+                <div key={m.id} className={`msg-wrap ${isParent ? 'right' : ''}`} style={{ marginBottom: '16px' }}>
+                  {!isParent && <div className="msg-av">Dr</div>}
+                  <div>
+                    <div className={`bubble ${isParent ? 'p' : 't'}`} style={{
+                      fontSize: '14px',
+                      padding: '10px 16px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}>
+                      {m.content}
+                    </div>
+                    <div className={`msg-time ${isParent ? 'r' : ''}`} style={{ fontSize: '11px', marginTop: '4px' }}>
+                      {fmtTime(m.created_at)}
                     </div>
                   </div>
-                );
-              })
-            )}
-            <div ref={bottomRef} />
-          </div>
-          <div className="chat-footer">
-            <textarea
-              className="chat-inp"
-              placeholder="Write a message to Dr. Nwosu..."
-              rows="1"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              disabled={sending}
-            />
-            <button className="send-btn" onClick={handleSend} disabled={!input.trim() || sending}>
-              <SendIcon />
-            </button>
-          </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="chat-footer" style={{
+          borderTop: '1.5px solid rgba(61,90,76,0.3)',
+          padding: '16px 24px',
+          gap: '12px'
+        }}>
+          <textarea
+            className="chat-inp"
+            placeholder="Write a message to your therapist..."
+            rows="1"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            disabled={sending}
+            style={{
+              border: '1.5px solid rgba(61,90,76,0.3)',
+              fontSize: '14px',
+              padding: '12px 16px'
+            }}
+          />
+          <button
+            className="send-btn"
+            onClick={handleSend}
+            disabled={!input.trim() || sending}
+            style={{
+              width: '48px',
+              height: '48px',
+              background: 'var(--forest)',
+              borderRadius: 'var(--radius-md)'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function GamesTab({ selectedChildId, children }) {
+// =========================== GAMES TAB ===========================
+function GamesTab({ selectedChildId, children, onNavigate, addToast }) {
   const navigate = useNavigate();
 
   const handleStartSpellingGame = () => {
     if (!selectedChildId) {
-      alert('Please select a child first in the Activities tab.');
+      addToast('Please select a child in the Activities tab first.', 'error');
       return;
     }
     navigate(`/spelling-bag?childId=${selectedChildId}`);
@@ -723,31 +870,39 @@ function GamesTab({ selectedChildId, children }) {
       <h1 className="page-title">Literacy <em>Games</em></h1>
       <p className="page-sub">Fun, interactive games to reinforce reading skills.</p>
 
+      {!hasChild && (
+        <div className="journey-banner" style={{ marginBottom: '20px' }}>
+          <div className="jb-icon" style={{ background: 'var(--gold-dark)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+          </div>
+          <div className="jb-text">
+            <div className="jb-title">Register a child to play games</div>
+            <div className="jb-desc">You need at least one child registered before starting games.</div>
+          </div>
+          <button className="btn btn-primary btn-sm jb-action" onClick={() => onNavigate('profile')}>Add Child</button>
+        </div>
+      )}
+
       <div className="activities-grid">
-        <div 
-          className="activity-card activity-card--forest" 
+        <div
+          className="activity-card activity-card--forest"
           onClick={hasChild ? handleStartSpellingGame : undefined}
-          style={{ cursor: hasChild ? 'pointer' : 'not-allowed' }}
+          style={{ cursor: hasChild ? 'pointer' : 'not-allowed', opacity: hasChild ? 1 : 0.6 }}
         >
           <div className="ac-top">
-            <div className="ac-badge-row">
-              <span className="ac-badge ac-badge--forest">Spelling</span>
-            </div>
+            <div className="ac-badge-row"><span className="ac-badge ac-badge--forest">Spelling</span></div>
           </div>
           <div className="ac-body">
             <div className="ac-tag">Picture Spelling</div>
-            <h3 className="ac-title">Spelling Bag</h3>
-            <p className="ac-desc">
-              Look at the picture, listen to the word, and drag the letters into the correct order.
-            </p>
+            <h3 className="ac-title">Spelling words</h3>
+            <p className="ac-desc">Look at the picture, listen to the word, and drag the letters into the correct order.</p>
             <div className="ac-meta-row">
-              <span className="ac-meta-item">⭐ Level 1</span>
-              <span className="ac-meta-item">🎧 Audio support</span>
+        
             </div>
           </div>
           <div className="ac-footer">
-            <button 
-              className="ac-cta ac-cta--forest" 
+            <button
+              className="ac-cta ac-cta--forest"
               onClick={(e) => { e.stopPropagation(); handleStartSpellingGame(); }}
               disabled={!hasChild}
             >
@@ -756,54 +911,29 @@ function GamesTab({ selectedChildId, children }) {
           </div>
         </div>
 
-        <div className="activity-card" style={{ background: 'var(--bg-beige-dark)', opacity: 0.7 }}>
-          <div className="ac-top" style={{ background: 'var(--bg-beige-deep)', paddingBottom: '28px' }}>
-            <div className="ac-badge-row">
-              <span className="ac-badge" style={{ background: 'rgba(0,0,0,0.1)', color: 'var(--ink-soft)' }}>Coming soon</span>
-            </div>
-          </div>
-          <div className="ac-body">
-            <div className="ac-tag">Puzzle</div>
-            <h3 className="ac-title">Literacy Puzzle</h3>
-            <p className="ac-desc">A new puzzle game is being prepared by your therapist.</p>
-            <div className="ac-meta-row">
-              <span className="ac-meta-item">🔒 Locked</span>
-            </div>
-          </div>
-          <div className="ac-footer">
-            <button className="ac-cta" disabled style={{ background: '#ccc', cursor: 'not-allowed' }}>
-              Unlock soon
-            </button>
-          </div>
-        </div>
+        
       </div>
-
-      {!hasChild && (
-        <div className="error-msg show" style={{ marginTop: '16px', textAlign: 'center' }}>
-          Please register a child in your Profile to play games.
-        </div>
-      )}
     </div>
   );
 }
 
-function ActivitiesProgressTab({ children, selectedChildId, assignments }) {
-  const [progressData, setProgressData] = useState([]);
-  useEffect(() => {
-    const progress = assignments.map(assign => ({
-      ...assign,
-      completed: false,
-    }));
-    setProgressData(progress);
-  }, [assignments]);
+// =========================== ACTIVITIES PROGRESS TAB ===========================
+function ActivitiesProgressTab({ children, selectedChildId, assignments, allResults }) {
+  // Derive real completion from results data
+  const selectedChild = children.find(c => c.id === selectedChildId);
+  const childResults = allResults.filter(r => r.child_id === selectedChildId);
+  const latestResult = childResults.length > 0
+    ? childResults.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0]
+    : null;
 
-  const completedCount = progressData.filter(a => a.completed).length;
-  const total = progressData.length;
-  const percent = total ? Math.round((completedCount / total) * 100) : 0;
+  const total = assignments.length;
+  // Use the overall_score from latest result as a proxy for completion percentage
+  const completionPercent = latestResult?.overall_score ?? 0;
+  const completedCount = Math.round((completionPercent / 100) * total);
 
   const pieData = [
-    { name: 'Completed', value: completedCount, color: '#1a6b40' },
-    { name: 'Pending', value: total - completedCount, color: '#e0e0e0' },
+    { name: 'Completed', value: completedCount || 0, color: '#1a6b40' },
+    { name: 'Pending', value: Math.max(total - completedCount, 0), color: '#e8e5f0' },
   ];
 
   return (
@@ -811,23 +941,30 @@ function ActivitiesProgressTab({ children, selectedChildId, assignments }) {
       <div className="page-eyebrow">Track progress</div>
       <h1 className="page-title">Activities <em>Progress</em></h1>
       <p className="page-sub">See how your child is progressing through assigned activities.</p>
-      
+
+      {selectedChild && (
+        <div className="journey-banner" style={{ marginBottom: '24px' }}>
+          <div className="jb-icon"><CheckIcon /></div>
+          <div className="jb-text">
+            <div className="jb-title">Tracking: {selectedChild.full_name}</div>
+            <div className="jb-desc">Year {selectedChild.grade} · {total} activities assigned</div>
+          </div>
+        </div>
+      )}
+
       {total === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>No activities assigned yet.</div>
+        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📈</div>
+          <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: '8px' }}>No activities assigned yet</div>
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Progress will appear here once your therapist assigns activities.</p>
+        </div>
       ) : (
         <div className="two-col" style={{ alignItems: 'center' }}>
-          <div style={{ textAlign: 'center' }}>
-            <ResponsiveContainer width={200} height={200}>
+          <div className="card" style={{ textAlign: 'center' }}>
+            <div className="card-header"><span className="card-title">Overall Completion</span></div>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={90}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value">
                   {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
@@ -835,17 +972,50 @@ function ActivitiesProgressTab({ children, selectedChildId, assignments }) {
                 <Tooltip formatter={(value) => `${value} activities`} />
               </PieChart>
             </ResponsiveContainer>
-            <div style={{ marginTop: '16px', fontSize: '24px', fontWeight: 'bold', color: 'var(--forest)' }}>{percent}%</div>
-            <div style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Overall completion</div>
+            <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--forest)', marginTop: '8px' }}>{completionPercent}%</div>
+            <div style={{ fontSize: '13px', color: 'var(--ink-soft)', marginTop: '4px' }}>Based on latest assessment</div>
           </div>
-          <div>
-            <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: '#1a6b40' }}></div>
-              <span>Completed: {completedCount} activities</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '16px', height: '16px', borderRadius: '4px', background: '#e0e0e0' }}></div>
-              <span>Pending: {total - completedCount} activities</span>
+
+          <div className="card">
+            <div className="card-header"><span className="card-title">Breakdown</span></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: '#1a6b40', flexShrink: 0 }}></div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>Completed</div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>{completedCount} of {total} activities</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: '#e8e5f0', flexShrink: 0 }}></div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '13px' }}>Pending</div>
+                  <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>{Math.max(total - completedCount, 0)} activities remaining</div>
+                </div>
+              </div>
+             {/* Dynamic mapping based on TASKS definition */}
+{latestResult ? (
+  TASKS.map((task) => {
+    // Map your task keys ('task1', 'task2', etc.) to the result fields
+    // Ensure these keys match the structure of your API's latestResult object
+    const scoreMap = {
+      task1: latestResult.word_explorer_score,
+      task2: latestResult.story_reader_score,
+      task3: latestResult.letter_detective_score,
+      task4: latestResult.number_memory_score,
+    };
+
+    return (
+      <ScoreBar 
+        key={task.key} 
+        label={task.label} 
+        score={scoreMap[task.key]} 
+      />
+    );
+  })
+) : (
+  <p>No assessment results available.</p>
+)}
             </div>
           </div>
         </div>
@@ -854,71 +1024,118 @@ function ActivitiesProgressTab({ children, selectedChildId, assignments }) {
   );
 }
 
-function HomeTab({ parentInfo, children, assignedCount }) {
-  const navigate = useNavigate();
-  const progressPercent = 42;
+// =========================== HOME TAB ===========================
 
-  const handleStartActivity = () => {
-    if (children.length > 0) navigate(`/spelling-bag?childId=${children[0].id}`);
-    else alert('Please add a child first.');
-  };
-  const handleViewResults = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'results' }));
-  const handleMessage = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'chat' }));
-  const handleActivities = () => window.dispatchEvent(new CustomEvent('switchTab', { detail: 'activities' }));
+function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResults, selectedChildId, onNavigate, refreshAssignments }) {
+  const selectedChild = children.find(c => c.id === selectedChildId);
+  const childResults = allResults.filter(r => r.child_id === selectedChildId);
+  const latestResult = childResults.length > 0
+    ? childResults.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0]
+    : null;
+
+  const latestScore = latestResult?.overall_score ?? latestResult?.summary?.overallScore ?? null;
+  const latestRisk = latestResult ? getRiskFromScore(latestScore) : null;
+  const riskCfg = latestRisk ? RISK_CONFIG[latestRisk] : null;
+
+  const progressPercent = latestScore ?? 0;
+  const firstName = parentInfo?.full_name?.split(' ')[0] || 'there';
 
   return (
     <div className="pane active">
       <div className="page-eyebrow">Parent portal</div>
-      <h1 className="page-title">Good morning, <em>{parentInfo?.full_name?.split(' ')[0] || 'Parent'}</em></h1>
-      <p className="page-sub">Here's an overview of your child's journey.</p>
+      <h1 className="page-title">{getGreeting()}, <em>{firstName}</em></h1>
+      <p className="page-sub">Here's an overview of {selectedChild ? `${selectedChild.full_name}'s` : 'your child\'s'} journey.</p>
 
+      {/* Treatment Plan Banner */}
       <div className="plan-banner">
         <div className="pb-icon"><CheckIcon /></div>
         <div style={{ flex: 1 }}>
           <div className="pb-label">Active Treatment Plan</div>
-          <div className="pb-name">With Dr. Sarah Mohamed — Dyslexia Specialist</div>
+          <div className="pb-name">With Dr. ACHEB Kenza — Speech Therapist</div>
           <div className="pb-bar"><div className="pb-fill" style={{ width: `${progressPercent}%` }} /></div>
-          <div className="pb-prog">{progressPercent}% of programme completed — Session 2 of 5</div>
+          <div className="pb-prog">{progressPercent}% of programme completed</div>
         </div>
         <div className="pb-actions">
-          <button className="btn btn-ghost-light" onClick={handleMessage}>Message Therapist</button>
-          <button className="btn btn-ghost-light" onClick={handleViewResults}>View Results</button>
+          {/* Buttons removed as per your existing code */}
         </div>
       </div>
 
+      {/* Quick Action Cards (unchanged) */}
       <div className="quick-actions">
-        <div className="qa-card" onClick={handleActivities}>
+        <div className="qa-card" onClick={() => onNavigate('activities')}>
           <div className="qa-icon" style={{ background: 'var(--forest-faint)' }}><ActivitiesIcon /></div>
           <div className="qa-name">Start Activity</div>
-          <div className="qa-sub">{assignedCount} assigned by therapist</div>
+          <div className="qa-sub">{assignedCount > 0 ? `${assignedCount} assigned by therapist` : 'No activities yet'}</div>
         </div>
-        <div className="qa-card" onClick={handleViewResults}>
+        <div className="qa-card" onClick={() => onNavigate('results')}>
           <div className="qa-icon" style={{ background: 'var(--sage-light)' }}><ResultsIcon /></div>
           <div className="qa-name">Latest Score</div>
-          <div className="qa-sub">78% — Mild risk level</div>
+          <div className="qa-sub" style={{ color: latestScore != null ? scoreColor(latestScore) : undefined }}>
+            {latestScore != null ? `${latestScore}% — ${latestRisk} risk` : 'No results yet'}
+          </div>
         </div>
-        <div className="qa-card" onClick={handleMessage}>
+        <div className="qa-card" onClick={() => onNavigate('chat')}>
           <div className="qa-icon" style={{ background: 'var(--gold-light)' }}><ChatIcon /></div>
           <div className="qa-name">Contact Therapist</div>
-          <div className="qa-sub">Dr. Sarah</div>
+          <div className="qa-sub">Dr. ACHEB Kenza</div>
         </div>
       </div>
 
-      <div className="home-activities-section">
-        <div className="home-activities-header">
-          <span className="home-activities-title">Today's Activities</span>
-          <button className="btn-text-link" onClick={handleActivities}>View all →</button>
-        </div>
-        <div className="home-activities-grid">
-          <div className="home-act-card" onClick={handleStartActivity}>
-            <div className="hac-left">
-              <div className="hac-icon hac-icon--forest"><BookIcon /></div>
-              <div><div className="hac-tag">Spelling</div><div className="hac-name">Picture Spelling</div><div className="hac-meta"><ClockIcon /> 10 min</div></div>
-            </div>
-            <button className="hac-btn hac-btn--forest" onClick={(e) => { e.stopPropagation(); handleStartActivity(); }}>Start →</button>
+      {/* TODAY'S PLAN CARD (with refresh button) */}
+      <div className="card" style={{ marginBottom: '16px' }}>
+        <div className="card-header">
+          <span className="card-title">Today's Plan for {selectedChild?.full_name || 'your child'}</span>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {assignmentsList && assignmentsList.length > 0 && (
+              <button className="btn btn-outline btn-sm" onClick={() => onNavigate('activities')}>See all →</button>
+            )}
+          
           </div>
         </div>
+
+        {assignmentsList && assignmentsList.length > 0 ? (
+          assignmentsList.slice(0, 4).map((assign, i) => {
+            let typeLabel = '';
+            if (assign.type === 'letter_sound') typeLabel = 'Alphabet Swiping';
+            else if (assign.type === 'syllable') typeLabel = 'Syllable Breaking';
+            else typeLabel = 'Activity';
+            return (
+              <div key={assign.id || i} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '10px 0',
+                borderBottom: i < Math.min(assignmentsList.length, 4) - 1 ? '1px solid var(--border-soft)' : 'none'
+              }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--sage)', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>{assign.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>{typeLabel} · Level {assign.difficulty_level}</div>
+                </div>
+                <span style={{ fontSize: '10px', padding: '3px 9px', borderRadius: '20px', background: 'var(--lavender-light)', color: 'var(--forest)', fontWeight: 800 }}>Not started</span>
+              </div>
+            );
+          })
+        ) : (
+          <div style={{ textAlign: 'center', padding: '28px 0' }}>
+            <div style={{ marginBottom: '12px', color: 'var(--ink-soft)' }}>No activities assigned yet.</div>
+            {/* Optional: add a button to message therapist – uncomment if needed */}
+            {/* <button className="btn btn-outline btn-sm" onClick={() => onNavigate('chat')}>Message Therapist</button> */}
+          </div>
+        )}
       </div>
+
+      {/* No children CTA (unchanged) */}
+      {children.length === 0 && (
+        <div className="journey-banner">
+          <div className="jb-icon" style={{ background: 'var(--gold-dark)' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" /></svg>
+          </div>
+          <div className="jb-text">
+            <div className="jb-title">Get started — Register a child</div>
+            <div className="jb-desc">Add your child's profile to start tracking their progress and accessing activities.</div>
+          </div>
+          <button className="btn btn-primary btn-sm jb-action" onClick={() => onNavigate('profile')}>Add Child</button>
+        </div>
+      )}
     </div>
   );
 }
@@ -937,6 +1154,7 @@ const ParentDashboard = () => {
   const [assignmentsList, setAssignmentsList] = useState([]);
   const [selectedChildId, setSelectedChildId] = useState(null);
   const [allResults, setAllResults] = useState([]);
+  const { toasts, addToast, removeToast } = useToast();
 
   const fetchAll = useCallback(async () => {
     try {
@@ -948,8 +1166,15 @@ const ParentDashboard = () => {
         if (childrenData.length > 0 && !selectedChildId) {
           setSelectedChildId(childrenData[0].id);
         }
-      } else if (childRes.status === 401) { localStorage.clear(); navigate('/auth'); }
-    } catch (err) { console.error(err); } finally { setLoadingInit(false); }
+      } else if (childRes.status === 401) {
+        localStorage.clear();
+        navigate('/auth');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingInit(false);
+    }
   }, [navigate, selectedChildId]);
 
   useEffect(() => {
@@ -964,24 +1189,28 @@ const ParentDashboard = () => {
     if (!loadingInit) loadResults();
   }, [loadingInit]);
 
-  const loadAssignments = useCallback(async (childId) => {
-    if (!childId) {
-      setAssignmentsList([]);
-      setAssignedActivitiesCount(0);
-      return;
-    }
-    try {
-      const assignments = await fetchAssignmentsForChild(childId);
-      console.log('Raw assignments from backend:', assignments);
-      // Filter to only show letter_sound and syllable
-      const filtered = assignments.filter(a => a.type === 'letter_sound' || a.type === 'syllable');
-      console.log('Filtered assignments:', filtered);
+const loadAssignments = useCallback(async (childId) => {
+  if (!childId) {
+    setAssignmentsList([]);
+    setAssignedActivitiesCount(0);
+    return;
+  }
+  try {
+    const res = await apiFetch(`/api/assignments/child/${childId}`);
+    if (res.ok) {
+      const data = await res.json();
+      const filtered = (data.assignments || []).filter(a => a.type === 'letter_sound' || a.type === 'syllable');
       setAssignmentsList(filtered);
       setAssignedActivitiesCount(filtered.length);
-    } catch (err) {
-      console.error('Error loading assignments:', err);
+    } else {
+      console.error('Failed to load assignments');
+      setAssignmentsList([]);
     }
-  }, []);
+  } catch (err) {
+    console.error('Error loading assignments:', err);
+    setAssignmentsList([]);
+  }
+}, []);
 
   useEffect(() => {
     if (selectedChildId) loadAssignments(selectedChildId);
@@ -990,7 +1219,7 @@ const ParentDashboard = () => {
   const getChildProgress = (childId) => {
     const childResults = allResults.filter(r => r.child_id === childId);
     if (childResults.length === 0) return 0;
-    const latest = childResults.sort((a,b) => new Date(b.completed_at) - new Date(a.completed_at))[0];
+    const latest = childResults.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0];
     return latest.overall_score || 0;
   };
 
@@ -999,7 +1228,7 @@ const ParentDashboard = () => {
       const msgs = await fetchMessages();
       const lastRead = parseInt(localStorage.getItem('lastMessagesRead') || '0', 10);
       setUnreadMessages(msgs.filter(m => new Date(m.created_at).getTime() > lastRead).length);
-    } catch (err) {}
+    } catch {}
   }, []);
 
   const updateNewResults = useCallback(async () => {
@@ -1007,7 +1236,7 @@ const ParentDashboard = () => {
       const res = await fetchMyResults();
       const lastView = parseInt(localStorage.getItem('lastResultsView') || '0', 10);
       setNewResults(res.filter(r => new Date(r.completed_at).getTime() > lastView).length);
-    } catch (err) {}
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -1017,7 +1246,7 @@ const ParentDashboard = () => {
       const interval = setInterval(() => { updateUnreadMessages(); updateNewResults(); }, 10000);
       return () => clearInterval(interval);
     }
-  }, [loadingInit]);
+  }, [loadingInit, updateUnreadMessages, updateNewResults]);
 
   useEffect(() => {
     if (activeTab === 'results') {
@@ -1041,12 +1270,13 @@ const ParentDashboard = () => {
     localStorage.clear();
     navigate('/auth');
   };
+
   const handleNotificationClick = () => {
     localStorage.setItem('lastMessagesRead', Date.now());
     localStorage.setItem('lastResultsView', Date.now());
     setUnreadMessages(0);
     setNewResults(0);
-    alert('Notifications cleared');
+    addToast('All notifications cleared', 'success');
   };
 
   if (loadingInit) return <div className="loading-state"><div className="spinner" /><div>Loading portal...</div></div>;
@@ -1057,76 +1287,197 @@ const ParentDashboard = () => {
   const selectedChild = children.find(c => c.id === selectedChildId);
   const activeChildProgress = selectedChild ? getChildProgress(selectedChild.id) : 0;
 
-  const TABS = [
+  // Sidebar nav items
+  const SIDEBAR_ITEMS = [
+    { section: 'Main' },
     { key: 'home', label: 'Home', icon: HomeIcon },
     { key: 'profile', label: 'Profile', icon: ProfileIcon },
-    { key: 'results', label: 'Results', icon: ResultsIcon },
-    { key: 'activities', label: 'Activities', icon: ActivitiesIcon },
+    { section: 'Progress' },
+    { key: 'results', label: 'Assessment Results', icon: ResultsIcon, badge: newResults > 0 ? newResults : null },
+    { key: 'activities', label: 'Activities', icon: ActivitiesIcon, badge: assignedActivitiesCount > 0 ? assignedActivitiesCount : null, badgeType: 'gold' },
     { key: 'games', label: 'Games', icon: GamesIcon },
-    { key: 'progress', label: 'Activ. Progress', icon: ProgressTabIcon },
-    { key: 'chat', label: 'Messages', icon: ChatIcon }
+    { key: 'progress', label: 'Progress', icon: ProgressTabIcon },
+    { section: 'Care' },
+    { key: 'chat', label: 'Messages', icon: ChatIcon, badge: unreadMessages > 0 ? unreadMessages : null },
+  ];
+
+  // Mobile bottom nav (5 key tabs)
+  const MOBILE_TABS = [
+    { key: 'home', label: 'Home', icon: HomeIcon },
+    { key: 'activities', label: 'Activities', icon: ActivitiesIcon, badge: assignedActivitiesCount },
+    { key: 'results', label: 'Results', icon: ResultsIcon, badge: newResults },
+    { key: 'chat', label: 'Messages', icon: ChatIcon, badge: unreadMessages },
+    { key: 'profile', label: 'Profile', icon: ProfileIcon },
   ];
 
   return (
     <div className="pd">
+      <Toast toasts={toasts} removeToast={removeToast} />
+
+      {/* TOP NAV — brand + user only, NO tab buttons */}
       <nav className="topnav">
-        <div className="brand"><div className="brand-dot"><BookIcon /></div><span className="brand-name">Lexi<em>Care</em></span></div>
-        <div className="nav-tabs">{TABS.map(tab => <button key={tab.key} className={`nav-tab ${activeTab === tab.key ? 'active' : ''}`} onClick={() => setActiveTab(tab.key)}><tab.icon /> {tab.label}</button>)}</div>
+        <div className="brand">
+          <div className="brand-icon">DS</div>
+          <span className="brand-name">Dyslexia<span style={{ fontStyle: 'italic' }}>Support</span></span>
+        </div>
+
         <div className="nav-right">
-          <button className="notif-btn" onClick={handleNotificationClick}><BellIcon />{totalNotifications > 0 && <div className="notif-dot">{totalNotifications}</div>}</button>
-          <div className="user-chip"><div className="user-av">{initial}</div><span className="user-name">{displayName}</span></div>
-          <button className="user-chip" onClick={handleLogout}><LogoutIcon /><span>Sign out</span></button>
+         
+          
+         
+          <button className="user-chip logout-chip" onClick={handleLogout}>
+            <LogoutIcon />
+            <span>Sign out</span>
+          </button>
         </div>
       </nav>
 
+      {/* JOURNEY STRIP — steps are now clickable */}
       <div className="journey-strip">
-        <div className="journey-step"><div className="jstep done"><div className="jstep-num"><CheckIcon /></div><div><div className="jstep-label">Register</div><div className="jstep-sub">Profile & child</div></div></div><div className="jconnector done"></div></div>
-        <div className="journey-step"><div className="jstep done"><div className="jstep-num"><CheckIcon /></div><div><div className="jstep-label">First task</div><div className="jstep-sub">Complete activities</div></div></div><div className="jconnector done"></div></div>
-        <div className="journey-step"><div className={`jstep ${activeTab === 'results' ? 'active' : ''}`}><div className="jstep-num">3</div><div><div className="jstep-label">Assessment</div><div className="jstep-sub">View results</div></div></div><div className="jconnector"></div></div>
-        <div className="journey-step"><div className={`jstep ${activeTab === 'chat' ? 'active' : ''}`}><div className="jstep-num">4</div><div><div className="jstep-label">Treatment plan</div><div className="jstep-sub">Sign up with therapist</div></div></div><div className="jconnector"></div></div>
-        <div className="journey-step"><div className="jstep"><div className="jstep-num">5</div><div><div className="jstep-label">Ongoing care</div><div className="jstep-sub">Chat & monitor</div></div></div></div>
+        <div className="journey-step">
+          <div className="jstep done" onClick={() => setActiveTab('profile')} title="Go to Profile">
+            <div className="jstep-num"><CheckIcon /></div>
+            <div><div className="jstep-label">Register</div><div className="jstep-sub">Profile & child</div></div>
+          </div>
+          <div className="jconnector done"></div>
+        </div>
+        <div className="journey-step">
+          <div className="jstep done" onClick={() => setActiveTab('activities')} title="Go to Activities">
+            <div className="jstep-num"><CheckIcon /></div>
+            <div><div className="jstep-label">First task</div><div className="jstep-sub">Complete activities</div></div>
+          </div>
+          <div className="jconnector done"></div>
+        </div>
+        <div className="journey-step">
+          <div className={`jstep ${activeTab === 'results' ? 'active' : ''}`} onClick={() => setActiveTab('results')} title="Go to Results">
+            <div className="jstep-num">3</div>
+            <div><div className="jstep-label">Assessment</div><div className="jstep-sub">View results</div></div>
+          </div>
+          <div className="jconnector"></div>
+        </div>
+        <div className="journey-step">
+          <div className={`jstep ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')} title="Go to Messages">
+            <div className="jstep-num">4</div>
+            <div><div className="jstep-label">Treatment plan</div><div className="jstep-sub">Sign up with therapist</div></div>
+          </div>
+          <div className="jconnector"></div>
+        </div>
+        <div className="journey-step">
+          <div className={`jstep ${activeTab === 'progress' ? 'active' : ''}`} onClick={() => setActiveTab('progress')} title="Go to Progress">
+            <div className="jstep-num">5</div>
+            <div><div className="jstep-label">Ongoing care</div><div className="jstep-sub">Chat & monitor</div></div>
+          </div>
+        </div>
       </div>
 
       <div className="layout">
+        {/* SIDEBAR */}
         <aside className="sidebar">
-          <div className="sidebar-section">Main</div>
-          <button className={`slink ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}><HomeIcon /> Home</button>
-          <button className={`slink ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}><ProfileIcon /> Profile</button>
-          <div className="sidebar-section">Progress</div>
-          <button className={`slink ${activeTab === 'results' ? 'active' : ''}`} onClick={() => setActiveTab('results')}><ResultsIcon /> Assessment Results{newResults > 0 && <span className="slink-badge">{newResults}</span>}</button>
-          <button className={`slink ${activeTab === 'activities' ? 'active' : ''}`} onClick={() => setActiveTab('activities')}><ActivitiesIcon /> Activities{assignedActivitiesCount > 0 && <span className="slink-badge gold">{assignedActivitiesCount}</span>}</button>
-          <button className={`slink ${activeTab === 'games' ? 'active' : ''}`} onClick={() => setActiveTab('games')}><GamesIcon /> Games</button>
-          <button className={`slink ${activeTab === 'progress' ? 'active' : ''}`} onClick={() => setActiveTab('progress')}><ProgressTabIcon /> Activ. Progress</button>
-          <div className="sidebar-section">Care</div>
-          <button className={`slink ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><ChatIcon /> Messages{unreadMessages > 0 && <span className="slink-badge">{unreadMessages}</span>}</button>
+          {SIDEBAR_ITEMS.map((item, i) => {
+            if (item.section) return <div key={i} className="sidebar-section">{item.section}</div>;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                className={`slink ${activeTab === item.key ? 'active' : ''}`}
+                onClick={() => setActiveTab(item.key)}
+              >
+                <Icon />
+                {item.label}
+                {item.badge != null && (
+                  <span className={`slink-badge ${item.badgeType === 'gold' ? 'gold' : ''}`}>{item.badge}</span>
+                )}
+              </button>
+            );
+          })}
+
           {selectedChild && (
             <div className="child-summary">
               <div className="cs-label">Active child</div>
               <div className="cs-name">{selectedChild.full_name}</div>
               <div className="cs-meta">Year {selectedChild.grade}</div>
-              <div className="cs-bar"><div className="cs-bar-fill" style={{ width: `${activeChildProgress}%` }}></div></div>
-              <div className="cs-prog">{activeChildProgress}% treatment complete</div>
+            
             </div>
           )}
         </aside>
+
+        {/* MAIN CONTENT */}
         <main className="main">
-          {activeTab === 'home' && <HomeTab parentInfo={parentInfo} children={children} assignedCount={assignedActivitiesCount} />}
-          {activeTab === 'profile' && <ProfileTab user={user} parentInfo={parentInfo} children={children} onChildrenChange={fetchAll} />}
-          {activeTab === 'results' && <ResultsTab />}
-          {activeTab === 'activities' && (
-            <ActivitiesTab 
-              children={children} 
-              assignments={assignmentsList} 
-              selectedChildId={selectedChildId}
-              onSelectChild={setSelectedChildId}
-              onRefresh={loadAssignments} 
+       {activeTab === 'home' && (
+  <HomeTab
+    parentInfo={parentInfo}
+    children={children}
+    assignedCount={assignedActivitiesCount}
+    assignmentsList={assignmentsList}   
+    allResults={allResults}
+    selectedChildId={selectedChildId}
+    onNavigate={setActiveTab}
+  />
+)}
+          {activeTab === 'profile' && (
+            <ProfileTab
+              user={user}
+              parentInfo={parentInfo}
+              children={children}
+              onChildrenChange={fetchAll}
+              addToast={addToast}
             />
           )}
-          {activeTab === 'games' && <GamesTab selectedChildId={selectedChildId} children={children} />}
-          {activeTab === 'progress' && <ActivitiesProgressTab children={children} selectedChildId={selectedChildId} assignments={assignmentsList} />}
-          {activeTab === 'chat' && <ChatTab user={user} />}
+          {activeTab === 'results' && (
+            <ResultsTab allResults={allResults} onNavigate={setActiveTab} />
+          )}
+          {activeTab === 'activities' && (
+            <ActivitiesTab
+              children={children}
+              assignments={assignmentsList}
+              selectedChildId={selectedChildId}
+              onSelectChild={setSelectedChildId}
+              onRefresh={loadAssignments}
+              onNavigate={setActiveTab}
+              addToast={addToast}
+            />
+          )}
+          {activeTab === 'games' && (
+            <GamesTab
+              selectedChildId={selectedChildId}
+              children={children}
+              onNavigate={setActiveTab}
+              addToast={addToast}
+            />
+          )}
+          {activeTab === 'progress' && (
+            <ActivitiesProgressTab
+              children={children}
+              selectedChildId={selectedChildId}
+              assignments={assignmentsList}
+              allResults={allResults}
+            />
+          )}
+          {activeTab === 'chat' && (
+            <ChatTab user={user} addToast={addToast} />
+          )}
         </main>
       </div>
+
+      {/* MOBILE BOTTOM NAV */}
+      <nav className="mobile-nav">
+        {MOBILE_TABS.map(tab => {
+          const TabIcon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              className={`mob-tab ${activeTab === tab.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+            >
+              <div className="mob-tab-icon">
+                <TabIcon />
+                {tab.badge > 0 && <span className="mob-badge">{tab.badge}</span>}
+              </div>
+              <span className="mob-tab-label">{tab.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };
