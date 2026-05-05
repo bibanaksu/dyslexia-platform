@@ -14,6 +14,7 @@ import {
   logout as apiLogout 
 } from '../../services/api';
 import './Dashboard.css';
+import ChildAssessmentDetail from './ChildAssessmentDetail';
 
 const BASE_URL = 'http://localhost:5000';
 
@@ -369,16 +370,359 @@ function PatientsTab({ patients, onViewPatient }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ASSESSMENT DETAILS TAB — per-exercise breakdown
+// ══════════════════════════════════════════════════════════════
+const TASK1_EXERCISES = [
+  { key: 'similarWords',    label: 'Exercise 1 — Twin Words 👯',   words: ['cat','bat','hat','mat','cap','cup','map','mop','pin','pen','sit','set','bad','bed','big','pig','fan','van','tap','top'] },
+  { key: 'nonSimilarWords', label: 'Exercise 2 — Everyday Words 🏡', words: ['house','tree','school','water','mother','father','child','book','table','chair','apple','bread','car','road','sun','moon','dog','cat','friend','teacher'] },
+  { key: 'nonWords',        label: 'Exercise 3 — Funny Words 🤪',  words: ['mip','lat','nob','kep','sud','fik','zan','pel','mot','rib','dak','vun','sep','gol','tim','paf','lod','kes','bim','ran'] },
+];
+
+function AssessmentDetailsTab({ childSessionId }) {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
+  const [activeTask, setActiveTask] = useState('task1');
+
+  useEffect(() => {
+    if (!childSessionId) { setLoading(false); return; }
+    setLoading(true);
+    apiFetch(`/api/therapist/child-task-details/${childSessionId}`)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, [childSessionId]);
+
+  if (loading) return <div style={{ padding: 24, color: '#8FA898', textAlign: 'center' }}>Loading assessment details…</div>;
+  if (error)   return <div style={{ padding: 24, color: '#C62828' }}>⚠️ {error}</div>;
+  if (!data)   return <div style={{ padding: 24, color: '#8FA898' }}>No session data available.</div>;
+
+  const safeJson = (v) => {
+    if (!v) return null;
+    if (typeof v === 'object') return v;
+    try { return JSON.parse(v); } catch { return null; }
+  };
+
+  // ── Task 1 ──────────────────────────────────────────────────
+  const renderTask1 = () => {
+    const t = data.task1;
+    if (!t) return <div style={styles.noData}>Task 1 not completed yet.</div>;
+    const errors = safeJson(t.errorPatterns) || [];
+    const errorSet = new Set(Array.isArray(errors) ? errors.map(e => typeof e === 'string' ? e : e.word || e) : []);
+
+    return (
+      <div>
+        <div style={styles.taskSummaryRow}>
+          <span style={styles.taskSummaryChip}>Score: <b style={{ color: scoreColor(t.percentage) }}>{Math.round(t.percentage || 0)}%</b></span>
+          <span style={styles.taskSummaryChip}>Correct: <b style={{ color: '#1a6b40' }}>{t.totalScore ?? '—'}</b></span>
+          <span style={styles.taskSummaryChip}>Total: <b>{t.totalWords ?? 60}</b></span>
+        </div>
+        {TASK1_EXERCISES.map((ex) => {
+          const wrongWords = ex.words.filter(w => errorSet.has(w));
+          const correctWords = ex.words.filter(w => !errorSet.has(w));
+          return (
+            <div key={ex.key} style={styles.exerciseBlock}>
+              <div style={styles.exerciseHeader}>{ex.label}</div>
+              <div style={styles.wordGrid}>
+                {ex.words.map((word, i) => {
+                  const isWrong = errorSet.has(word);
+                  return (
+                    <div key={i} style={{ ...styles.wordCard, background: isWrong ? B.errBg : B.bluePale, borderColor: isWrong ? B.errBorder : B.blueLight }}>
+                      <span style={{ fontWeight: 700, color: isWrong ? B.errText : B.navyMid, fontSize: 14 }}>{word}</span>
+                      {isWrong
+                        ? <span style={styles.badge(B.errText, B.errBg)}>incorrect</span>
+                        : <span style={styles.badge(B.blue, B.blueLight)}>correct</span>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={styles.exSummary}>
+                <span style={{ color: B.blue, fontWeight: 600 }}>{correctWords.length} correct</span>
+                <span style={{ color: B.errText, fontWeight: 600 }}>{wrongWords.length} incorrect</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── Task 2 ──────────────────────────────────────────────────
+  const renderTask2 = () => {
+    const t = data.task2;
+    if (!t) return <div style={styles.noData}>Task 2 not completed yet.</div>;
+    const wordDetails = safeJson(t.wordDetails);
+    const items = wordDetails
+      ? (Array.isArray(wordDetails) ? wordDetails : Object.values(wordDetails))
+      : [];
+
+    return (
+      <div>
+        <div style={styles.taskSummaryRow}>
+          <span style={styles.taskSummaryChip}>Score: <b style={{ color: scoreColor(t.percentage) }}>{Math.round(t.percentage || 0)}%</b></span>
+          <span style={styles.taskSummaryChip}>Correct: <b style={{ color: '#1a6b40' }}>{t.correctCount ?? '—'}</b></span>
+          <span style={styles.taskSummaryChip}>Incorrect: <b style={{ color: '#C62828' }}>{t.incorrectCount ?? '—'}</b></span>
+        </div>
+        <div style={styles.exerciseBlock}>
+          <div style={styles.exerciseHeader}>Story Reading — Word by Word</div>
+          {items.length === 0 ? (
+            <div style={styles.noData}>No word-level data recorded for this session.</div>
+          ) : (
+            <div>
+              {items.map((item, i) => {
+                const expected = item.expected || item.word || item.target || `Word ${i+1}`;
+                const spoken   = item.spoken   || item.userAnswer || item.response || '—';
+                const correct  = item.correct  || item.isCorrect;
+                return (
+                  <div key={i} style={{ ...styles.resultRow, background: correct ? B.bluePale : B.errBg, borderLeft: `3px solid ${correct ? B.blueMid : B.errDot}` }}>
+                    <span style={styles.exNum}>#{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: B.navy }}>{expected}</span>
+                      {!correct && (
+                        <span style={{ marginLeft: 10, color: B.errText, fontSize: 12 }}>
+                          child said: <b>"{spoken}"</b>
+                        </span>
+                      )}
+                    </div>
+                    <span style={styles.badge(correct ? B.blue : B.errText, correct ? B.blueLight : B.errBg)}>
+                      {correct ? 'correct' : 'incorrect'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Task 3 ──────────────────────────────────────────────────
+  const renderTask3 = () => {
+    const t = data.task3;
+    if (!t) return <div style={styles.noData}>Task 3 not completed yet.</div>;
+    const details = safeJson(t.comparisonDetails);
+    const items = details ? (Array.isArray(details) ? details : Object.values(details)) : [];
+
+    return (
+      <div>
+        <div style={styles.taskSummaryRow}>
+          <span style={styles.taskSummaryChip}>Score: <b style={{ color: scoreColor(t.percentage) }}>{Math.round(t.percentage || 0)}%</b></span>
+          <span style={styles.taskSummaryChip}>Correct: <b style={{ color: '#1a6b40' }}>{t.correctCount ?? '—'}</b></span>
+          <span style={styles.taskSummaryChip}>Incorrect: <b style={{ color: '#C62828' }}>{t.incorrectCount ?? '—'}</b></span>
+        </div>
+        <div style={styles.exerciseBlock}>
+          <div style={styles.exerciseHeader}>Letter Comparisons</div>
+          {items.length === 0 ? (
+            <div style={styles.noData}>No comparison data recorded for this session.</div>
+          ) : (
+            <div>
+              {items.map((item, i) => {
+                const g1 = item.group1 || item.letterA || item.left || '?';
+                const g2 = item.group2 || item.letterB || item.right || '?';
+                const correct = item.is_correct !== undefined ? item.is_correct : (item.correct || item.isCorrect);
+                const userAns = item.user_answer !== undefined ? item.user_answer : (item.userAnswer || item.answer);
+                const expected = item.expected_same !== undefined
+                  ? (item.expected_same ? 'Same' : 'Different')
+                  : (item.correctAnswer || '—');
+                const isTimeout = item.is_timeout;
+                const g1Display = Array.isArray(g1) ? g1.join(' ') : String(g1);
+                const g2Display = Array.isArray(g2) ? g2.join(' ') : String(g2);
+                return (
+                  <div key={i} style={{ ...styles.resultRow, background: correct ? B.bluePale : B.errBg, borderLeft: `3px solid ${correct ? B.blueMid : B.errDot}` }}>
+                    <span style={styles.exNum}>#{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontFamily: 'Georgia, serif', fontWeight: 800, fontSize: 17, letterSpacing: 2, color: B.navy }}>{g1Display}</span>
+                      <span style={{ margin: '0 8px', color: B.gray400, fontSize: 12 }}>vs</span>
+                      <span style={{ fontFamily: 'Georgia, serif', fontWeight: 800, fontSize: 17, letterSpacing: 2, color: B.navy }}>{g2Display}</span>
+                      {!correct && userAns !== null && userAns !== undefined && (
+                        <span style={{ marginLeft: 10, color: B.errText, fontSize: 12 }}>
+                          said: <b>{String(userAns)}</b> · correct: <b style={{ color: B.blue }}>{expected}</b>
+                        </span>
+                      )}
+                      {isTimeout && <span style={{ marginLeft: 8, color: B.warnText, fontSize: 12 }}>timeout</span>}
+                    </div>
+                    <span style={styles.badge(correct ? B.blue : B.errText, correct ? B.blueLight : B.errBg)}>
+                      {correct ? 'correct' : 'incorrect'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ── Task 4 ──────────────────────────────────────────────────
+  const renderTask4 = () => {
+    const t = data.task4;
+    if (!t) return <div style={styles.noData}>Task 4 not completed yet.</div>;
+
+    const renderSubTask = (sub, label, exNum) => {
+      if (!sub) return null;
+      const details = safeJson(sub.details) || [];
+      return (
+        <div style={styles.exerciseBlock}>
+          <div style={styles.exerciseHeader}>{exNum} — {label}</div>
+          <div style={styles.taskSummaryRow}>
+            <span style={styles.taskSummaryChip}>Score: <b style={{ color: scoreColor(sub.percentage) }}>{Math.round(sub.percentage || 0)}%</b></span>
+            <span style={styles.taskSummaryChip}>Correct: <b style={{ color: '#1a6b40' }}>{sub.correct ?? '—'}</b></span>
+            <span style={styles.taskSummaryChip}>Incorrect: <b style={{ color: '#C62828' }}>{sub.incorrect ?? '—'}</b></span>
+          </div>
+          {details.length === 0 ? (
+            <div style={styles.noData}>No item-level data recorded.</div>
+          ) : (
+            <div>
+              {details.map((item, i) => {
+                const inner = item.forward || item.reverse || item;
+                const correct  = inner.correct;
+                const input    = inner.input;
+                const expected = inner.expected;
+                const inputStr    = Array.isArray(input)    ? input.join(', ')    : String(input    ?? '—');
+                const expectedStr = Array.isArray(expected) ? expected.join(', ') : String(expected ?? '—');
+                return (
+                  <div key={i} style={{ ...styles.resultRow, background: correct ? B.bluePale : B.errBg, borderLeft: `3px solid ${correct ? B.blueMid : B.errDot}` }}>
+                    <span style={styles.exNum}>#{i + 1}</span>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: B.gray600 }}>Sequence: </span>
+                      <span style={{ fontFamily: 'monospace', fontSize: 14, color: B.navy }}>{expectedStr}</span>
+                      {!correct && (
+                        <span style={{ marginLeft: 10, color: B.errText, fontSize: 12 }}>
+                          child answered: <b>{inputStr}</b>
+                        </span>
+                      )}
+                    </div>
+                    <span style={styles.badge(correct ? B.blue : B.errText, correct ? B.blueLight : B.errBg)}>
+                      {correct ? 'correct' : 'incorrect'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div>
+        <div style={styles.taskSummaryRow}>
+          <span style={styles.taskSummaryChip}>Overall: <b style={{ color: scoreColor(t.overallPercentage) }}>{Math.round(t.overallPercentage || 0)}%</b></span>
+        </div>
+        {renderSubTask(t.sequence, 'Number Sequence Memory', 'Exercise 1')}
+        {renderSubTask(t.reversal, 'Number Reversal Memory',  'Exercise 2')}
+      </div>
+    );
+  };
+
+  const taskTabs = [
+    { key: 'task1', label: 'Word Explorer',    score: data.task1?.percentage },
+    { key: 'task2', label: 'Story Reader',     score: data.task2?.percentage },
+    { key: 'task3', label: 'Letter Detective', score: data.task3?.percentage },
+    { key: 'task4', label: 'Number Memory',    score: data.task4?.overallPercentage },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Task selector tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 16, background: B.gray50, borderRadius: 10, padding: 4, border: `1px solid ${B.gray200}` }}>
+        {taskTabs.map(t => {
+          const active = activeTask === t.key;
+          const sc = scoreColor(t.score);
+          return (
+            <button key={t.key} onClick={() => setActiveTask(t.key)} style={{
+              flex: 1, padding: '8px 10px', borderRadius: 7, border: 'none',
+              background: active ? B.white : 'transparent',
+              boxShadow: active ? '0 1px 4px rgba(15,39,68,0.1)' : 'none',
+              color: active ? B.navyMid : B.gray400,
+              fontSize: 11, fontWeight: active ? 700 : 500, cursor: 'pointer',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+              transition: 'all 0.15s',
+            }}>
+              <span style={{ whiteSpace: 'nowrap' }}>{t.label}</span>
+              {t.score != null && (
+                <span style={{
+                  background: active ? B.blueLight : 'transparent',
+                  color: active ? B.blue : sc,
+                  borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700,
+                }}>{Math.round(t.score)}%</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {/* Content */}
+      <div style={{ overflowY: 'auto', flex: 1 }}>
+        {activeTask === 'task1' && renderTask1()}
+        {activeTask === 'task2' && renderTask2()}
+        {activeTask === 'task3' && renderTask3()}
+        {activeTask === 'task4' && renderTask4()}
+      </div>
+    </div>
+  );
+}
+
+// ── BLUE/WHITE PALETTE ────────────────────────────────────────
+const B = {
+  navy:     '#0f2744',
+  navyMid:  '#1a3a5c',
+  blue:     '#1d6fa6',
+  blueMid:  '#2589c9',
+  blueLight:'#daeeff',
+  bluePale: '#f0f8ff',
+  white:    '#ffffff',
+  gray50:   '#f8fafc',
+  gray100:  '#f1f5f9',
+  gray200:  '#e2e8f0',
+  gray400:  '#94a3b8',
+  gray600:  '#475569',
+  gray800:  '#1e293b',
+  okText:   '#15803d', okBg: '#f0fdf4', okBorder: '#bbf7d0', okDot: '#22c55e',
+  errText:  '#b91c1c', errBg: '#fef2f2', errBorder: '#fecaca', errDot: '#ef4444',
+  warnText: '#a16207', warnBg: '#fefce8', warnDot: '#eab308',
+};
+
+const scoreColor = (s) => {
+  if (s == null) return B.gray400;
+  if (s >= 85)   return B.okText;
+  if (s >= 70)   return B.warnText;
+  if (s >= 50)   return '#c2410c';
+  return B.errText;
+};
+
+const styles = {
+  noData: { padding: 20, color: B.gray400, fontStyle: 'italic', fontSize: 13, textAlign: 'center', background: B.bluePale, borderRadius: 8, border: `1px solid ${B.blueLight}` },
+  exerciseBlock: { marginBottom: 16, background: B.white, borderRadius: 10, overflow: 'hidden', border: `1px solid ${B.gray200}`, boxShadow: '0 1px 4px rgba(15,39,68,0.05)' },
+  exerciseHeader: { background: B.navyMid, color: B.white, padding: '10px 16px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' },
+  wordGrid: { display: 'flex', flexWrap: 'wrap', gap: 8, padding: 14 },
+  wordCard: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '8px 14px', borderRadius: 8, border: '1.5px solid', minWidth: 72 },
+  taskSummaryRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14, padding: '0 2px' },
+  taskSummaryChip: { background: B.blueLight, borderRadius: 20, padding: '4px 12px', fontSize: 12, color: B.navyMid, fontWeight: 500 },
+  resultRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', marginBottom: 2, borderRadius: 0 },
+  exNum: { fontSize: 11, color: B.gray400, minWidth: 28, fontWeight: 600 },
+  exSummary: { padding: '8px 16px 12px', fontSize: 12, borderTop: `1px solid ${B.gray100}`, display: 'flex', gap: 14 },
+  badge: (color, bg) => ({ background: bg, color, border: `1px solid ${color}33`, borderRadius: 4, padding: '2px 9px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }),
+};
+
+// ══════════════════════════════════════════════════════════════
 // PATIENT DETAIL PANEL
 // ══════════════════════════════════════════════════════════════
+// INSIDE Dashboard.jsx – replace the existing PatientDetail component with this:
+
 function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [activities, setActivities] = useState([]);
+  const [activePanel, setActivePanel] = useState('overview');
+  const [assessmentActiveTab, setAssessmentActiveTab] = useState('task1');
 
   useEffect(() => {
     if (!patient) return;
+    setActivePanel('overview');
     fetchTherapistNotes(patient.child_id).then(setNotes).catch(() => setNotes([]));
     fetchActivities().then(data => {
       const acts = data?.activities || (Array.isArray(data) ? data : []);
@@ -406,10 +750,19 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
     { label: 'Number Memory',    score: patient.task4_score, weight: 1, key: 'task4' },
   ];
 
+  const panelTabs = [
+    { key: 'overview',    label: 'Overview',    icon: Icons.home },
+    { key: 'assessment',  label: 'Assessment Details', icon: Icons.brain },
+    { key: 'notes',       label: 'Notes',       icon: Icons.notes },
+    { key: 'activities',  label: 'Activities',  icon: Icons.activity },
+  ];
+
   return (
     <div className="td-detail-overlay" onClick={onClose}>
-      <div className="td-detail-panel" onClick={e => e.stopPropagation()}>
-        <div className="td-detail-hdr" style={{ background: `linear-gradient(135deg, var(--forest-dk), var(--forest))` }}>
+      <div className="td-detail-panel" style={{ display: 'flex', flexDirection: 'column', maxWidth: 720, width: '95vw' }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="td-detail-hdr" style={{ background: `linear-gradient(135deg, #1a3a5c, #1d6fa6)`, flexShrink: 0 }}>
           <button className="td-detail-close" onClick={onClose}>×</button>
           <div className="td-detail-av">{patient.child_name?.charAt(0)}</div>
           <div className="td-detail-info">
@@ -425,69 +778,110 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
           </div>
         </div>
 
-        <div className="td-detail-body">
-          <div className="td-detail-section">
-            <div className="td-detail-section-title">Assessment Results</div>
-            {tasks.map(t => <ScoreBar key={t.key} label={t.label} score={t.score} weight={t.weight} />)}
-          </div>
-
-          <div className="td-detail-section">
-            <div className="td-detail-section-title">Session Information</div>
-            <div className="td-info-grid">
-              <div className="td-info-item"><span>Completed</span><strong>{fmtDate(patient.completed_at)}</strong></div>
-              <div className="td-info-item"><span>Session ID</span><strong>#{patient.child_session_id}</strong></div>
-              <div className="td-info-item"><span>Child ID</span><strong>#{patient.child_id}</strong></div>
-              <div className="td-info-item"><span>Parent</span><strong>{patient.parent_name || '—'}</strong></div>
-            </div>
-          </div>
-
-          <div className="td-detail-section">
-            <div className="td-detail-section-title">Clinical Notes</div>
-            <div className="td-note-input-row">
-              <textarea className="td-note-input" placeholder="Add a clinical note…" value={newNote} onChange={e => setNewNote(e.target.value)} rows={2} />
-              <button className="td-btn-primary" onClick={addNote} disabled={savingNote || !newNote.trim()}>{savingNote ? '…' : 'Add'}</button>
-            </div>
-            <div className="td-notes-list">
-              {notes.length === 0 && <div className="td-empty-sm">No notes yet.</div>}
-              {notes.map((n, i) => (
-                <div key={i} className="td-note-item">
-                  <div className="td-note-text">{n.note_text}</div>
-                  <div className="td-note-date">{fmtDate(n.created_at)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="td-detail-section">
-            <div className="td-detail-section-title">Assign Activity</div>
-            <div className="td-activities-list">
-              {activities.length === 0 && <div className="td-empty-sm">No activities available.</div>}
-              {activities.map(act => (
-                <div key={act.id} className="td-act-item">
-                  <div>
-                    <div className="td-act-name">{act.name}</div>
-                    <div className="td-act-desc">{act.description}</div>
-                    <span className="td-act-level">Level {act.difficulty_level}</span>
-                  </div>
-                  <button className="td-btn-assign" onClick={() => onAssignActivity(patient.child_id, act.id)}>
-                    <Ico d={Icons.assign} size={14} /> Assign
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="td-detail-actions">
-            <button className="td-btn-primary" style={{ flex: 1 }} onClick={() => onOpenChat(patient)}>
-              <Ico d={Icons.chat} size={15} /> Message Parent
+        {/* Tab bar */}
+        <div style={{ display: 'flex', background: '#eef2f6', flexShrink: 0, overflowX: 'auto' }}>
+          {panelTabs.map(t => (
+            <button key={t.key} onClick={() => setActivePanel(t.key)} style={{
+              flex: '0 0 auto', padding: '11px 18px', border: 'none', cursor: 'pointer',
+              background: activePanel === t.key ? '#ffffff' : 'transparent',
+              color: activePanel === t.key ? '#1a3a5c' : '#475569',
+              fontWeight: activePanel === t.key ? 700 : 500,
+              fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
+              borderBottom: activePanel === t.key ? '3px solid #1d6fa6' : '3px solid transparent',
+              transition: 'all 0.15s', whiteSpace: 'nowrap',
+            }}>
+              <Ico d={t.icon} size={14} /> {t.label}
             </button>
-          </div>
+          ))}
+        </div>
+
+        {/* Panel body */}
+        <div className="td-detail-body" style={{ flex: 1, overflowY: 'auto' }}>
+
+          {/* OVERVIEW */}
+          {activePanel === 'overview' && (
+            <>
+              <div className="td-detail-section">
+                <div className="td-detail-section-title">Assessment Results</div>
+                {tasks.map(t => <ScoreBar key={t.key} label={t.label} score={t.score} weight={t.weight} />)}
+              </div>
+              <div className="td-detail-section">
+                <div className="td-detail-section-title">Session Information</div>
+                <div className="td-info-grid">
+                  <div className="td-info-item"><span>Completed</span><strong>{fmtDate(patient.completed_at)}</strong></div>
+                  <div className="td-info-item"><span>Session ID</span><strong>#{patient.child_session_id}</strong></div>
+                  <div className="td-info-item"><span>Child ID</span><strong>#{patient.child_id}</strong></div>
+                  <div className="td-info-item"><span>Parent</span><strong>{patient.parent_name || '—'}</strong></div>
+                </div>
+              </div>
+              <div className="td-detail-actions">
+                <button className="td-btn-primary" style={{ flex: 1 }} onClick={() => onOpenChat(patient)}>
+                  <Ico d={Icons.chat} size={15} /> Message Parent
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ASSESSMENT DETAILS - using the imported ChildAssessmentDetail */}
+          {activePanel === 'assessment' && (
+            <div className="td-detail-section" style={{ height: '100%' }}>
+              <div className="td-detail-section-title">Assessment Details – Exercises & Answers</div>
+              <ChildAssessmentDetail
+                childSessionId={patient.child_session_id}
+                childName={patient.child_name}
+                activeTab={assessmentActiveTab}
+                onTabChange={setAssessmentActiveTab}
+              />
+            </div>
+          )}
+
+          {/* NOTES */}
+          {activePanel === 'notes' && (
+            <div className="td-detail-section">
+              <div className="td-detail-section-title">Clinical Notes</div>
+              <div className="td-note-input-row">
+                <textarea className="td-note-input" placeholder="Add a clinical note…" value={newNote} onChange={e => setNewNote(e.target.value)} rows={2} />
+                <button className="td-btn-primary" onClick={addNote} disabled={savingNote || !newNote.trim()}>{savingNote ? '…' : 'Add'}</button>
+              </div>
+              <div className="td-notes-list">
+                {notes.length === 0 && <div className="td-empty-sm">No notes yet.</div>}
+                {notes.map((n, i) => (
+                  <div key={i} className="td-note-item">
+                    <div className="td-note-text">{n.note_text}</div>
+                    <div className="td-note-date">{fmtDate(n.created_at)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ACTIVITIES */}
+          {activePanel === 'activities' && (
+            <div className="td-detail-section">
+              <div className="td-detail-section-title">Assign Activity</div>
+              <div className="td-activities-list">
+                {activities.length === 0 && <div className="td-empty-sm">No activities available.</div>}
+                {activities.map(act => (
+                  <div key={act.id} className="td-act-item">
+                    <div>
+                      <div className="td-act-name">{act.name}</div>
+                      <div className="td-act-desc">{act.description}</div>
+                      <span className="td-act-level">Level {act.difficulty_level}</span>
+                    </div>
+                    <button className="td-btn-assign" onClick={() => onAssignActivity(patient.child_id, act.id)}>
+                      <Ico d={Icons.assign} size={14} /> Assign
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
   );
 }
-
 // ══════════════════════════════════════════════════════════════
 // CHAT TAB
 // ══════════════════════════════════════════════════════════════

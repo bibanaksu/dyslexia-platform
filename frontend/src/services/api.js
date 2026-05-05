@@ -450,6 +450,20 @@ export async function fetchPatients() {
     }
 }
 
+export async function fetchChildTaskDetails(childSessionId) {
+    try {
+        const res = await apiFetch(`/api/therapist/child-task-details/${childSessionId}`);
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to fetch task details');
+        }
+        return await res.json();
+    } catch (err) {
+        console.error('fetchChildTaskDetails error:', err);
+        throw err;
+    }
+}
+
 export async function fetchTherapistNotes(childId = null) {
     try {
         let url = '/api/therapist/notes';
