@@ -456,7 +456,7 @@ export default function SpellingBagGame() {
             <div className="sy-bar-fill" style={{ width: `${phase === "summary" ? 100 : phase === "challenge" ? 100 : pct}%` }} />
           </div>
         </div>
-        <button className="sy-stars-btn">⭐ {stars} Stars</button>
+       
       </header>
 
       {phase === "cards" && (

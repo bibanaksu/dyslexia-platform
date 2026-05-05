@@ -114,3 +114,32 @@ router.delete('/:id', verifyToken, requireParent, async (req, res) => {
 });
 
 module.exports = router;
+// GET /api/children/:id/assignments — get activities assigned to a child (parent access)
+router.get('/:id/assignments', verifyToken, requireParent, async (req, res) => {
+    try {
+        const childId = req.params.id;
+
+        // Security: make sure this child belongs to the requesting parent
+        const [check] = await pool.query(
+            'SELECT id FROM child WHERE id = ? AND parent_id = ?',
+            [childId, req.user.id]
+        );
+        if (check.length === 0) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        const [rows] = await pool.query(`
+            SELECT cap.id, cap.child_id, cap.activity_id, cap.completed, cap.score, cap.created_at,
+                   a.name, a.name AS activity_name, a.type, a.description, a.difficulty_level
+            FROM child_activity_progress cap
+            JOIN activity a ON a.id = cap.activity_id
+            WHERE cap.child_id = ?
+            ORDER BY cap.created_at DESC
+        `, [childId]);
+
+        res.json({ assignments: rows });
+    } catch (err) {
+        console.error('GET /children/:id/assignments error:', err);
+        res.status(500).json({ error: 'Failed to fetch assignments' });
+    }
+});

@@ -1171,3 +1171,350 @@ body {
   .activities-grid { grid-template-columns: 1fr; }
   .journey-strip { display: none; } /* too small for journey strip on tiny screens */
 }
+
+/* Force name and role onto the same line */
+.therapist-name,
+.therapist-role {
+  display: inline-block;
+  margin-right: 6px;
+}
+.therapist-role::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--ink-faint);
+}
+/* Keep the original font styles but prevent line breaks */
+.therapist-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.therapist-role {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.chat-topbar > div:first-of-type + div {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.therapist-name, .therapist-role {
+  white-space: nowrap;
+}
+.therapist-role::before {
+  content: "·";
+  margin-right: 6px;
+}
+/* Make main content area use full available height without overflowing */
+.main {
+  flex: 1;
+  padding: 32px 36px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;   /* allow main to scroll if needed, but we'll prevent scroll on chat page */
+}
+
+/* When chat tab is active, prevent main from scrolling */
+.pane.active:has(.chat-window) {
+  overflow-y: hidden;
+  height: 100%;
+}
+
+/* Chat window now uses viewport-relative height */
+.chat-window {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  border: 2px solid #2D453A;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 280px);  /* adjust based on topnav + journey strip + other elements */
+  min-height: 400px;
+}
+
+/* Ensure chat messages area scrolls internally */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+/* ══════════════════════════════════════════════
+   ACTIVITIES PROGRESS TAB
+══════════════════════════════════════════════ */
+
+.aptab-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.aptab-summary-card {
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.aptab-summary-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.aptab-summary-score {
+  font-size: 36px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--forest-dark);
+}
+.aptab-summary-sub {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-top: 6px;
+}
+
+/* Legend */
+.aptab-chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.aptab-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Chart container */
+.aptab-chart {
+  display: flex;
+  gap: 0;
+  height: 220px;
+  margin: 16px 0 24px;
+  position: relative;
+}
+
+/* Grid lines on left */
+.aptab-chart-grid {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: 36px;
+  width: 38px;
+  flex-shrink: 0;
+}
+.aptab-grid-line {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+}
+.aptab-grid-label {
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-weight: 600;
+  padding-right: 6px;
+}
+
+/* Bars area */
+.aptab-bars-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex: 1;
+  border-left: 1.5px solid var(--border);
+  border-bottom: 1.5px solid var(--border);
+  padding: 0 20px 0 14px;
+  position: relative;
+  overflow-x: auto;
+}
+
+/* Horizontal grid lines across bars area */
+.aptab-bars-area::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 36px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(25% - 1px),
+    var(--border-soft) calc(25% - 1px),
+    var(--border-soft) 25%
+  );
+  pointer-events: none;
+}
+
+.aptab-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 60px;
+  height: 100%;
+}
+.aptab-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  flex: 1;
+  width: 100%;
+  justify-content: center;
+}
+.aptab-bar-wrap {
+  width: 22px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+.aptab-bar {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  min-height: 3px;
+  transition: height 0.7s ease;
+}
+.aptab-bar--forest { background: var(--forest); }
+.aptab-bar--gold   { background: var(--gold-dark); }
+
+.aptab-bar-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.aptab-bar-date {
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* Score table */
+.aptab-table {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.aptab-table-head {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr 1fr;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--ink-faint);
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
+.aptab-table-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr 1fr;
+  font-size: 13px;
+  color: var(--ink-soft);
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.aptab-table-row:last-child { border-bottom: none; }
+
+@media (max-width: 600px) {
+  .aptab-summary { grid-template-columns: 1fr; }
+  .aptab-table-head,
+  .aptab-table-row { grid-template-columns: 1fr 1fr 1fr; }
+  .aptab-table-head span:nth-child(2),
+  .aptab-table-row span:nth-child(2) { display: none; }
+}
+/* Chart container */
+.aptab-chart {
+  height: 160px; /* was 220px */
+  margin: 12px 0 18px; /* was 16px 0 24px */
+}
+
+/* Grid lines on left */
+.aptab-chart-grid {
+  padding-bottom: 28px; /* was 36px */
+}
+
+/* Bars area */
+.aptab-bars-area {
+  padding: 0 14px 0 10px; /* was 0 20px 0 14px */
+}
+
+.aptab-bars-area::before {
+  bottom: 28px; /* was 36px */
+}.aptab-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.aptab-summary-card {
+  padding: 14px 16px; /* was 22px 20px */
+}
+.aptab-summary-score {
+  font-size: 24px; /* was 36px */
+  font-weight: 900;
+}
+.aptab-summary-label {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.aptab-summary-sub {
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+/* Chart — much smaller */
+.aptab-chart {
+  height: 120px; /* was 160px */
+  margin: 10px 0 14px;
+}
+.aptab-chart-grid {
+  padding-bottom: 32px;
+  width: 32px;
+}
+.aptab-grid-label {
+  font-size: 9px;
+}
+.aptab-bars-area {
+  padding: 0 24px 0 10px;
+  gap: 28px;
+}
+.aptab-bars-area::before {
+  bottom: 32px;
+}
+.aptab-bar-group {
+  min-width: 40px;
+  gap: 3px;
+}
+.aptab-bar-wrap {
+  width: 20px; /* wider bars */
+}
+.aptab-bar-label {
+  font-size: 10px;
+}
+.aptab-bar-date {
+  font-size: 9px;
+}
+
+.aptab-bar-group {
+  min-width: 48px; /* was 60px */
+  gap: 4px; /* was 6px */
+}
+
+.aptab-bar-wrap {
+  width: 16px; /* was 22px */
+}

@@ -756,12 +756,11 @@ function ChatTab({ user, addToast }) {
 
       {/* Full-width chat window, no sidebar */}
       <div className="chat-window" style={{
-        width: '100%',
-        height: '620px',
-        border: '1.5px solid #3D5A4C',           // darker border
-        borderRadius: 'var(--radius-xl)',
-        boxShadow: '0 6px 20px rgba(61,90,76,0.15)'
-      }}>
+  width: '100%',
+  border: '2px solid #2D453A',
+  borderRadius: 'var(--radius-xl)',
+  boxShadow: '0 6px 20px rgba(61,90,76,0.15)'
+}}>
         <div className="chat-topbar" style={{
           borderBottom: '1.5px solid rgba(61,90,76,0.3)', // darker separator
           background: 'var(--bg-beige)'
@@ -781,9 +780,9 @@ function ChatTab({ user, addToast }) {
         <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {messages.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-soft)' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '16px' }}>💬</div>
+              
               <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px' }}>No messages yet</div>
-              <p style={{ fontSize: '14px' }}>Introduce yourself to your therapist below.</p>
+              <p style={{ fontSize: '14px' }}>Discuss your child’s progress with your therapist.</p>
             </div>
           ) : (
             messages.map((m) => {
@@ -917,113 +916,138 @@ function GamesTab({ selectedChildId, children, onNavigate, addToast }) {
   );
 }
 
+
 // =========================== ACTIVITIES PROGRESS TAB ===========================
 function ActivitiesProgressTab({ children, selectedChildId, assignments, allResults }) {
-  // Derive real completion from results data
   const selectedChild = children.find(c => c.id === selectedChildId);
-  const childResults = allResults.filter(r => r.child_id === selectedChildId);
-  const latestResult = childResults.length > 0
-    ? childResults.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0]
-    : null;
 
-  const total = assignments.length;
-  // Use the overall_score from latest result as a proxy for completion percentage
-  const completionPercent = latestResult?.overall_score ?? 0;
-  const completedCount = Math.round((completionPercent / 100) * total);
+  const childResults = allResults
+    .filter(r => r.child_id === selectedChildId)
+    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
 
-  const pieData = [
-    { name: 'Completed', value: completedCount || 0, color: '#1a6b40' },
-    { name: 'Pending', value: Math.max(total - completedCount, 0), color: '#e8e5f0' },
+  const latest = childResults[0] || null;
+
+  const alphabetScore = latest?.letter_score ?? latest?.task1_score ?? null;
+  const syllableScore = latest?.word_score ?? latest?.task2_score ?? null;
+
+  const alphabetAssignments = assignments.filter(a => a.type === 'letter_sound');
+  const syllableAssignments = assignments.filter(a => a.type === 'syllable');
+
+  const pieAlphabet = [
+    { name: 'Score', value: alphabetScore ?? 0, color: '#3D5A4C' },
+    { name: 'Remaining', value: 100 - (alphabetScore ?? 0), color: '#EAE7DC' },
   ];
+
+  const pieSyllable = [
+    { name: 'Score', value: syllableScore ?? 0, color: '#C47A4A' },
+    { name: 'Remaining', value: 100 - (syllableScore ?? 0), color: '#EAE7DC' },
+  ];
+
+  if (!selectedChild) {
+    return (
+      <div className="pane active">
+        <div className="page-eyebrow">Child Progress</div>
+        <h1 className="page-title">Activities <em>Progress</em></h1>
+        <p className="page-sub">Select a child from Activities to track their progress.</p>
+        <div className="card" style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--ink-soft)' }}>
+          <div style={{ fontWeight: 700, marginBottom: '8px' }}>No child selected</div>
+          <p style={{ fontSize: '13px' }}>Go to Activities and select a child first.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pane active">
-      <div className="page-eyebrow">Track progress</div>
+      <div className="page-eyebrow">Child Progress</div>
       <h1 className="page-title">Activities <em>Progress</em></h1>
-      <p className="page-sub">See how your child is progressing through assigned activities.</p>
+      <p className="page-sub">
+        {selectedChild.full_name}'s latest scores across assigned activities.
+      </p>
 
-      {selectedChild && (
-        <div className="journey-banner" style={{ marginBottom: '24px' }}>
-          <div className="jb-icon"><CheckIcon /></div>
-          <div className="jb-text">
-            <div className="jb-title">Tracking: {selectedChild.full_name}</div>
-            <div className="jb-desc">Year {selectedChild.grade} · {total} activities assigned</div>
-          </div>
-        </div>
-      )}
-
-      {total === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
-          <div style={{ fontSize: '2rem', marginBottom: '12px' }}>📈</div>
-          <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: '8px' }}>No activities assigned yet</div>
-          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Progress will appear here once your therapist assigns activities.</p>
+      {!latest ? (
+        <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: '8px' }}>No sessions completed yet</div>
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+            Progress will appear here once {selectedChild.full_name} completes activities.
+          </p>
         </div>
       ) : (
-        <div className="two-col" style={{ alignItems: 'center' }}>
-          <div className="card" style={{ textAlign: 'center' }}>
-            <div className="card-header"><span className="card-title">Overall Completion</span></div>
-            <ResponsiveContainer width="100%" height={200}>
+        <div className="aptab-pie-row">
+
+          {/* Alphabet Swiping */}
+          <div className="card aptab-pie-card">
+            <div className="aptab-pie-title">Alphabet Swiping</div>
+            <div className="aptab-pie-sub">{alphabetAssignments.length} session{alphabetAssignments.length !== 1 ? 's' : ''} assigned</div>
+            <ResponsiveContainer width="100%" height={160}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={2} dataKey="value">
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                <Pie
+                  data={pieAlphabet}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={72}
+                  startAngle={90}
+                  endAngle={-270}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {pieAlphabet.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} strokeWidth={0} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => `${value} activities`} />
               </PieChart>
             </ResponsiveContainer>
-            <div style={{ fontSize: '28px', fontWeight: 900, color: 'var(--forest)', marginTop: '8px' }}>{completionPercent}%</div>
-            <div style={{ fontSize: '13px', color: 'var(--ink-soft)', marginTop: '4px' }}>Based on latest assessment</div>
-          </div>
-
-          <div className="card">
-            <div className="card-header"><span className="card-title">Breakdown</span></div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: '#1a6b40', flexShrink: 0 }}></div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '13px' }}>Completed</div>
-                  <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>{completedCount} of {total} activities</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '14px', height: '14px', borderRadius: '4px', background: '#e8e5f0', flexShrink: 0 }}></div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '13px' }}>Pending</div>
-                  <div style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>{Math.max(total - completedCount, 0)} activities remaining</div>
-                </div>
-              </div>
-             {/* Dynamic mapping based on TASKS definition */}
-{latestResult ? (
-  TASKS.map((task) => {
-    // Map your task keys ('task1', 'task2', etc.) to the result fields
-    // Ensure these keys match the structure of your API's latestResult object
-    const scoreMap = {
-      task1: latestResult.word_explorer_score,
-      task2: latestResult.story_reader_score,
-      task3: latestResult.letter_detective_score,
-      task4: latestResult.number_memory_score,
-    };
-
-    return (
-      <ScoreBar 
-        key={task.key} 
-        label={task.label} 
-        score={scoreMap[task.key]} 
-      />
-    );
-  })
-) : (
-  <p>No assessment results available.</p>
-)}
+            <div className="aptab-pie-score" style={{ color: scoreColor(alphabetScore) }}>
+              {alphabetScore != null ? `${alphabetScore}%` : '—'}
+            </div>
+            <div className="aptab-pie-risk" style={{
+              background: RISK_CONFIG[getRiskFromScore(alphabetScore)]?.bg,
+              color: RISK_CONFIG[getRiskFromScore(alphabetScore)]?.color,
+            }}>
+              {RISK_CONFIG[getRiskFromScore(alphabetScore)]?.label}
             </div>
           </div>
+
+          {/* Syllable Breaking */}
+          <div className="card aptab-pie-card">
+            <div className="aptab-pie-title">Syllable Breaking</div>
+            <div className="aptab-pie-sub">{syllableAssignments.length} session{syllableAssignments.length !== 1 ? 's' : ''} assigned</div>
+            <ResponsiveContainer width="100%" height={160}>
+              <PieChart>
+                <Pie
+                  data={pieSyllable}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={72}
+                  startAngle={90}
+                  endAngle={-270}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {pieSyllable.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} strokeWidth={0} />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="aptab-pie-score" style={{ color: scoreColor(syllableScore) }}>
+              {syllableScore != null ? `${syllableScore}%` : '—'}
+            </div>
+            <div className="aptab-pie-risk" style={{
+              background: RISK_CONFIG[getRiskFromScore(syllableScore)]?.bg,
+              color: RISK_CONFIG[getRiskFromScore(syllableScore)]?.color,
+            }}>
+              {RISK_CONFIG[getRiskFromScore(syllableScore)]?.label}
+            </div>
+          </div>
+
         </div>
       )}
     </div>
   );
 }
-
 // =========================== HOME TAB ===========================
 
 function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResults, selectedChildId, onNavigate, refreshAssignments }) {
@@ -1196,10 +1220,13 @@ const loadAssignments = useCallback(async (childId) => {
     return;
   }
   try {
-    const res = await apiFetch(`/api/therapist/assignments/child/${childId}`);
+   
+    const res = await apiFetch(`/api/child-assignments/${childId}`);
     if (res.ok) {
       const data = await res.json();
-      const filtered = (data.assignments || []).filter(a => a.type === 'letter_sound' || a.type === 'syllable')  .map(a => ({ ...a, name: a.name || a.activity_name })); 
+      const filtered = (data.assignments || [])
+        .filter(a => a.type === 'letter_sound' || a.type === 'syllable')
+        .map(a => ({ ...a, name: a.name || a.activity_name }));
       setAssignmentsList(filtered);
       setAssignedActivitiesCount(filtered.length);
     } else {
@@ -1211,7 +1238,6 @@ const loadAssignments = useCallback(async (childId) => {
     setAssignmentsList([]);
   }
 }, []);
-
   useEffect(() => {
     if (selectedChildId) loadAssignments(selectedChildId);
   }, [selectedChildId, loadAssignments]);

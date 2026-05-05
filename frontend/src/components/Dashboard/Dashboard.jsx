@@ -102,7 +102,6 @@ function StatCard({ icon, value, label, sub, accent }) {
     </div>
   );
 }
-
 // ─── RISK BADGE ───────────────────────────────────────────────
 function RiskBadge({ score }) {
   const label = getRiskLabel(score);
@@ -119,51 +118,100 @@ function RiskBadge({ score }) {
 // HOME TAB
 // ══════════════════════════════════════════════════════════════
 function HomeTab({ patients, onViewPatient }) {
-  const completed = patients.filter(p => p.overall_score != null);
-  const severe    = completed.filter(p => p.overall_score < 50).length;
-  const moderate  = completed.filter(p => p.overall_score >= 50 && p.overall_score < 70).length;
-  const normal    = completed.filter(p => p.overall_score >= 85).length;
-  const avgScore  = completed.length
-    ? Math.round(completed.reduce((a, p) => a + p.overall_score, 0) / completed.length)
+  // ------------------------------------------------------------------
+  // 1. Safely extract valid numeric overall scores
+  // ------------------------------------------------------------------
+  const validScores = patients
+    .map(p => {
+      const score = p.overall_score;
+      if (score === null || score === undefined) return null;
+      const num = Number(score);
+      return isNaN(num) ? null : num;
+    })
+    .filter(score => score !== null);
+
+  const completedCount = validScores.length;
+
+  // ------------------------------------------------------------------
+  // 2. Count patients by risk level (using the existing getRisk logic)
+  // ------------------------------------------------------------------
+  const severe = patients.filter(p => {
+    const s = p.overall_score;
+    return s != null && !isNaN(Number(s)) && Number(s) < 50;
+  }).length;
+
+  const moderate = patients.filter(p => {
+    const s = p.overall_score;
+    return s != null && !isNaN(Number(s)) && Number(s) >= 50 && Number(s) < 70;
+  }).length;
+
+  const normal = patients.filter(p => {
+    const s = p.overall_score;
+    return s != null && !isNaN(Number(s)) && Number(s) >= 85;
+  }).length;
+
+  // ------------------------------------------------------------------
+  // 3. Average score (0 if none)
+  // ------------------------------------------------------------------
+  const avgScore = completedCount
+    ? Math.round(validScores.reduce((a, b) => a + b, 0) / completedCount)
     : 0;
 
-  const recent = [...completed].sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at)).slice(0, 5);
+  // ------------------------------------------------------------------
+  // 4. Recent 5 assessments – only valid and with a completion date
+  // ------------------------------------------------------------------
+  const recent = patients
+    .filter(p => {
+      const s = p.overall_score;
+      return s != null && !isNaN(Number(s)) && p.completed_at;
+    })
+    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))
+    .slice(0, 5);
 
+  // ------------------------------------------------------------------
+  // 5. Render
+  // ------------------------------------------------------------------
   return (
     <div className="td-pane">
-      <div className="td-page-eyebrow">Clinical Overview</div>
+     
       <h1 className="td-page-title">Good morning, <em>Dr. Acheb</em></h1>
       <p className="td-page-sub">Here's your patient overview and today's activity summary.</p>
 
       <div className="td-stats-grid">
-        <StatCard icon={Icons.patients} value={patients.length} label="Registered Patients" sub={`${completed.length} assessed`} accent="var(--teal)" />
-        <StatCard icon={Icons.activity} value={`${avgScore}%`} label="Average Score" sub="across all assessments" accent="var(--gold-dark)" />
-        <StatCard icon={Icons.brain}    value={severe}  label="Severe Cases"   sub="need immediate attention" accent="#c0392b" />
-        <StatCard icon={Icons.check}    value={normal}  label="Normal Range"   sub="performing well" accent="#1a6b40" />
+        <StatCard
+          icon={Icons.patients}
+          value={patients.length}
+          label="Registered Patients"
+          sub={`${completedCount} assessed`}
+          accent="var(--teal)"
+        />
+        <StatCard
+          icon={Icons.activity}
+          value={`${avgScore}%`}
+          label="Average Score"
+          sub="across all assessments"
+          accent="var(--gold-dark)"
+        />
+        <StatCard
+          icon={Icons.brain}
+          value={severe}
+          label="Severe Cases"
+          sub="need immediate attention"
+          accent="#c0392b"
+        />
+        <StatCard
+          icon={Icons.check}
+          value={normal}
+          label="Normal Range"
+          sub="performing well"
+          accent="#1a6b40"
+        />
       </div>
 
-      <div className="td-card" style={{ marginBottom: 24 }}>
-        <div className="td-card-hdr"><span className="td-card-title">Risk Distribution</span></div>
-        <div className="td-risk-dist">
-          {['Normal','Mild','Moderate','Severe'].map(key => {
-            const risk = RISK[key];
-            const count = key === 'Normal' ? normal
-              : key === 'Mild' ? (completed.filter(p => p.overall_score >= 70 && p.overall_score < 85).length)
-              : key === 'Moderate' ? moderate
-              : severe;
-            const pct = completed.length ? Math.round((count / completed.length) * 100) : 0;
-            return (
-              <div key={key} className="td-dist-item">
-                <div className="td-dist-label" style={{ color: risk.color }}>{key}</div>
-                <div className="td-dist-bar-track">
-                  <div className="td-dist-bar-fill" style={{ width: `${pct}%`, background: risk.color }} />
-                </div>
-                <div className="td-dist-count">{count} <span>({pct}%)</span></div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      
+
+        
+           
 
       <div className="td-card">
         <div className="td-card-hdr">
@@ -174,7 +222,14 @@ function HomeTab({ patients, onViewPatient }) {
         ) : (
           <table className="td-table">
             <thead>
-              <tr><th>Child</th><th>Grade</th><th>Overall</th><th>Risk</th><th>Date</th><th></th></tr>
+              <tr>
+                <th>Child</th>
+                <th>Grade</th>
+                <th>Overall</th>
+                <th>Risk</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody>
               {recent.map(p => (
@@ -184,7 +239,9 @@ function HomeTab({ patients, onViewPatient }) {
                       <div className="td-av">{p.child_name?.charAt(0)}</div>
                       <div>
                         <div style={{ fontWeight: 600 }}>{p.child_name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{p.parent_name || '—'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
+                          {p.parent_name || '—'}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -195,7 +252,9 @@ function HomeTab({ patients, onViewPatient }) {
                   <td><RiskBadge score={p.overall_score} /></td>
                   <td>{fmtDate(p.completed_at)}</td>
                   <td>
-                    <button className="td-btn-sm" onClick={() => onViewPatient(p)}>View</button>
+                    <button className="td-btn-sm" onClick={() => onViewPatient(p)}>
+                      View
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -206,7 +265,6 @@ function HomeTab({ patients, onViewPatient }) {
     </div>
   );
 }
-
 // ══════════════════════════════════════════════════════════════
 // PATIENTS TAB
 // ══════════════════════════════════════════════════════════════
@@ -856,39 +914,36 @@ const assignActivityHandler = async (childId, activityId) => {
 
   const completedCount = patients.filter(p => p.overall_score != null).length;
 
-  return (
+ return (
     <div className="td-root">
       <nav className="td-topnav">
         <div className="td-brand">
-          <div className="td-brand-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg></div>
-          <div><span className="td-brand-name">Lexi<em>Care</em></span><span className="td-brand-sub">Clinical Portal</span></div>
+          <div className="td-brand-icon" style={{ background: '#FFB84D', border: 'none' }}>
+            <span style={{ color: '#1E2D25', fontWeight: 900, fontSize: '16px', fontFamily: "'DM Serif Display', serif" }}>DS</span>
+          </div>
+          <div>
+            <span className="td-brand-name" style={{ fontFamily: "'DM Serif Display', serif", color: '#fff' }}>Dyslexia <em>Support</em></span>
+            
+          </div>
         </div>
         <div className="td-nav-tabs">
-          {TABS.map(t => (
-            <button key={t.key} className={`td-nav-tab ${activeTab === t.key ? 'active' : ''}`} onClick={() => setActiveTab(t.key)}>
-              <Ico d={t.icon} size={15} /> {t.label}
-              {t.key === 'chat' && unreadCount > 0 && <span className="td-unread-badge">{unreadCount}</span>}
-            </button>
-          ))}
+         
         </div>
         <div className="td-nav-right">
           
-          <div className="td-therapist-chip"><div className="td-therapist-av">S</div><div><div className="td-therapist-name">Dr. Acheb Kenza</div><div className="td-therapist-role">Speech Therapist</div></div></div>
+          
+          <div className="td-therapist-chip">
+  <div className="td-therapist-av">A</div>
+  <div>
+    <div className="td-therapist-name">Dr. Acheb Kenza</div>
+    <div className="td-therapist-role">Speech Therapist</div>
+  </div>
+</div>
           <button className="td-logout" onClick={handleLogout}><Ico d={Icons.logout} size={15} /> Sign out</button>
         </div>
       </nav>
 
-      <div className="td-header-strip">
-        <div className="td-hs-item"><div className="td-hs-val">{patients.length}</div><div className="td-hs-label">Total Patients</div></div>
-        <div className="td-hs-divider" />
-        <div className="td-hs-item"><div className="td-hs-val">{completedCount}</div><div className="td-hs-label">Assessed</div></div>
-        <div className="td-hs-divider" />
-        <div className="td-hs-item"><div className="td-hs-val" style={{ color:'#ef4444' }}>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</div><div className="td-hs-label">Severe Cases</div></div>
-        <div className="td-hs-divider" />
-        <div className="td-hs-item"><div className="td-hs-val" style={{ color:'#f97316' }}>{patients.filter(p => p.overall_score != null && p.overall_score >= 50 && p.overall_score < 70).length}</div><div className="td-hs-label">Moderate</div></div>
-        <div className="td-hs-divider" />
-        <div className="td-hs-item"><div className="td-hs-val" style={{ color:'#1a6b40' }}>{patients.filter(p => p.overall_score != null && p.overall_score >= 85).length}</div><div className="td-hs-label">Normal Range</div></div>
-      </div>
+  
 
       <div className="td-layout">
         <aside className="td-sidebar">
@@ -899,12 +954,7 @@ const assignActivityHandler = async (childId, activityId) => {
               {t.key === 'chat' && unreadCount > 0 && <span className="td-unread-badge" style={{ marginLeft: 'auto' }}>{unreadCount}</span>}
             </button>
           ))}
-          <div className="td-sb-section" style={{ marginTop: 24 }}>Quick Stats</div>
-          <div className="td-sb-stat"><span>Total Patients</span><strong>{patients.length}</strong></div>
-          <div className="td-sb-stat"><span>Assessed</span><strong>{completedCount}</strong></div>
-          <div className="td-sb-stat" style={{ color: '#ef4444' }}><span>Severe</span><strong>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</strong></div>
-          
-          
+         
        
         </aside>
 

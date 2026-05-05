@@ -12,7 +12,8 @@ const parentsRouter           = require('./routes/parents');
 const childrenRouter          = require('./routes/children');
 const assessmentsRouter       = require('./routes/assessments');
 const activitiesRouter        = require('./routes/activities');
-const therapistRouter        = require('./routes/therapist');const dashboardRouter         = require('./routes/dashboard');
+const therapistRouter         = require('./routes/therapist');
+const dashboardRouter         = require('./routes/dashboard');
 const quizRouter              = require('./routes/quiz');
 const taskThreeRouter         = require('./routes/taskThree');
 const taskFourRouter          = require('./routes/Taskfour');
@@ -26,18 +27,18 @@ const messagesRouter          = require('./routes/messages');
 // ✨ Spelling activity routes
 const spellingActivityRoutes  = require('./routes/spellingActivityRoutes');
 
-const { generateToken } = require('./middleware/auth');
+const { generateToken, verifyToken } = require('./middleware/auth');
 const app = express();
 
 const loginLimiter = rateLimit({ windowMs:15*60*1000, max:10, message:{error:'Too many attempts.'}, standardHeaders:true, legacyHeaders:false });
 
-// CORS configuration (fixed: added localhost:3002)
+// CORS configuration
 app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:3001',
-    'http://localhost:3002',   // ← ADDED for your frontend
+    'http://localhost:3002',
     'http://localhost:5000'
   ],
   credentials: true,
@@ -59,7 +60,6 @@ app.use('/api/auth', authRouter);
 app.get('/api/health', (req, res) => res.json({ status: 'OK', timestamp: new Date().toISOString() }));
 
 // ── Routes ───────────────────────────────────────────────────
-// IMPORTANT: Order matters — specific routes BEFORE generic ones
 app.use('/api/assessments/task2',  task2Routes);
 app.use('/api/assessments',        assessmentsRouter);
 app.use('/api/task1',              task1Routes);
@@ -76,6 +76,57 @@ app.use('/api/assessment',         assessmentSummaryRoutes);
 app.use('/api/messages',           messagesRouter);
 app.use('/api/spelling',           spellingActivityRoutes);
 
+// ─────────────────────────────────────────────────────────────
+// NEW ROUTE: Get assignments for a specific child (accessible by both parent and therapist)
+// ─────────────────────────────────────────────────────────────
+app.get('/api/child-assignments/:childId', verifyToken, async (req, res) => {
+  try {
+    const { childId } = req.params;
+    const userId = req.user.id;
+    const role = req.user.role;
+
+    // Permission check
+    if (role === 'parent') {
+      // Check if this child belongs to the parent
+      const [parentCheck] = await pool.query(
+        'SELECT id FROM child WHERE id = ? AND parent_id = ?',
+        [childId, userId]
+      );
+      if (parentCheck.length === 0) {
+        return res.status(403).json({ error: 'Access denied: child does not belong to you' });
+      }
+    } else if (role === 'therapist') {
+      // Check if therapist is assigned to the parent of this child
+      const [therapistCheck] = await pool.query(
+        `SELECT c.id FROM child c
+         JOIN parent p ON p.id = c.parent_id
+         WHERE c.id = ? AND p.assigned_therapist_id = ?`,
+        [childId, userId]
+      );
+      if (therapistCheck.length === 0) {
+        return res.status(403).json({ error: 'Access denied: not assigned to this child' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Unauthorized role' });
+    }
+
+    // Fetch assignments
+    const [rows] = await pool.query(`
+      SELECT cap.*, a.name AS activity_name, a.type, a.description, a.difficulty_level
+      FROM child_activity_progress cap
+      JOIN activity a ON a.id = cap.activity_id
+      WHERE cap.child_id = ?
+    `, [childId]);
+    res.json({ assignments: rows });
+  } catch (err) {
+    console.error('GET /api/child-assignments/:childId error:', err);
+    res.status(500).json({ error: 'Failed to fetch assignments' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// DB status check (optional)
+// ─────────────────────────────────────────────────────────────
 app.get('/api/db-status', async (req, res) => {
   try {
     const c = await pool.getConnection();
@@ -120,5 +171,6 @@ app.listen(PORT, () => {
   console.log(`  GET  /api/therapist/patients    ← Therapist dashboard`);
   console.log(`  GET  /api/therapist/notes       ← Therapist notes`);
   console.log(`  POST /api/therapist/assignments ← Assign activities`);
+  console.log(`  GET  /api/child-assignments/:childId ← Shared assignments`);
   console.log(`========================================\n`);
 });

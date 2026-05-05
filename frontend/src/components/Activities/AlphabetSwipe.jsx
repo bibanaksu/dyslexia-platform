@@ -65,7 +65,7 @@ function FlashCard({ card, animClass, playing, onClick }) {
       <span className="as-card-blob" style={{ background: card.accent + "25" }} />
       <div className="as-letter" style={{ color: card.accent }}>
         {card.letter}
-        <span style={{ color: card.accent + "99", fontSize: "0.72em", marginLeft: 4 }}>
+        <span style={{ color: card.accent + "99", fontSize: "0.6em", marginLeft: 4 }}>
           {card.letter.toLowerCase()}
         </span>
       </div>
@@ -123,7 +123,7 @@ function MatchingPhase({ cards, onComplete }) {
 
   const handleAnimalClick = (animal) => {
     if (matched[animal.id]) return;
-    if (!selectedLetter) return; // silent fail, no toast
+    if (!selectedLetter) return;
 
     const letter = selectedLetter.letterObj.letter;
     const correct = (letter === animal.letter);
@@ -133,7 +133,6 @@ function MatchingPhase({ cards, onComplete }) {
       const newMatched = { ...matched, [animal.id]: true, [selectedLetter.letterObj.id]: true };
       setMatched(newMatched);
       setSelectedLetter(null);
-      // Check if all animals matched
       const allMatched = cards.every(c => newMatched[c.id] === true);
       if (allMatched) {
         setShowFinalResults(true);
@@ -206,7 +205,7 @@ function MatchingPhase({ cards, onComplete }) {
 }
 
 /* ================================================================
-   CELEBRATION – added Home button
+   CELEBRATION – with Home button
 ================================================================ */
 function Celebration({ total, onRestart, onHome }) {
   const [confetti, setConfetti] = useState(true);
@@ -228,7 +227,6 @@ function Celebration({ total, onRestart, onHome }) {
           ))}
         </div>
         <div className="as-celebrate-buttons">
-       
           <button className="as-home-btn" onClick={onHome}>Home</button>
         </div>
       </div>
@@ -244,7 +242,6 @@ export default function AlphabetSwipe() {
   const [idx,     setIdx]     = useState(0);
   const [animCls, setAnimCls] = useState("");
   const [playing, setPlaying] = useState(false);
-  const [stars,   setStars]   = useState(0);
   const busy = useRef(false);
 
   useEffect(() => {
@@ -293,7 +290,6 @@ export default function AlphabetSwipe() {
 
   const restart = () => {
     setPhase("cards"); setIdx(0); setAnimCls("");
-    setStars(0);
     setTimeout(() => playCard(CARDS[0]), 300);
   };
 
@@ -302,41 +298,53 @@ export default function AlphabetSwipe() {
     window.location.href = '/parent-dashboard';
   };
 
+  const handleNextOrMatch = () => {
+    if (idx < CARDS.length - 1) {
+      go("next");
+    } else {
+      setPhase("match");
+    }
+  };
+
   const pct = Math.round(((idx + 1) / CARDS.length) * 100);
 
   return (
-    <div className="alphabet-swipe" onTouchStart={onTS} onTouchEnd={onTE}>
-      {/* Header – no exit button */}
+    <div className="as-app" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="as-header">
+        {/* New Home button – matching SyllableBreaking style */}
+        <button className="as-home-top-btn" onClick={goHome}>
+          🏠 Home
+        </button>
         <div className="as-hcenter">
           <span className="as-htitle">Alphabet Swiping Adventure</span>
           <div className="as-bar-track">
             <div className="as-bar-fill" style={{ width: `${phase === "done" ? 100 : pct}%` }} />
           </div>
         </div>
-        
+        {/* No extra spacer – header uses justify-content: space-between */}
       </header>
 
       {phase === "cards" && (
         <>
           <div className="as-counter">Card {idx + 1} / {CARDS.length}</div>
           <div className="as-stage">
-            <button className="as-arrow" disabled={idx === 0} onClick={() => go("prev")}>‹</button>
-            <div className="as-card-area">
-              <FlashCard card={CARDS[idx]} animClass={animCls} playing={playing} onClick={() => playCard(CARDS[idx])} />
+            <div className="as-card-row">
+              <button className="as-arrow" disabled={idx === 0} onClick={() => go("prev")}>‹</button>
+              <div className="as-card-area">
+                <FlashCard card={CARDS[idx]} animClass={animCls} playing={playing} onClick={() => playCard(CARDS[idx])} />
+              </div>
+              <button className="as-arrow" disabled={idx === CARDS.length - 1} onClick={() => go("next")}>›</button>
             </div>
-            <button className="as-arrow" onClick={() => { if (idx < CARDS.length - 1) go("next"); else setPhase("match"); }}>›</button>
-          </div>
-          <div className="as-bottom">
-            <button className="as-btn as-btn-home" onClick={restart}>🏠 Home</button>
-            <div className="as-dots">
-              {CARDS.map((_, i) => (
-                <span key={i} className={`as-dot ${i === idx ? "act" : i < idx ? "done" : ""}`} />
-              ))}
+            <div className="as-bottom">
+              <button className="as-next-btn" onClick={handleNextOrMatch}>
+                {idx < CARDS.length - 1 ? "Next Card →" : "Start Matching ✅"}
+              </button>
+              <div className="as-dots">
+                {CARDS.map((_, i) => (
+                  <span key={i} className={`as-dot ${i === idx ? "act" : i < idx ? "done" : ""}`} />
+                ))}
+              </div>
             </div>
-            <button className="as-btn as-btn-next" onClick={() => { if (idx < CARDS.length - 1) go("next"); else setPhase("match"); }}>
-              {idx < CARDS.length - 1 ? "☰ Next" : "✅ Match!"}
-            </button>
           </div>
         </>
       )}
@@ -344,7 +352,7 @@ export default function AlphabetSwipe() {
       {phase === "match" && (
         <MatchingPhase
           cards={CARDS}
-          onComplete={() => { setStars(s => s + 3); setPhase("done"); }}
+          onComplete={() => setPhase("done")}
         />
       )}
 
