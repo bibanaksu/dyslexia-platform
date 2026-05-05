@@ -311,10 +311,27 @@ export default function AlphabetSwipe() {
   return (
     <div className="as-app" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="as-header">
-        {/* New Home button – matching SyllableBreaking style */}
-        <button className="as-home-top-btn" onClick={goHome}>
-          🏠 Home
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* DS Logo - only logo, no text */}
+          <div style={{ 
+            width: 36, 
+            height: 36, 
+            background: '#F5A623', 
+            borderRadius: 8, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            fontWeight: 900, 
+            fontSize: '0.8rem', 
+            color: '#1E2E5C', 
+            fontFamily: "'DM Serif Display', serif" 
+          }}>
+            DS
+          </div>
+          <button className="as-home-top-btn" onClick={goHome}>
+            🏠 Home
+          </button>
+        </div>
         <div className="as-hcenter">
           <span className="as-htitle">Alphabet Swiping Adventure</span>
           <div className="as-bar-track">

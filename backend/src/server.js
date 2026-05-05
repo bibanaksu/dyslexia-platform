@@ -23,6 +23,7 @@ const task2Routes             = require('./routes/Task2routes');
 const assessmentSummaryRoutes = require('./routes/assessmentSummaryRoutes.js');
 const authRouter              = require('./routes/auth');
 const messagesRouter          = require('./routes/messages');
+const taskDetailsRouter       = require('./routes/taskDetails'); // ✅ ADDED
 
 // ✨ Spelling activity routes
 const spellingActivityRoutes  = require('./routes/spellingActivityRoutes');
@@ -75,6 +76,7 @@ app.use('/api/child-info',         childInfoRoutes);
 app.use('/api/assessment',         assessmentSummaryRoutes);
 app.use('/api/messages',           messagesRouter);
 app.use('/api/spelling',           spellingActivityRoutes);
+app.use('/api/task-details',       taskDetailsRouter);            // ✅ ADDED
 
 // ─────────────────────────────────────────────────────────────
 // NEW ROUTE: Get assignments for a specific child (accessible by both parent and therapist)
@@ -172,5 +174,6 @@ app.listen(PORT, () => {
   console.log(`  GET  /api/therapist/notes       ← Therapist notes`);
   console.log(`  POST /api/therapist/assignments ← Assign activities`);
   console.log(`  GET  /api/child-assignments/:childId ← Shared assignments`);
+  console.log(`  GET  /api/task-details/:childSessionId ← Detailed task data (public)`);
   console.log(`========================================\n`);
 });

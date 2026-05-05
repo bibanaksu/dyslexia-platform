@@ -1188,3 +1188,95 @@ body {
   align-items: flex-start;
   max-width: 70%;
 }
+/* Message row - base left alignment */
+.td-msg-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  justify-content: flex-start;  /* ← crucial: default left */
+}
+
+/* Right-aligned messages (therapist) */
+.td-msg-wrap.right {
+  justify-content: flex-end;    /* ← pushes bubble to right */
+}
+
+/* Content wrapper inside message row */
+.td-msg-content {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+  min-width: 60px;
+}
+
+/* Parent messages (left) - bubble + timestamp left-aligned */
+.td-msg-wrap:not(.right) .td-msg-content {
+  align-items: flex-start;
+}
+
+/* Therapist messages (right) - bubble + timestamp right-aligned */
+.td-msg-wrap.right .td-msg-content {
+  align-items: flex-end;
+}
+
+/* Bubble styling */
+.td-bubble {
+  max-width: 100%;
+  width: fit-content;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.td-bubble.parent {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-bottom-left-radius: 4px;
+}
+
+.td-bubble.therapist {
+  background: #2563eb;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.td-msg-time {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+.td-msg-time.r {
+  text-align: right;
+}
+/* Force chat message alignment */
+.td-chat-messages .td-msg-wrap {
+  display: flex !important;
+  width: 100%;
+}
+.td-chat-messages .td-msg-wrap:not(.right) {
+  justify-content: flex-start !important;
+}
+.td-chat-messages .td-msg-wrap.right {
+  justify-content: flex-end !important;
+}
+.td-msg-wrap.right {
+  justify-content: flex-end;
+  flex-direction: row-reverse;  /* Add this */
+}
+
+.td-msg-wrap.right .td-msg-content {
+  align-items: flex-end;
+}
+
+.td-bubble.therapist {
+  background: #2563eb;
+  color: white;
+  border-bottom-right-radius: 4px;
+  margin-left: auto;  /* Add this */
+}

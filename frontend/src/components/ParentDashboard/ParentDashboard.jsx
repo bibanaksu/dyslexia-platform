@@ -1,7 +1,10 @@
 // ParentDashboard.jsx — LexiCare Parent Portal (Redesigned & Connected)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend
+} from 'recharts';
 import {
   apiFetch,
   getCurrentUser,
@@ -918,30 +921,42 @@ function GamesTab({ selectedChildId, children, onNavigate, addToast }) {
 
 
 // =========================== ACTIVITIES PROGRESS TAB ===========================
+// =========================== ACTIVITIES PROGRESS TAB (Grouped Bar Chart) ===========================
 function ActivitiesProgressTab({ children, selectedChildId, assignments, allResults }) {
   const selectedChild = children.find(c => c.id === selectedChildId);
 
+  const getSubtaskScore = (result, key) => {
+    const fieldMap = {
+      letter: ['letter_score', 'task1_score'],
+      word: ['word_score', 'task2_score'],
+    };
+    for (let f of fieldMap[key]) {
+      if (result[f] !== undefined && result[f] !== null) return result[f];
+    }
+    return null;
+  };
+
   const childResults = allResults
     .filter(r => r.child_id === selectedChildId)
-    .sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at));
+    .sort((a, b) => new Date(a.completed_at) - new Date(b.completed_at));
 
-  const latest = childResults[0] || null;
+  const chartData = childResults.map(r => {
+    const letterScore = getSubtaskScore(r, 'letter');
+    const wordScore = getSubtaskScore(r, 'word');
+    let activitiesAvg = null;
+    if (letterScore != null && wordScore != null) {
+      activitiesAvg = (letterScore + wordScore) / 2;
+    }
+    return {
+      dateStr: fmtDate(r.completed_at),
+      overall: r.overall_score ?? r.summary?.overallScore ?? null,
+      activitiesAvg,
+    };
+  }).filter(item => item.overall !== null || item.activitiesAvg !== null);
 
-  const alphabetScore = latest?.letter_score ?? latest?.task1_score ?? null;
-  const syllableScore = latest?.word_score ?? latest?.task2_score ?? null;
-
-  const alphabetAssignments = assignments.filter(a => a.type === 'letter_sound');
-  const syllableAssignments = assignments.filter(a => a.type === 'syllable');
-
-  const pieAlphabet = [
-    { name: 'Score', value: alphabetScore ?? 0, color: '#3D5A4C' },
-    { name: 'Remaining', value: 100 - (alphabetScore ?? 0), color: '#EAE7DC' },
-  ];
-
-  const pieSyllable = [
-    { name: 'Score', value: syllableScore ?? 0, color: '#C47A4A' },
-    { name: 'Remaining', value: 100 - (syllableScore ?? 0), color: '#EAE7DC' },
-  ];
+  const latest = chartData[chartData.length - 1];
+  const latestOverall = latest?.overall ?? null;
+  const latestActivities = latest?.activitiesAvg ?? null;
 
   if (!selectedChild) {
     return (
@@ -961,88 +976,58 @@ function ActivitiesProgressTab({ children, selectedChildId, assignments, allResu
     <div className="pane active">
       <div className="page-eyebrow">Child Progress</div>
       <h1 className="page-title">Activities <em>Progress</em></h1>
-      <p className="page-sub">
-        {selectedChild.full_name}'s latest scores across assigned activities.
-      </p>
+      <p className="page-sub">{selectedChild.full_name}'s assessment scores and activity performance over time.</p>
 
-      {!latest ? (
+      <div className="two-col" style={{ marginBottom: '24px' }}>
+        <div className="stat-card">
+          <div className="stat-val" style={{ color: '#3D5A4C' }}>{latestOverall != null ? `${latestOverall}%` : '—'}</div>
+          <div className="stat-lbl">Latest Assessment</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-val" style={{ color: '#E8A87C' }}>{latestActivities != null ? `${latestActivities}%` : '—'}</div>
+          <div className="stat-lbl">Latest Activities Avg</div>
+        </div>
+      </div>
+
+      {chartData.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-          <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: '8px' }}>No sessions completed yet</div>
-          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
-            Progress will appear here once {selectedChild.full_name} completes activities.
-          </p>
+          <div style={{ fontWeight: 700, color: 'var(--ink)', marginBottom: '8px' }}>No data available</div>
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Complete activities assigned by the therapist to see progress.</p>
         </div>
       ) : (
-        <div className="aptab-pie-row">
-
-          {/* Alphabet Swiping */}
-          <div className="card aptab-pie-card">
-            <div className="aptab-pie-title">Alphabet Swiping</div>
-            <div className="aptab-pie-sub">{alphabetAssignments.length} session{alphabetAssignments.length !== 1 ? 's' : ''} assigned</div>
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie
-                  data={pieAlphabet}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={72}
-                  startAngle={90}
-                  endAngle={-270}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {pieAlphabet.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} strokeWidth={0} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="aptab-pie-score" style={{ color: scoreColor(alphabetScore) }}>
-              {alphabetScore != null ? `${alphabetScore}%` : '—'}
-            </div>
-            <div className="aptab-pie-risk" style={{
-              background: RISK_CONFIG[getRiskFromScore(alphabetScore)]?.bg,
-              color: RISK_CONFIG[getRiskFromScore(alphabetScore)]?.color,
-            }}>
-              {RISK_CONFIG[getRiskFromScore(alphabetScore)]?.label}
-            </div>
+        <div className="card" style={{ padding: '20px' }}>
+          <ResponsiveContainer width="100%" height={420}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 50 }}
+              barSize={28}
+              barGap={6}
+              barCategoryGap={35}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(61,90,76,0.1)" />
+              <XAxis
+                dataKey="dateStr"
+                tick={{ fontSize: 11, fill: '#555' }}
+                tickLine={false}
+                interval={0}
+                angle={-25}
+                textAnchor="end"
+                height={70}
+              />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: '#555' }} tickFormatter={(v) => `${v}%`} />
+              <RechartsTooltip
+                formatter={(value) => `${value}%`}
+                labelFormatter={(label) => `Date: ${label}`}
+                contentStyle={{ borderRadius: '12px', borderColor: 'rgba(61,90,76,0.15)' }}
+              />
+              <Legend verticalAlign="top" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontFamily: 'Nunito, sans-serif' }} />
+              <Bar dataKey="overall" name="Assessment Results" fill="#3D5A4C" radius={[4,4,0,0]} />
+              <Bar dataKey="activitiesAvg" name="Activities Progress" fill="#E8A87C" radius={[4,4,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: '11px', color: 'var(--ink-faint)', textAlign: 'center', marginTop: '16px' }}>
+            Activities Progress = average of Alphabet Swiping & Syllable Breaking scores.
           </div>
-
-          {/* Syllable Breaking */}
-          <div className="card aptab-pie-card">
-            <div className="aptab-pie-title">Syllable Breaking</div>
-            <div className="aptab-pie-sub">{syllableAssignments.length} session{syllableAssignments.length !== 1 ? 's' : ''} assigned</div>
-            <ResponsiveContainer width="100%" height={160}>
-              <PieChart>
-                <Pie
-                  data={pieSyllable}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={72}
-                  startAngle={90}
-                  endAngle={-270}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {pieSyllable.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} strokeWidth={0} />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="aptab-pie-score" style={{ color: scoreColor(syllableScore) }}>
-              {syllableScore != null ? `${syllableScore}%` : '—'}
-            </div>
-            <div className="aptab-pie-risk" style={{
-              background: RISK_CONFIG[getRiskFromScore(syllableScore)]?.bg,
-              color: RISK_CONFIG[getRiskFromScore(syllableScore)]?.color,
-            }}>
-              {RISK_CONFIG[getRiskFromScore(syllableScore)]?.label}
-            </div>
-          </div>
-
         </div>
       )}
     </div>

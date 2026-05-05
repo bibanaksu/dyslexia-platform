@@ -56,12 +56,18 @@ const Icon = ({ d, size = 14, color = 'currentColor', strokeWidth = 1.8 }) => (
   </svg>
 );
 
+// ── METRIC CARD ───────────────────────────────────────────────
 function MetricCard({ label, value, accent, wide }) {
   return (
     <div style={{
-      background: P.white, border: `1px solid ${P.gray200}`, borderRadius: 8,
-      padding: '12px 16px', minWidth: wide ? 110 : 80, textAlign: 'center',
+      background: P.white,
+      border: `1px solid ${P.gray200}`,
+      borderRadius: 8,
+      padding: '12px 16px',
+      minWidth: wide ? 110 : 80,
+      textAlign: 'center',
       borderTop: `3px solid ${accent || P.blue500}`,
+      flex: '0 0 auto',
     }}>
       <div style={{ fontSize: 18, fontWeight: 700, color: accent || P.blue800, lineHeight: 1.1, letterSpacing: '-0.01em' }}>{value}</div>
       <div style={{ fontSize: 10, color: P.gray400, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{label}</div>
@@ -69,6 +75,7 @@ function MetricCard({ label, value, accent, wide }) {
   );
 }
 
+// ── RISK BADGE ────────────────────────────────────────────────
 function RiskBadge({ score }) {
   const r = getRisk(score);
   return (
@@ -83,6 +90,7 @@ function RiskBadge({ score }) {
   );
 }
 
+// ── STATUS PILL ───────────────────────────────────────────────
 function StatusPill({ correct }) {
   const r = correct ? P.riskNormal : P.riskSevere;
   return (
@@ -90,25 +98,37 @@ function StatusPill({ correct }) {
       display: 'inline-flex', alignItems: 'center', gap: 4,
       padding: '2px 9px', borderRadius: 4, fontSize: 11, fontWeight: 600,
       background: r.bg, color: r.text, border: `1px solid ${r.border}`,
+      whiteSpace: 'nowrap',
     }}>
       {correct ? 'Correct' : 'Incorrect'}
     </span>
   );
 }
 
+// ── WORD TAG ──────────────────────────────────────────────────
 function WordTag({ label, correct }) {
   const r = correct ? P.riskNormal : P.riskSevere;
   return (
     <span style={{
-      display: 'inline-block', padding: '4px 10px', margin: '2px',
-      borderRadius: 6, fontSize: 12, fontWeight: 500, fontFamily: 'monospace',
-      background: r.bg, color: r.text, border: `1px solid ${r.border}`,
+      display: 'inline-block',
+      padding: '4px 10px',
+      margin: '2px',
+      borderRadius: 6,
+      fontSize: 12,
+      fontWeight: 600,
+      fontFamily: 'monospace',
+      background: r.bg,
+      color: r.text,
+      border: `1px solid ${r.border}`,
+      whiteSpace: 'nowrap',
+      lineHeight: 1.6,
     }}>
       {label}
     </span>
   );
 }
 
+// ── SECTION HEADER ────────────────────────────────────────────
 function SectionHeader({ title, count }) {
   return (
     <div style={{
@@ -125,21 +145,25 @@ function SectionHeader({ title, count }) {
   );
 }
 
+// ── SCORE BAR ─────────────────────────────────────────────────
 function ScoreBar({ label, score }) {
-  const r = getRisk(score);
+  // FIX: ensure score is a number
+  const numericScore = score != null ? Number(score) : null;
+  const r = getRisk(numericScore);
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
         <span style={{ fontSize: 12, color: P.gray600 }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: r.text }}>{fmt(score)}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: r.text }}>{fmt(numericScore)}</span>
       </div>
       <div style={{ height: 6, borderRadius: 3, background: P.gray200, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${score ?? 0}%`, background: `linear-gradient(90deg, ${r.dot}88, ${r.dot})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
+        <div style={{ height: '100%', width: `${numericScore ?? 0}%`, background: `linear-gradient(90deg, ${r.dot}88, ${r.dot})`, borderRadius: 3, transition: 'width 0.5s ease' }} />
       </div>
     </div>
   );
 }
 
+// ── DATA TABLE ────────────────────────────────────────────────
 function DataTable({ rows, columns, emptyMessage = 'No data recorded.' }) {
   if (!rows || rows.length === 0) {
     return (
@@ -164,7 +188,7 @@ function DataTable({ rows, columns, emptyMessage = 'No data recorded.' }) {
           {rows.map((row, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? P.white : P.gray50, borderBottom: `1px solid ${P.gray100}` }}>
               {columns.map(c => (
-                <td key={c.key} style={{ padding: '9px 14px', color: P.gray800, verticalAlign: 'middle', lineHeight: 1.4 }}>
+                <td key={c.key} style={{ padding: '9px 14px', color: P.gray800, verticalAlign: 'middle', lineHeight: 1.5 }}>
                   {c.render ? c.render(row[c.key], row) : (row[c.key] ?? '—')}
                 </td>
               ))}
@@ -177,18 +201,19 @@ function DataTable({ rows, columns, emptyMessage = 'No data recorded.' }) {
 }
 
 // ── HELPER: Normalize word details from API ──────────────────
+// Inside ChildAssessmentDetail.jsx
 function normalizeWordDetails(raw) {
   if (!raw) return [];
   let arr = Array.isArray(raw) ? raw : Object.values(raw);
   return arr.map(item => {
-    // Extract the word text
-    const word = item.word || item.stimulus || item.presented || item.expected || item.target || '';
-    // Determine correctness
+    // Handle different possible field names from backend
+    const word = item.word || item.expected || item.target || item.stimulus || '';
     let correct = item.correct === true || item.isCorrect === true || item.is_correct === true;
-    // If correct flag not present, infer from matching (optional)
     const userAnswer = item.userAnswer || item.answer || item.response || item.spoken || '';
     const expectedAnswer = item.expected || item.correctAnswer || item.target || '';
-    if (correct === false && userAnswer && expectedAnswer && userAnswer.toLowerCase() === expectedAnswer.toLowerCase()) {
+    
+    // Override if case‑insensitive match
+    if (!correct && userAnswer && expectedAnswer && userAnswer.toLowerCase() === expectedAnswer.toLowerCase()) {
       correct = true;
     }
     return {
@@ -200,41 +225,76 @@ function normalizeWordDetails(raw) {
     };
   });
 }
+// ══════════════════════════════════════════════════════════════
+// TASK PANELS
+// ══════════════════════════════════════════════════════════════
 
-// ── TASK PANELS ───────────────────────────────────────────────
 
+// ── TASK 1: Word Explorer ─────────────────────────────────────
 function Task1Detail({ data }) {
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.percentage);
+
+  // FIXED: Better detection of raw counts vs percentages
+  const getCategoryData = (scoreKey, totalKey) => {
+    const score = Number(data[scoreKey]);
+    const total = Number(data[totalKey] || data.totalWords);
+    
+    // If score looks like percentage (0-100 range and > total or no total)
+    if (score >= 0 && score <= 100 && (total === 0 || score > total || total == null)) {
+      return score;
+    }
+    // Raw count - compute percentage
+    if (total > 0 && score <= total) {
+      return Math.round((score / total) * 100);
+    }
+    return score || 0;
+  };
+
+  const similarPct    = getCategoryData('similarWordsScore',    'totalSimilarWords');
+  const nonSimilarPct = getCategoryData('nonSimilarWordsScore', 'totalNonSimilarWords');
+  const pseudoPct     = getCategoryData('pseudoWordsScore',     'totalPseudoWords');
+
   const errors = data.errorPatterns;
   const errorRows = (() => {
     if (!errors) return [];
-    if (Array.isArray(errors)) return errors;
-    return Object.entries(errors).map(([shown, answered]) => ({ shown, answered }));
+    if (Array.isArray(errors)) {
+      return errors.map(e =>
+        typeof e === 'string' ? { shown: e, answered: '—', correct: false }
+        : { shown: e.shown || e.word || '—', answered: e.answered || e.userAnswer || '—', correct: !!e.correct }
+      );
+    }
+    return Object.entries(errors).map(([shown, answered]) => ({ shown, answered, correct: false }));
   })();
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        <MetricCard label="Score"      value={fmt(data.percentage)}        accent={rc.dot} />
-        <MetricCard label="Total"      value={data.totalWords ?? '—'} />
-        <MetricCard label="Correct"    value={data.totalScore ?? '—'}     accent={P.riskNormal.dot} />
-        <MetricCard label="Total Time" value={fmtSec(data.totalTimeSeconds)} wide />
-        <MetricCard label="Avg / Word" value={data.avgTimePerWord ? `${Number(data.avgTimePerWord).toFixed(1)}s` : '—'} />
+        <MetricCard label="Score"   value={fmt(data.percentage)}  accent={rc.dot} />
+        <MetricCard label="Total"   value={data.totalWords ?? '—'} />
+        <MetricCard label="Correct" value={data.totalScore ?? '—'} accent={P.riskNormal.dot} />
       </div>
+
       <SectionHeader title="Category Breakdown" />
-      <ScoreBar label="Similar Words"     score={data.similarWordsScore} />
-      <ScoreBar label="Non-Similar Words" score={data.nonSimilarWordsScore} />
-      <ScoreBar label="Pseudo Words"      score={data.pseudoWordsScore} />
+      <ScoreBar label="Similar Words"     score={similarPct} />
+      <ScoreBar label="Non-Similar Words" score={nonSimilarPct} />
+      <ScoreBar label="Pseudo Words"      score={pseudoPct} />
+
       <SectionHeader title="Error Patterns" count={errorRows.length} />
-      <DataTable rows={errorRows} emptyMessage="No errors recorded — perfect score on this task." columns={[
-        { key: 'shown',    label: 'Word Shown',      render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: P.blue800 }}>{v ?? '—'}</span> },
-        { key: 'answered', label: "Child's Answer",  render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
-        { key: 'correct',  label: 'Status',          render: (v, row) => <StatusPill correct={!!row.correct} /> },
-      ]} />
+      <DataTable
+        rows={errorRows}
+        emptyMessage="No errors recorded — perfect score on this task."
+        columns={[
+          { key: 'shown',    label: 'Word Shown',     render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: P.blue800 }}>{v ?? '—'}</span> },
+          { key: 'answered', label: "Child's Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
+          { key: 'correct',  label: 'Status',         render: (v, row) => <StatusPill correct={!!row.correct} /> },
+        ]}
+      />
     </div>
   );
 }
 
+// ── TASK 2: Story Reader ──────────────────────────────────────
 function Task2Detail({ data }) {
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.percentage);
@@ -244,45 +304,71 @@ function Task2Detail({ data }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        <MetricCard label="Score"     value={fmt(data.percentage)}         accent={rc.dot} />
+        <MetricCard label="Score"     value={fmt(data.percentage)}        accent={rc.dot} />
         <MetricCard label="Total"     value={data.totalWords ?? '—'} />
-        <MetricCard label="Correct"   value={data.correctCount ?? '—'}    accent={P.riskNormal.dot} />
-        <MetricCard label="Incorrect" value={data.incorrectCount ?? '—'}  accent={P.riskSevere.dot} />
-        <MetricCard label="Timeout"   value={data.timeoutCount ?? '—'}    accent={P.riskMild.dot} />
-        <MetricCard label="Time"      value={fmtSec(data.totalTimeSeconds)} wide />
+        <MetricCard label="Correct"   value={data.correctCount ?? '—'}   accent={P.riskNormal.dot} />
+        <MetricCard label="Incorrect" value={data.incorrectCount ?? '—'} accent={P.riskSevere.dot} />
+        <MetricCard label="Timeout"   value={data.timeoutCount ?? '—'}   accent={P.riskMild.dot} />
       </div>
-      
-      {/* Show all words in a grid with green/red tags */}
+
       <SectionHeader title="All Words" count={allWords.length} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 24 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 24, padding: '4px 0' }}>
         {allWords.length === 0 ? (
           <div style={{ padding: '14px 16px', background: P.blue50, borderRadius: 8, border: `1px solid ${P.blue100}`, color: P.gray400, fontSize: 12, textAlign: 'center', width: '100%' }}>
             No word data available.
           </div>
         ) : (
           allWords.map((w, i) => (
-            <WordTag key={i} label={w.word || `Word ${i+1}`} correct={w.correct} />
+            <WordTag
+              key={i}
+              label={w.word && w.word.trim() ? w.word : (w.correctAnswer && w.correctAnswer.trim() ? w.correctAnswer : `Word ${i + 1}`)}
+              correct={w.correct}
+            />
           ))
         )}
       </div>
 
-      {/* Detailed table for incorrect words */}
       <SectionHeader title="Incorrect Words (Detailed)" count={wrongWords.length} />
-      <DataTable rows={wrongWords} emptyMessage="No incorrect words — all words read correctly." columns={[
-        { key: 'word',          label: 'Word Shown',     render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: P.blue800 }}>{v || '—'}</span> },
-        { key: 'userAnswer',    label: "Child's Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
-        { key: 'correctAnswer', label: 'Correct Answer', render: v => <span style={{ fontFamily: 'monospace', color: P.riskNormal.text, fontWeight: 600 }}>{v || '—'}</span> },
-        { key: 'timeTaken',     label: 'Time',           render: v => v != null ? `${Number(v).toFixed(1)}s` : '—' },
-      ]} />
+      {/* FIXED: Removed Time column completely */}
+      <DataTable
+        rows={wrongWords}
+        emptyMessage="No incorrect words — all words read correctly."
+        columns={[
+          { key: 'word',          label: 'Word Shown',     render: v => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: P.blue800 }}>{v || '—'}</span> },
+          { key: 'userAnswer',    label: "Child's Answer", render: v => <span style={{ fontFamily: 'monospace', color: P.riskSevere.text, fontWeight: 600 }}>{v || '—'}</span> },
+          { key: 'correctAnswer', label: 'Correct Answer', render: v => <span style={{ fontFamily: 'monospace', color: P.riskNormal.text, fontWeight: 600 }}>{v || '—'}</span> },
+          // Time column REMOVED
+        ]}
+      />
     </div>
   );
 }
-
+// ── TASK 3: Letter Detective ──────────────────────────────────
+// ── TASK 3: Letter Detective ──────────────────────────────────
 function Task3Detail({ data }) {
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.percentage);
-  const allItems = data.comparisonDetails ? (Array.isArray(data.comparisonDetails) ? data.comparisonDetails : Object.values(data.comparisonDetails)) : [];
-  const wrongItems = allItems.filter(d => d && !d.correct && !d.isCorrect);
+
+  const rawDetails = data.comparisonDetails || data.comparisons || data.letterComparisons || data.details || data.items || [];
+  const allItems = Array.isArray(rawDetails) ? rawDetails : Object.values(rawDetails);
+  const wrongItems = allItems.filter(d => d && !(d.correct || d.isCorrect));
+
+  // FIXED: More comprehensive letter field detection
+  const getLetter = (item, side) => {
+    const fieldsA = ['letterA', 'letter_a', 'left', 'stimulus1', 'stimulusA', 'charA', 'char1', 'presented1', 'optionA', 'letter1'];
+    const fieldsB = ['letterB', 'letter_b', 'right', 'stimulus2', 'stimulusB', 'charB', 'char2', 'presented2', 'optionB', 'letter2'];
+    
+    if (side === 'A') {
+      for (const field of fieldsA) {
+        if (item[field] != null) return item[field];
+      }
+    } else {
+      for (const field of fieldsB) {
+        if (item[field] != null) return item[field];
+      }
+    }
+    return null;
+  };
 
   return (
     <div>
@@ -294,34 +380,105 @@ function Task3Detail({ data }) {
         <MetricCard label="Timeout"   value={data.timeoutCount ?? '—'}     accent={P.riskMild.dot} />
         <MetricCard label="Time"      value={fmtSec(data.totalTimeSeconds)} wide />
       </div>
+
       <SectionHeader title="All Comparisons" count={allItems.length} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 24 }}>
-        {allItems.length === 0 && <div style={{ padding: '14px 16px', background: P.blue50, borderRadius: 8, border: `1px solid ${P.blue100}`, color: P.gray400, fontSize: 12, textAlign: 'center', width: '100%' }}>No comparison data available.</div>}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 24, padding: '4px 0' }}>
         {allItems.map((item, i) => {
-          const la = item.letterA || item.left || item.stimulus1 || '?';
-          const lb = item.letterB || item.right || item.stimulus2 || '?';
+          const la = getLetter(item, 'A');
+          const lb = getLetter(item, 'B');
           const correct = !!(item.correct || item.isCorrect);
-          return <WordTag key={i} label={`${la} vs ${lb}`} correct={correct} />;
+          const displayLabel = la && lb ? `${la} vs ${lb}` : `Pair ${i + 1}`;
+          return <WordTag key={i} label={displayLabel} correct={correct} />;
         })}
       </div>
+
       <SectionHeader title="Incorrect Comparisons (Detailed)" count={wrongItems.length} />
-      <DataTable rows={wrongItems} emptyMessage="No incorrect comparisons — all letters identified correctly." columns={[
-        { key: 'letterA',       label: 'Letter A',    render: (v, row) => <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'Georgia, serif', color: P.blue900 }}>{v || row.left || row.stimulus1 || '—'}</span> },
-        { key: 'letterB',       label: 'Letter B',    render: (v, row) => <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'Georgia, serif', color: P.blue900 }}>{v || row.right || row.stimulus2 || '—'}</span> },
-        { key: 'userAnswer',    label: 'Child Said',  render: (v, row) => <span style={{ fontWeight: 700, color: P.riskSevere.text }}>{v || row.answer || row.response || '—'}</span> },
-        { key: 'correctAnswer', label: 'Should Be',   render: (v, row) => <span style={{ fontWeight: 700, color: P.riskNormal.text }}>{v || row.expected || '—'}</span> },
-        { key: 'timeTaken',     label: 'Time',        render: v => v != null ? `${Number(v).toFixed(1)}s` : '—' },
-      ]} />
+      <DataTable
+        rows={wrongItems}
+        emptyMessage="No incorrect comparisons — all letters identified correctly."
+        columns={[
+          {
+            key: 'letterA',
+            label: 'Letter A',
+            render: (v, row) => {
+              const letter = getLetter(row, 'A') || '—';
+              return <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'Georgia, serif', color: P.blue900, display: 'inline-block', minWidth: 30, textAlign: 'center' }}>{letter}</span>;
+            },
+          },
+          {
+            key: 'letterB',
+            label: 'Letter B',
+            render: (v, row) => {
+              const letter = getLetter(row, 'B') || '—';
+              return <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'Georgia, serif', color: P.blue900, display: 'inline-block', minWidth: 30, textAlign: 'center' }}>{letter}</span>;
+            },
+          },
+          {
+            key: 'userAnswer',
+            label: 'Child Said',
+            render: (v, row) => {
+              const answer = v || row.answer || row.response || row.childAnswer || '—';
+              return <span style={{ fontWeight: 700, color: P.riskSevere.text }}>{answer}</span>;
+            },
+          },
+          {
+            key: 'correctAnswer',
+            label: 'Should Be',
+            render: (v, row) => {
+              const expected = v || row.expected || row.correctAnswer || '—';
+              return <span style={{ fontWeight: 700, color: P.riskNormal.text }}>{expected}</span>;
+            },
+          },
+        ]}
+      />
     </div>
   );
 }
-
+// ── TASK 4: Number Memory ─────────────────────────────────────
+// ── TASK 4: Number Memory ─────────────────────────────────────
+// ── TASK 4 SUBSECTION (REUSABLE) ──────────────────────────────
 function Task4SubSection({ sub, title, detailsRaw }) {
   if (!sub) return null;
-  const details = detailsRaw || sub.details;
-  const allItems = details ? (Array.isArray(details) ? details : Object.values(details)) : [];
-  const wrongItems = allItems.filter(d => d && !d.correct && !d.isCorrect);
+
+  let allItems = [];
+  const rawDetails = detailsRaw || sub.details;
+  if (rawDetails) {
+    if (Array.isArray(rawDetails)) {
+      allItems = rawDetails;
+    } else if (typeof rawDetails === 'object') {
+      allItems = Object.values(rawDetails);
+    }
+  }
+
+  // Flatten forward/reverse wrappers
+  allItems = allItems.map(item => {
+    if (item && (item.forward || item.reverse)) return item.forward || item.reverse;
+    return item;
+  }).filter(Boolean);
+
+  // FIXED: Better correctness resolution + preserve raw child input
+  allItems = allItems.map(item => {
+    const seqVal   = item.sequence || item.shown || item.stimulus || item.expected || item.target || item.question;
+    const rawInput = item.rawInput || item.inputRaw || item.userInput || 
+                    item.input || item.userAnswer || item.answer || item.response || item.childAnswer;
+    const expectVal = item.expected || item.correctAnswer || item.target || seqVal;
+
+    let correct = !!(item.correct || item.isCorrect);
+    if (!correct && rawInput != null && expectVal != null) {
+      correct = seqMatch(rawInput, expectVal);
+    }
+
+    return { 
+      ...item, 
+      _resolvedCorrect: correct,
+      _rawChildAnswer: rawInput,
+      _displaySeq: seqVal
+    };
+  });
+
+  const wrongItems = allItems.filter(d => !d._resolvedCorrect);
   const rc = getRisk(sub.percentage);
+
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, paddingBottom: 8, borderBottom: `1px solid ${P.blue100}` }}>
@@ -329,43 +486,101 @@ function Task4SubSection({ sub, title, detailsRaw }) {
         <span style={{ fontSize: 11, fontWeight: 700, color: P.blue700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{title}</span>
         <RiskBadge score={sub.percentage} />
       </div>
+
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        <MetricCard label="Score"     value={fmt(sub.percentage)}      accent={rc.dot} />
+        <MetricCard label="Score"     value={fmt(sub.percentage)}  accent={rc.dot} />
         <MetricCard label="Total"     value={sub.total ?? '—'} />
-        <MetricCard label="Correct"   value={sub.correct ?? '—'}       accent={P.riskNormal.dot} />
-        <MetricCard label="Incorrect" value={sub.incorrect ?? '—'}     accent={P.riskSevere.dot} />
-        <MetricCard label="Timeout"   value={sub.timeout ?? '—'}       accent={P.riskMild.dot} />
-        <MetricCard label="Time"      value={fmtSec(sub.timeSeconds)} />
+        <MetricCard label="Correct"   value={sub.correct ?? '—'}   accent={P.riskNormal.dot} />
+        <MetricCard label="Incorrect" value={sub.incorrect ?? '—'} accent={P.riskSevere.dot} />
+        <MetricCard label="Timeout"   value={sub.timeout ?? '—'}   accent={P.riskMild.dot} />
       </div>
+
       <SectionHeader title="All Sequences" count={allItems.length} />
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16 }}>
-        {allItems.map((item, i) => {
-          const seq = item.sequence || item.shown || item.stimulus || '—';
-          const correct = !!(item.correct || item.isCorrect);
-          const display = Array.isArray(seq) ? seq.join(', ') : String(seq);
-          return <WordTag key={i} label={display} correct={correct} />;
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16, padding: '4px 0' }}>
+        {allItems.length === 0 ? (
+          <div style={{ padding: '10px 14px', background: P.blue50, borderRadius: 8, border: `1px solid ${P.blue100}`, color: P.gray400, fontSize: 12, width: '100%', textAlign: 'center' }}>
+            No sequence data available.
+          </div>
+        ) : allItems.map((item, i) => {
+          const seq = item._displaySeq || item.sequence || item.shown || item.stimulus || item.expected || item.target || '—';
+          const display = normaliseSeq(seq);
+          return <WordTag key={i} label={display} correct={item._resolvedCorrect} />;
         })}
       </div>
-      <DataTable rows={wrongItems} emptyMessage="All sequences answered correctly." columns={[
-        { key: 'sequence',      label: 'Sequence Shown',  render: (v, row) => { const val = v || row.shown || row.stimulus || row.question || '—'; return <span style={{ fontFamily: 'monospace', color: P.blue800 }}>{Array.isArray(val) ? val.join(', ') : String(val)}</span>; } },
-        { key: 'userAnswer',    label: "Child's Answer",  render: (v, row) => { const ans = v || row.answer || row.response || '—'; return <span style={{ fontFamily: 'monospace', fontWeight: 700, color: P.riskSevere.text }}>{Array.isArray(ans) ? ans.join(', ') : String(ans)}</span>; } },
-        { key: 'correctAnswer', label: 'Correct Answer',  render: (v, row) => { const correct = v || row.expected || row.target || '—'; return <span style={{ fontFamily: 'monospace', fontWeight: 700, color: P.riskNormal.text }}>{Array.isArray(correct) ? correct.join(', ') : String(correct)}</span>; } },
-      ]} />
+
+      <DataTable
+        rows={wrongItems}
+        emptyMessage="All sequences answered correctly."
+        columns={[
+          {
+            key: 'sequence',
+            label: 'Sequence Shown',
+            render: (v, row) => {
+              const val = row._displaySeq || v || row.shown || row.stimulus || row.expected || row.target || row.question || '—';
+              return <span style={{ fontFamily: 'monospace', color: P.blue800, fontWeight: 600 }}>{normaliseSeq(val)}</span>;
+            },
+          },
+          {
+            key: 'input',
+            label: "Child's Answer",
+            render: (v, row) => {
+              const rawAnswer = row._rawChildAnswer || row.rawInput || row.inputRaw || row.userInput || 
+                               row.input || row.userAnswer || row.answer || row.response || row.childAnswer || v || '—';
+              return <span style={{ 
+                fontFamily: 'monospace', 
+                fontWeight: 700, 
+                color: P.riskSevere.text,
+                background: row._resolvedCorrect ? P.riskNormal.bg : P.riskSevere.bg,
+                padding: '2px 6px',
+                borderRadius: 4,
+                border: `1px solid ${row._resolvedCorrect ? P.riskNormal.border : P.riskSevere.border}`
+              }}>
+                {normaliseSeq(rawAnswer)}
+              </span>;
+            },
+          },
+          {
+            key: 'expected',
+            label: 'Correct Answer',
+            render: (v, row) => {
+              const correctVal = v || row.correctAnswer || row.target || row.sequence || row._displaySeq || '—';
+              return <span style={{ fontFamily: 'monospace', fontWeight: 700, color: P.riskNormal.text }}>{normaliseSeq(correctVal)}</span>;
+            },
+          },
+          {
+            key: '_resolvedCorrect',
+            label: 'Status',
+            render: (v, row) => <StatusPill correct={!!row._resolvedCorrect} />,
+          },
+        ]}
+      />
     </div>
   );
 }
 
+// ── TASK 4 MAIN COMPONENT ─────────────────────────────────────
 function Task4Detail({ data }) {
   if (!data) return <div style={{ padding: 20, color: P.gray400, fontSize: 13, textAlign: 'center' }}>This task has not been completed yet.</div>;
   const rc = getRisk(data.overallPercentage);
+
   return (
     <div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
         <MetricCard label="Overall Score"     value={fmt(data.overallPercentage)} accent={rc.dot} wide />
         <MetricCard label="Performance Level" value={data.performanceLevel || '—'} wide />
       </div>
-      <Task4SubSection sub={data.sequence} title="Number Sequence Memory" detailsRaw={data.sequence?.details} />
-      <Task4SubSection sub={data.reversal} title="Number Reversal Memory"  detailsRaw={data.reversal?.details} />
+      
+      <Task4SubSection 
+        sub={data.sequence} 
+        title="Number Sequence Memory (Forward)" 
+        detailsRaw={data.sequence?.details} 
+      />
+      
+      <Task4SubSection 
+        sub={data.reversal} 
+        title="Number Reversal Memory" 
+        detailsRaw={data.reversal?.details} 
+      />
     </div>
   );
 }
@@ -386,6 +601,7 @@ export default function ChildAssessmentDetail({ childSessionId, childName, activ
       .catch(err  => { setError(err.message); setLoading(false); });
   }, [childSessionId]);
 
+  // Loading state
   if (loading) return (
     <div style={{ margin: '16px 0', padding: '32px 24px', background: P.white, borderRadius: 12, border: `1px solid ${P.gray200}`, textAlign: 'center' }}>
       <div style={{ width: 28, height: 28, margin: '0 auto 12px', border: `3px solid ${P.gray200}`, borderTop: `3px solid ${P.blue500}`, borderRadius: '50%', animation: 'cad-spin 0.8s linear infinite' }} />
@@ -394,6 +610,7 @@ export default function ChildAssessmentDetail({ childSessionId, childName, activ
     </div>
   );
 
+  // Error state
   if (error) return (
     <div style={{ margin: '16px 0', padding: '14px 16px', background: P.riskSevere.bg, border: `1px solid ${P.riskSevere.border}`, borderRadius: 8, color: P.riskSevere.text, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
       <Icon d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" size={15} color={P.riskSevere.text} />
@@ -403,56 +620,59 @@ export default function ChildAssessmentDetail({ childSessionId, childName, activ
 
   if (!details) return null;
 
-  const tabList  = ['task1', 'task2', 'task3', 'task4'];
-  const scores   = tabList.map(t => t === 'task4' ? details[t]?.overallPercentage : details[t]?.percentage).filter(s => s != null);
+  const tabList = ['task1', 'task2', 'task3', 'task4'];
+  const scores = tabList.map(t => {
+    const raw = t === 'task4' ? details[t]?.overallPercentage : details[t]?.percentage;
+    return raw != null ? Number(raw) : null;
+  }).filter(s => s != null && !isNaN(s));
   const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   const avgRisk  = getRisk(avgScore);
 
+  const safeTab = tabList.includes(activeTab) ? activeTab : 'task1';
+
   return (
-    <div style={{ margin: '16px 0', background: P.white, borderRadius: 12, border: `1px solid ${P.gray200}`, overflow: 'hidden', boxShadow: '0 4px 24px rgba(15,39,68,0.07)' }}>
-
-      {/* HEADER */}
-      <div style={{ background: `linear-gradient(135deg, ${P.blue900} 0%, ${P.blue700} 100%)`, padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8" size={18} color="rgba(255,255,255,0.9)" />
-          </div>
-          <div>
-            <div style={{ color: P.white, fontWeight: 700, fontSize: 15, letterSpacing: '0.01em' }}>Assessment Report</div>
-            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 2 }}>{childName}&nbsp;&nbsp;&middot;&nbsp;&nbsp;Session #{childSessionId}</div>
-          </div>
-        </div>
-        {avgScore != null && (
-          <div style={{ textAlign: 'center', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 10, padding: '8px 18px' }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: P.white, lineHeight: 1.1, letterSpacing: '-0.02em' }}>{avgScore}%</div>
-            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>Avg Score</div>
-            <span style={{ fontSize: 10, fontWeight: 700, color: avgRisk.dot, background: 'rgba(255,255,255,0.1)', padding: '1px 7px', borderRadius: 10, marginTop: 4, display: 'inline-block' }}>{avgRisk.label}</span>
-          </div>
-        )}
-      </div>
-
+    <div style={{
+      margin: '16px 0',
+      background: P.white,
+      borderRadius: '0 0 12px 12px',
+      border: `1px solid ${P.gray200}`,
+      boxShadow: '0 4px 24px rgba(15,39,68,0.07)',
+    }}>
       {/* TAB BAR */}
       <div style={{ display: 'flex', background: P.gray50, borderBottom: `1px solid ${P.gray200}`, overflowX: 'auto' }}>
         {tabList.map(t => {
           const meta   = TASKS[t];
-          const score  = t === 'task4' ? details[t]?.overallPercentage : details[t]?.percentage;
+          const rawScore = t === 'task4' ? details[t]?.overallPercentage : details[t]?.percentage;
+          const score = rawScore != null ? Number(rawScore) : null;
           const rc     = getRisk(score);
-          const active = activeTab === t;
+          const active = safeTab === t;
           return (
-            <button key={t} onClick={() => onTabChange(t)} style={{
-              flex: '1 1 0', minWidth: 100, padding: '14px 10px 12px',
-              border: 'none', borderBottom: active ? `2px solid ${P.blue500}` : '2px solid transparent',
-              background: active ? P.white : 'transparent', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'background 0.15s',
-            }}>
+            <button
+              key={t}
+              onClick={() => onTabChange(t)}
+              style={{
+                flex: '1 1 0',
+                minWidth: 110,
+                padding: '14px 10px 12px',
+                border: 'none',
+                borderBottom: active ? `2px solid ${P.blue500}` : '2px solid transparent',
+                background: active ? P.white : 'transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+                transition: 'background 0.15s',
+              }}
+            >
               <div style={{ width: 28, height: 28, borderRadius: 7, background: active ? P.blue100 : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
                 <Icon d={meta.icon} size={14} color={active ? P.blue600 : P.gray400} />
               </div>
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? P.blue800 : P.gray400, whiteSpace: 'nowrap', textAlign: 'center' }}>{meta.label}</span>
-              {details[t] ? (
+              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? P.blue800 : P.gray600, whiteSpace: 'nowrap', textAlign: 'center' }}>{meta.label}</span>
+              {score != null ? (
                 <span style={{ fontSize: 10, fontWeight: 700, color: rc.text, background: rc.bg, border: `1px solid ${rc.border}`, borderRadius: 10, padding: '1px 7px' }}>{fmt(score)}</span>
               ) : (
-                <span style={{ fontSize: 10, color: P.gray300, background: P.gray100, borderRadius: 10, padding: '1px 7px' }}>N/A</span>
+                <span style={{ fontSize: 10, color: P.gray400, background: P.gray100, borderRadius: 10, padding: '1px 7px' }}>N/A</span>
               )}
             </button>
           );
@@ -462,25 +682,25 @@ export default function ChildAssessmentDetail({ childSessionId, childName, activ
       {/* TASK SUB-HEADER */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px 12px', borderBottom: `1px solid ${P.gray100}`, background: P.white }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: P.blue100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon d={TASKS[activeTab]?.icon} size={15} color={P.blue600} />
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: P.blue100, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon d={TASKS[safeTab]?.icon} size={15} color={P.blue600} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: P.blue900 }}>{TASKS[activeTab]?.label}</div>
-            <div style={{ fontSize: 11, color: P.gray400, marginTop: 1 }}>{TASKS[activeTab]?.sub}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: P.blue900 }}>{TASKS[safeTab]?.label}</div>
+            <div style={{ fontSize: 11, color: P.gray400, marginTop: 1 }}>{TASKS[safeTab]?.sub}</div>
           </div>
         </div>
-        {details[activeTab] && (
-          <RiskBadge score={activeTab === 'task4' ? details[activeTab]?.overallPercentage : details[activeTab]?.percentage} />
+        {details[safeTab] && (
+          <RiskBadge score={safeTab === 'task4' ? details[safeTab]?.overallPercentage : details[safeTab]?.percentage} />
         )}
       </div>
 
       {/* TASK CONTENT */}
-      <div style={{ padding: '20px 24px 28px' }}>
-        {activeTab === 'task1' && <Task1Detail data={details.task1} />}
-        {activeTab === 'task2' && <Task2Detail data={details.task2} />}
-        {activeTab === 'task3' && <Task3Detail data={details.task3} />}
-        {activeTab === 'task4' && <Task4Detail data={details.task4} />}
+      <div style={{ padding: '20px 24px 28px', overflowX: 'auto' }}>
+        {safeTab === 'task1' && <Task1Detail data={details.task1} />}
+        {safeTab === 'task2' && <Task2Detail data={details.task2} />}
+        {safeTab === 'task3' && <Task3Detail data={details.task3} />}
+        {safeTab === 'task4' && <Task4Detail data={details.task4} />}
       </div>
     </div>
   );

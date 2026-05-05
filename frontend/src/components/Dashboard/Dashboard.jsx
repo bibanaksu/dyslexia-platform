@@ -767,7 +767,7 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
           <div className="td-detail-av">{patient.child_name?.charAt(0)}</div>
           <div className="td-detail-info">
             <div className="td-detail-name">{patient.child_name}</div>
-            <div className="td-detail-meta">Year {patient.grade} · Parent: {patient.parent_name || '—'}</div>
+            <div className="td-detail-meta"> Parent: {patient.parent_name || '—'}</div>
             <RiskBadge score={patient.overall_score} />
           </div>
           <div className="td-detail-overall">
@@ -809,8 +809,7 @@ function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
                 <div className="td-detail-section-title">Session Information</div>
                 <div className="td-info-grid">
                   <div className="td-info-item"><span>Completed</span><strong>{fmtDate(patient.completed_at)}</strong></div>
-                  <div className="td-info-item"><span>Session ID</span><strong>#{patient.child_session_id}</strong></div>
-                  <div className="td-info-item"><span>Child ID</span><strong>#{patient.child_id}</strong></div>
+              
                   <div className="td-info-item"><span>Parent</span><strong>{patient.parent_name || '—'}</strong></div>
                 </div>
               </div>
@@ -968,9 +967,15 @@ function ChatTab({ patients, defaultParent, onMessagesRead }) {
       <div className="td-chat-layout">
         <div className="td-conv-list">
           <div className="td-conv-head">Conversations</div>
-          {conversations.length === 0 ? <div className="td-empty-sm" style={{ padding: '20px 16px' }}>No conversations yet.</div> : null}
+          {conversations.length === 0 && (
+            <div className="td-empty-sm" style={{ padding: '20px 16px' }}>No conversations yet.</div>
+          )}
           {conversations.map(c => (
-            <div key={c.parent_id} className={`td-conv-item ${activeParentId === c.parent_id ? 'active' : ''}`} onClick={() => setActiveParentId(c.parent_id)}>
+            <div
+              key={c.parent_id}
+              className={`td-conv-item ${activeParentId === c.parent_id ? 'active' : ''}`}
+              onClick={() => setActiveParentId(c.parent_id)}
+            >
               <div className="td-conv-av">{c.parent_name?.charAt(0)}</div>
               <div>
                 <div className="td-conv-name">{c.parent_name}</div>
@@ -982,7 +987,10 @@ function ChatTab({ patients, defaultParent, onMessagesRead }) {
 
         <div className="td-chat-panel">
           {!activeParentId ? (
-            <div className="td-chat-empty"><Ico d={Icons.chat} size={40} /><p>Select a conversation to begin</p></div>
+            <div className="td-chat-empty">
+              <Ico d={Icons.chat} size={40} />
+              <p>Select a conversation to begin</p>
+            </div>
           ) : (
             <>
               <div className="td-chat-topbar">
@@ -992,26 +1000,93 @@ function ChatTab({ patients, defaultParent, onMessagesRead }) {
                   <div className="td-chat-sub">Parent of {activeConv?.child_name}</div>
                 </div>
               </div>
+
               <div className="td-chat-messages">
-                {loadingMsgs && messages.length === 0 ? <div className="td-empty-sm">Loading…</div> : null}
-                {messages.length === 0 && !loadingMsgs ? <div className="td-chat-start">Start the conversation with {activeConv?.parent_name}.</div> : null}
+                {loadingMsgs && messages.length === 0 && (
+                  <div className="td-empty-sm">Loading…</div>
+                )}
+                {messages.length === 0 && !loadingMsgs && (
+                  <div className="td-chat-start">
+                    Start the conversation with {activeConv?.parent_name}.
+                  </div>
+                )}
                 {messages.map(m => {
-                  const isMe = m.sender_role === 'therapist';
+                  const isTherapist = m.sender_role === 'therapist';
                   return (
-                    <div key={m.id} className={`td-msg-wrap ${isMe ? 'right' : ''}`}>
-                      {!isMe && <div className="td-msg-av">{activeConv?.parent_name?.charAt(0)}</div>}
-                      <div>
-                        <div className={`td-bubble ${isMe ? 'therapist' : 'parent'}`}>{m.content}</div>
-                        <div className={`td-msg-time ${isMe ? 'r' : ''}`}>{fmtTime(m.created_at)}</div>
+                    <div
+                      key={m.id}
+                      style={{
+                        alignSelf: isTherapist ? 'flex-end' : 'flex-start',
+                        maxWidth: '70%',
+                        marginBottom: '12px'
+                      }}
+                    >
+                      {!isTherapist && (
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: '#e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          marginBottom: 4
+                        }}>
+                          {activeConv?.parent_name?.charAt(0)}
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          background: isTherapist ? '#2563eb' : '#f1f5f9',
+                          color: isTherapist ? 'white' : '#0f172a',
+                          padding: '10px 14px',
+                          borderRadius: isTherapist ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                          fontSize: 13,
+                          lineHeight: 1.45,
+                          wordWrap: 'break-word'
+                        }}
+                      >
+                        {m.content}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: '#94a3b8',
+                          marginTop: 4,
+                          textAlign: isTherapist ? 'right' : 'left'
+                        }}
+                      >
+                        {fmtTime(m.created_at)}
                       </div>
                     </div>
                   );
                 })}
                 <div ref={bottomRef} />
               </div>
+
               <div className="td-chat-footer">
-                <textarea className="td-chat-inp" rows={1} placeholder="Write a message…" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }} />
-                <button className="td-send-btn" onClick={handleSend} disabled={!input.trim() || sending}><Ico d={Icons.send} size={16} /></button>
+                <textarea
+                  className="td-chat-inp"
+                  rows={1}
+                  placeholder="Write a message…"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <button
+                  className="td-send-btn"
+                  onClick={handleSend}
+                  disabled={!input.trim() || sending}
+                >
+                  <Ico d={Icons.send} size={16} />
+                </button>
               </div>
             </>
           )}

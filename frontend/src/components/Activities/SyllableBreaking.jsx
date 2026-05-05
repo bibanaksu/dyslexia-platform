@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom"; // add this for navigation
+import { useNavigate } from "react-router-dom";
 import "./SyllableBreaking.css";
 
 /* ================================================================
@@ -449,14 +449,31 @@ export default function SpellingBagGame() {
   return (
     <div className="sy-app">
       <header className="sy-header">
-        <button className="sy-home-top-btn" onClick={goToParentDashboard}>🏠 Home</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* DS Logo - only logo, no text */}
+          <div style={{ 
+            width: 36, 
+            height: 36, 
+            background: '#F5A623', 
+            borderRadius: 8, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            fontWeight: 900, 
+            fontSize: '0.8rem', 
+            color: '#1E2E5C', 
+            fontFamily: "'DM Serif Display', serif" 
+          }}>
+            DS
+          </div>
+          <button className="sy-home-top-btn" onClick={goToParentDashboard}>🏠 Home</button>
+        </div>
         <div className="sy-hcenter">
           <span className="sy-htitle">Syllable Breaking Adventure</span>
           <div className="sy-bar-track">
             <div className="sy-bar-fill" style={{ width: `${phase === "summary" ? 100 : phase === "challenge" ? 100 : pct}%` }} />
           </div>
         </div>
-       
       </header>
 
       {phase === "cards" && (

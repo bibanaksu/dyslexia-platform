@@ -3,7 +3,7 @@ const express = require('express');
 const pool    = require('../db');
 const { verifyToken, requireTherapist } = require('../middleware/auth');
 
-const router = express.Router();
+const router = express.Router();  // ⚠️ THIS LINE WAS MISSING
 router.use(verifyToken, requireTherapist);
 
 // GET /api/therapist/patients
@@ -164,7 +164,7 @@ router.post('/assignments', async (req, res) => {
   }
 });
 
-// ✅ NEW ROUTE: Get assignments for a specific child (used by parent dashboard)
+// GET /api/therapist/assignments/child/:childId
 router.get('/assignments/child/:childId', async (req, res) => {
   try {
     const { childId } = req.params;
@@ -181,7 +181,7 @@ router.get('/assignments/child/:childId', async (req, res) => {
   }
 });
 
-// GET /api/therapist/child-task-details/:childSessionId
+// ========== 🔥 FIXED ROUTE: GET /api/therapist/child-task-details/:childSessionId ==========
 router.get('/child-task-details/:childSessionId', async (req, res) => {
   try {
     const { childSessionId } = req.params;
@@ -197,38 +197,76 @@ router.get('/child-task-details/:childSessionId', async (req, res) => {
     );
 
     if (!session) return res.status(404).json({ error: 'Session not found' });
-
     if (session.assigned_therapist_id && session.assigned_therapist_id !== req.user.id) {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    const safeJSON = (value) => {
+      if (!value) return null;
+      if (typeof value === 'object') return value;
+      try { return JSON.parse(value); } catch { return null; }
+    };
+
+    // Task 1
     const [task1Rows] = await pool.query(
       'SELECT * FROM task1_word_results WHERE child_session_id = ? ORDER BY completed_at DESC LIMIT 1',
       [childSessionId]
     );
+    const t1 = task1Rows[0] || null;
+
+    // Task 2
     const [task2Rows] = await pool.query(
       'SELECT * FROM task2_results WHERE child_session_id = ? ORDER BY completed_at DESC LIMIT 1',
       [childSessionId]
     );
+    let t2 = null;
+    if (task2Rows[0]) {
+      t2 = task2Rows[0];
+      t2.wordDetails = safeJSON(t2.word_details);
+    }
+
+    // Task 3
     const [task3Rows] = await pool.query(
       'SELECT * FROM task3_letter_similarity_results WHERE child_session_id = ? ORDER BY completed_at DESC LIMIT 1',
       [childSessionId]
     );
+    let t3 = null;
+    if (task3Rows[0]) {
+      t3 = task3Rows[0];
+      t3.comparisonDetails = safeJSON(t3.comparison_details);
+    }
+
+    // Task 4
     const [task4Rows] = await pool.query(
-      'SELECT * FROM task4_number_memory_results WHERE child_session_id = ? ORDER BY completed_at DESC LIMIT 1',
+      `SELECT * FROM task4_number_memory_results
+       WHERE child_session_id = ?
+       ORDER BY completed_at DESC LIMIT 1`,
       [childSessionId]
     );
-
-    const parseJson = (val) => {
-      if (!val) return null;
-      if (typeof val === 'object') return val;
-      try { return JSON.parse(val); } catch { return null; }
-    };
-
-    const t1 = task1Rows[0] || null;
-    const t2 = task2Rows[0] || null;
-    const t3 = task3Rows[0] || null;
-    const t4 = task4Rows[0] || null;
+    let t4 = null;
+    if (task4Rows[0]) {
+      t4 = task4Rows[0];
+      t4.sequence = {
+        total: t4.seq_total,
+        correct: t4.seq_correct,
+        incorrect: t4.seq_incorrect,
+        timeout: t4.seq_timeout,
+        percentage: t4.seq_percentage,
+        timeSeconds: t4.seq_time_seconds,
+        details: safeJSON(t4.seq_details) || []
+      };
+      t4.reversal = {
+        total: t4.rev_total,
+        correct: t4.rev_correct,
+        incorrect: t4.rev_incorrect,
+        timeout: t4.rev_timeout,
+        percentage: t4.rev_percentage,
+        timeSeconds: t4.rev_time_seconds,
+        details: safeJSON(t4.rev_details) || []
+      };
+      t4.overallPercentage = t4.overall_percentage;
+      t4.performanceLevel = t4.performance_level;
+    }
 
     res.json({
       success: true,
@@ -245,7 +283,7 @@ router.get('/child-task-details/:childSessionId', async (req, res) => {
         performanceLevel: t1.performance_level,
         totalTimeSeconds: t1.total_time_seconds,
         avgTimePerWord: t1.avg_time_per_word,
-        errorPatterns: parseJson(t1.error_patterns),
+        errorPatterns: safeJSON(t1.error_patterns),
         completedAt: t1.completed_at,
       } : null,
       task2: t2 ? {
@@ -257,7 +295,7 @@ router.get('/child-task-details/:childSessionId', async (req, res) => {
         performanceLevel: t2.performance_level,
         totalTimeSeconds: t2.total_time_seconds,
         avgTimePerWord: t2.avg_time_per_word,
-        wordDetails: parseJson(t2.word_details),
+        wordDetails: t2.wordDetails || [],
         completedAt: t2.completed_at,
       } : null,
       task3: t3 ? {
@@ -269,30 +307,20 @@ router.get('/child-task-details/:childSessionId', async (req, res) => {
         performanceLevel: t3.performance_level,
         totalTimeSeconds: t3.total_time_seconds,
         avgTimePerItem: t3.avg_time_per_item,
-        comparisonDetails: parseJson(t3.comparison_details),
+        comparisonDetails: t3.comparisonDetails || [],
         completedAt: t3.completed_at,
       } : null,
       task4: t4 ? {
-        overallPercentage: t4.overall_percentage,
-        performanceLevel: t4.performance_level,
-        sequence: {
-          total: t4.seq_total, correct: t4.seq_correct,
-          incorrect: t4.seq_incorrect, timeout: t4.seq_timeout,
-          percentage: t4.seq_percentage, timeSeconds: t4.seq_time_seconds,
-          details: parseJson(t4.seq_details),
-        },
-        reversal: {
-          total: t4.rev_total, correct: t4.rev_correct,
-          incorrect: t4.rev_incorrect, timeout: t4.rev_timeout,
-          percentage: t4.rev_percentage, timeSeconds: t4.rev_time_seconds,
-          details: parseJson(t4.rev_details),
-        },
+        overallPercentage: t4.overallPercentage,
+        performanceLevel: t4.performanceLevel,
+        sequence: t4.sequence,
+        reversal: t4.reversal,
         completedAt: t4.completed_at,
       } : null,
     });
   } catch (err) {
     console.error('GET /therapist/child-task-details error:', err);
-    res.status(500).json({ error: 'Failed to fetch task details' });
+    res.status(500).json({ error: 'Failed to fetch task details: ' + err.message });
   }
 });
 
