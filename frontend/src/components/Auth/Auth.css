@@ -374,3 +374,53 @@
     min-height: 30vh;
   }
 }
+/* Auth.css – DS logo: no box, just text + icon in top‑right corner */
+
+.Auth__logo {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 30;
+  /* ❌ No background, no backdrop, no border, no padding, no shadow */
+  pointer-events: none;
+}
+
+.Auth__logo-icon {
+  width: 32px;
+  height: 32px;
+  background: #FFB84D;   /* keep the gold circle/square? Or remove? I’ll keep the icon background */
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-weight: 900;
+  font-size: 0.85rem;
+  color: #1E2D25;
+}
+
+.Auth__logo-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #3D5A4C;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .Auth__logo {
+    top: 1rem;
+    right: 1rem;
+  }
+  .Auth__logo-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+  .Auth__logo-text {
+    font-size: 0.85rem;
+  }
+}

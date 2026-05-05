@@ -1196,10 +1196,10 @@ const loadAssignments = useCallback(async (childId) => {
     return;
   }
   try {
-    const res = await apiFetch(`/api/assignments/child/${childId}`);
+    const res = await apiFetch(`/api/therapist/assignments/child/${childId}`);
     if (res.ok) {
       const data = await res.json();
-      const filtered = (data.assignments || []).filter(a => a.type === 'letter_sound' || a.type === 'syllable');
+      const filtered = (data.assignments || []).filter(a => a.type === 'letter_sound' || a.type === 'syllable')  .map(a => ({ ...a, name: a.name || a.activity_name })); 
       setAssignmentsList(filtered);
       setAssignedActivitiesCount(filtered.length);
     } else {

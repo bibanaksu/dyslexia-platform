@@ -132,7 +132,7 @@ function HomeTab({ patients, onViewPatient }) {
   return (
     <div className="td-pane">
       <div className="td-page-eyebrow">Clinical Overview</div>
-      <h1 className="td-page-title">Good morning, <em>Dr. Sarah</em></h1>
+      <h1 className="td-page-title">Good morning, <em>Dr. Acheb</em></h1>
       <p className="td-page-sub">Here's your patient overview and today's activity summary.</p>
 
       <div className="td-stats-grid">
@@ -872,8 +872,8 @@ const assignActivityHandler = async (childId, activityId) => {
           ))}
         </div>
         <div className="td-nav-right">
-          <div className="td-notif"><Ico d={Icons.bell} size={17} /></div>
-          <div className="td-therapist-chip"><div className="td-therapist-av">S</div><div><div className="td-therapist-name">Dr. Sarah Mohamed</div><div className="td-therapist-role">Dyslexia Specialist</div></div></div>
+          
+          <div className="td-therapist-chip"><div className="td-therapist-av">S</div><div><div className="td-therapist-name">Dr. Acheb Kenza</div><div className="td-therapist-role">Speech Therapist</div></div></div>
           <button className="td-logout" onClick={handleLogout}><Ico d={Icons.logout} size={15} /> Sign out</button>
         </div>
       </nav>
@@ -903,9 +903,9 @@ const assignActivityHandler = async (childId, activityId) => {
           <div className="td-sb-stat"><span>Total Patients</span><strong>{patients.length}</strong></div>
           <div className="td-sb-stat"><span>Assessed</span><strong>{completedCount}</strong></div>
           <div className="td-sb-stat" style={{ color: '#ef4444' }}><span>Severe</span><strong>{patients.filter(p => p.overall_score != null && p.overall_score < 50).length}</strong></div>
-          <div className="td-sb-section" style={{ marginTop: 24 }}>Therapist</div>
-          <div className="td-sb-profile"><div className="td-sb-av">S</div><div><div className="td-sb-name">Dr. Sarah Mohamed</div><div className="td-sb-spec">Dyslexia & Literacy</div></div></div>
-          <div className="td-sb-badge"><Ico d={Icons.star} size={12} /> Certified Specialist</div>
+          
+          
+       
         </aside>
 
         <main className="td-main">

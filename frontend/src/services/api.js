@@ -524,7 +524,6 @@ export async function fetchAssignments() {
             throw new Error('Failed to fetch assignments');
         }
         const data = await res.json();
-        // The backend returns an array directly (not { assignments: [] })
         return Array.isArray(data) ? data : (data.assignments || []);
     } catch (err) {
         console.warn('⚠️ Using localStorage for assignments');
@@ -582,7 +581,8 @@ export async function fetchAssignmentsForChild(childId) {
     // First try: backend endpoint (must be added in your server)
     let backendAssignments = [];
     try {
-        const res = await apiFetch(`/api/assignments/child/${childId}`);
+        // ✅ CORRECTED PATH: includes /therapist/
+        const res = await apiFetch(`/api/therapist/assignments/child/${childId}`);
         if (res.ok) {
             const data = await res.json();
             backendAssignments = data.assignments || [];
