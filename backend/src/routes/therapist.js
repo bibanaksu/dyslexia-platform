@@ -1,9 +1,8 @@
-﻿// backend/src/routes/therapist.js
-const express = require('express');
+﻿const express = require('express');
 const pool    = require('../db');
 const { verifyToken, requireTherapist } = require('../middleware/auth');
 
-const router = express.Router();  // ⚠️ THIS LINE WAS MISSING
+const router = express.Router();
 router.use(verifyToken, requireTherapist);
 
 // GET /api/therapist/patients
@@ -28,7 +27,6 @@ router.get('/patients', async (req, res) => {
         fas.task3_score,
         fas.task4_score,
         fas.completed_at,
-        fas.reviewed_by,
         cs.created_at AS session_started_at
       FROM child c
       JOIN parent p ON p.id = c.parent_id
@@ -181,7 +179,7 @@ router.get('/assignments/child/:childId', async (req, res) => {
   }
 });
 
-// ========== 🔥 FIXED ROUTE: GET /api/therapist/child-task-details/:childSessionId ==========
+// ========== GET /api/therapist/child-task-details/:childSessionId ==========
 router.get('/child-task-details/:childSessionId', async (req, res) => {
   try {
     const { childSessionId } = req.params;

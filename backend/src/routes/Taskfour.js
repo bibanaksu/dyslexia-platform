@@ -24,7 +24,7 @@ router.post('/submit', async (req, res) => {
     rev_details,
     // Combined
     overall_percentage,
-    performance_level,
+    // performance_level removed
   } = req.body;
 
   if (!child_session_id) {
@@ -42,8 +42,8 @@ router.post('/submit', async (req, res) => {
         seq_percentage, seq_time_seconds, seq_details,
         rev_total, rev_correct, rev_incorrect, rev_timeout,
         rev_percentage, rev_time_seconds, rev_details,
-        overall_percentage, performance_level)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        overall_percentage)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
         seq_total = VALUES(seq_total),
         seq_correct = VALUES(seq_correct),
@@ -59,15 +59,14 @@ router.post('/submit', async (req, res) => {
         rev_percentage = VALUES(rev_percentage),
         rev_time_seconds = VALUES(rev_time_seconds),
         rev_details = VALUES(rev_details),
-        overall_percentage = VALUES(overall_percentage),
-        performance_level = VALUES(performance_level)`,
+        overall_percentage = VALUES(overall_percentage)`,
       [
         child_session_id,
         seq_total || 20, seq_correct || 0, seq_incorrect || 0, seq_timeout || 0,
         seq_percentage || 0, seq_time_seconds || 0, seq_details || null,
         rev_total || 10, rev_correct || 0, rev_incorrect || 0, rev_timeout || 0,
         rev_percentage || 0, rev_time_seconds || 0, rev_details || null,
-        overall_percentage || 0, performance_level || null,
+        overall_percentage || 0,
       ]
     );
 

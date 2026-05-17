@@ -88,6 +88,79 @@ export function Auth() {
   const navigate = useNavigate();
 
   const [isSignIn, setIsSignIn] = useState(true);
+
+  const handleGoogleLogin = async () => {
+    try {
+      setError('');
+      setLoading(true);
+
+      const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (!GOOGLE_CLIENT_ID) throw new Error('Missing VITE_GOOGLE_CLIENT_ID in frontend env');
+
+      const BACKEND_URL = import.meta.env.VITE_API_URL;
+      if (!BACKEND_URL) throw new Error('Missing VITE_API_URL in frontend env');
+
+      const redirectUri = 'http://localhost:5173/auth/google/callback';
+
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+      authUrl.searchParams.set('redirect_uri', redirectUri);
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('scope', 'openid email profile');
+      authUrl.searchParams.set('prompt', 'select_account');
+
+      const popup = window.open(authUrl.toString(), 'google_oauth_popup', 'width=500,height=650');
+      if (!popup) throw new Error('Popup blocked. Please allow popups and try again.');
+
+      const code = await new Promise((resolve, reject) => {
+        const timeoutMs = 2 * 60 * 1000;
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          reject(new Error('Google login timed out. Please try again.'));
+        }, timeoutMs);
+
+        const onMessage = (event) => {
+          try {
+            if (event.origin !== window.location.origin) return;
+            const receivedCode = event.data?.code;
+            if (receivedCode) {
+              cleanup();
+              resolve(receivedCode);
+            }
+          } catch {
+            // ignore
+          }
+        };
+
+        const cleanup = () => {
+          window.removeEventListener('message', onMessage);
+          clearTimeout(timeoutId);
+        };
+
+        window.addEventListener('message', onMessage);
+      });
+
+      const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Google login failed');
+      if (!data.token) throw new Error('No token returned by backend');
+
+      saveUserSession(data);
+      await verifyTokenWorks();
+      navigate(data.role === 'therapist' ? '/dashboard' : '/parent-dashboard');
+    } catch (err) {
+      console.error('Google auth error:', err);
+      setError(err.message || 'Google login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [email, setEmail] = useState('');
@@ -271,7 +344,7 @@ export function Auth() {
 
           <div className="Auth__divider"><span>Or continue with</span></div>
           <div className="Auth__social">
-            <button type="button" className="Auth__social-btn" onClick={() => alert('Google login coming soon!')}>
+            <button type="button" className="Auth__social-btn" disabled={loading} onClick={handleGoogleLogin}>
               <GoogleIcon /><span>Google</span>
             </button>
           </div>

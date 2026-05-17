@@ -1,19 +1,58 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./SyllableBreaking.css";
 
 /* ================================================================
-   DATA – each word has an image path (place images in public/assets/)
+   Helper: get current child ID from localStorage
+   — reads 'currentChildId' which must be set when a child is
+     selected in the parent/child selection screen:
+       localStorage.setItem('currentChildId', String(child.id))
+================================================================ */
+function getCurrentChildId() {
+  const id = localStorage.getItem('currentChildId');
+  return id ? parseInt(id, 10) : null;
+}
+
+async function markActivityCompleted(activityId, score) {
+  const childId = getCurrentChildId();
+  if (!childId) {
+    console.warn('⚠️ Cannot mark completion: currentChildId not set in localStorage. Make sure to call localStorage.setItem("currentChildId", child.id) when a child is selected.');
+    return;
+  }
+  const token = localStorage.getItem('token');
+  // ✅ FIX: use full URL to avoid proxy issues
+  const BASE = 'http://localhost:5000';
+  try {
+    const res = await fetch(`${BASE}/api/activities/complete`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ child_id: childId, activity_id: activityId, score })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('❌ markActivityCompleted failed:', data);
+    } else {
+      console.log('✅ Activity marked complete:', data);
+    }
+  } catch (err) {
+    console.error('❌ Failed to complete activity', err);
+  }
+}
+
+/* ================================================================
+   DATA – each word has an image path
 ================================================================ */
 const WORDS = [
   { id: 1, name: "Banana",   syllables: ["ba","na","na"], letters: ["b","a","n","a","n","a"], bg: "#FFF9C4", accent: "#F9A825", imagePath: "/assets/banana.png" },
   { id: 2, name: "Apple",    syllables: ["ap","ple"],     letters: ["a","p","p","l","e"],    bg: "#FFEBEE", accent: "#E53935", imagePath: "/assets/apple.png" },
   { id: 3, name: "Tiger",    syllables: ["ti","ger"],     letters: ["t","i","g","e","r"],    bg: "#FFF3E0", accent: "#F57C00", imagePath: "/assets/tiger.png" },
   { id: 4, name: "Robot",    syllables: ["ro","bot"],     letters: ["r","o","b","o","t"],    bg: "#E3F2FD", accent: "#1E88E5", imagePath: "/assets/robot.png" },
-  { id: 5, name: "Elephant", syllables: ["el","e","phant"], letters: ["e","l","e","p","h","a","n","t"], bg: "#E8F5E9", accent: "#43A047", imagePath: "/assets/elephant.png" },
+  { id: 5, name: "Elephant", syllables: ["el","e","phant"], letters: ["e","l","e","p","h","a","n","t"], bg: "#E8F5E9", accent: "#43A047", imagePath: "/assets/Elephant3.png" },
 ];
 
-// Map written syllables to how they should be spoken (blended sounds)
 const SYLLABLE_SPOKEN = {
   "ple": "pul", "ger": "gur", "phant": "fant", "bot": "baht", "na": "nah",
   "ba": "bah", "ti": "tee", "ro": "roh", "el": "ell", "ap": "ap"
@@ -160,8 +199,9 @@ function FlashCard({ word, animClass, playing, onCardClick, onSyllableClick, isL
 }
 
 /* ================================================================
-   WORD BUILDER – VERY BIG IMAGE (280px) & NO SOUND ON LETTER CLICKS
+   WORD BUILDER
 ================================================================ */
+// ========================== ORIGINAL WORD BUILDER (matches CSS) ==========================
 function WordBuilder({ word, onWordComplete }) {
   const targetSlots = word.syllables.map(syl => syl.split(""));
   const [slots, setSlots] = useState(() => targetSlots.map(() => []));
@@ -193,7 +233,6 @@ function WordBuilder({ word, onWordComplete }) {
     const currentFilled = slots[currentSlotIndex];
     const neededLetter = currentTarget[currentFilled.length];
     if (letter === neededLetter) {
-      // CORRECT – only visual, no sound
       const newSlots = [...slots];
       newSlots[currentSlotIndex] = [...currentFilled, letter];
       setSlots(newSlots);
@@ -212,7 +251,6 @@ function WordBuilder({ word, onWordComplete }) {
         }
       }
     } else {
-      // WRONG – visual feedback + gentle speech (no beep)
       setErrorCount(prev => prev + 1);
       setShakeLetter(letter);
       setErrorFlash(true);
@@ -227,7 +265,6 @@ function WordBuilder({ word, onWordComplete }) {
   return (
     <div className="sy-building-screen">
       <div className="sy-building-header">
-        {/* SUPER BIG IMAGE – 280px */}
         <div style={{ marginBottom: 16 }}>
           <img 
             src={word.imagePath} 
@@ -301,11 +338,9 @@ function AllWordsChallenge({ words, onCompleteAll }) {
   const [showCelebration, setShowCelebration] = useState(false);
 
   const currentWord = words[currentWordIdx];
-  const isLast = currentWordIdx === words.length - 1;
 
   const handleWordComplete = (stats) => {
-    setResults(prev => [...prev, { ...stats, wordName: currentWord.name }]);
-    if (isLast) {
+    if (currentWordIdx === words.length - 1) {
       setShowCelebration(true);
       setTimeout(() => {
         const totalCorrect = results.length + 1;
@@ -315,6 +350,7 @@ function AllWordsChallenge({ words, onCompleteAll }) {
         onCompleteAll({ totalWords, totalCorrect, totalErrors, accuracy, details: [...results, stats] });
       }, 800);
     } else {
+      setResults(prev => [...prev, stats]);
       setCurrentWordIdx(prev => prev + 1);
     }
   };
@@ -340,22 +376,25 @@ function AllWordsChallenge({ words, onCompleteAll }) {
 }
 
 /* ================================================================
-   FINAL SUMMARY
+   FINAL SUMMARY – with completion API call
 ================================================================ */
-function FinalSummary({ stats, wordsCount, onRestart }) {
+function FinalSummary({ stats, activityId, wordsCount, onRestart }) {
   const { totalCorrect, totalErrors, accuracy } = stats;
   const starsEarned = Math.min(5, Math.floor(accuracy / 20) + (totalErrors === 0 ? 1 : 0));
+  
+  // ✅ FIX: use activityId from router state instead of hardcoded 2
+  useEffect(() => {
+    markActivityCompleted(activityId || 2, accuracy);
+  }, [activityId, accuracy]);
+
   return (
     <div className="sy-celebrate">
       <Confetti active={true} />
-      <div className="sy-cel-trophy">🏅🏅🏅</div>
+      <div className="sy-cel-trophy">🏆✨</div>
       <div className="sy-cel-title">You're a syllable master!</div>
       <div className="sy-cel-sub">Word Building Champion</div>
       <div style={{ marginTop: 16, background: "#FDF8E7", padding: "16px 28px", borderRadius: 48, width: "80%", maxWidth: 400 }}>
-        <div>✅ Words completed: {totalCorrect} / {wordsCount}</div>
-        <div>🎯 Accuracy: {accuracy}%</div>
-        <div>⭐ Stars earned: {"⭐".repeat(starsEarned)}</div>
-        <div>💪 Total learning attempts: {totalErrors + totalCorrect}</div>
+       
       </div>
       <div className="sy-celebrate-buttons">
         <button className="sy-replay-btn" onClick={onRestart}>Play Again</button>
@@ -365,10 +404,14 @@ function FinalSummary({ stats, wordsCount, onRestart }) {
 }
 
 /* ================================================================
-   MAIN COMPONENT – no welcome screen, auto-start speech, home navigates to parent dashboard
+   MAIN COMPONENT
 ================================================================ */
 export default function SpellingBagGame() {
-  const navigate = useNavigate(); // React Router navigation
+  const navigate = useNavigate();
+  const location = useLocation();
+  // ✅ FIX: read activityId passed from ParentDashboard handleStart via router state
+  const activityId = location.state?.activityId || 2;
+
   const [phase, setPhase] = useState("cards");
   const [idx, setIdx] = useState(0);
   const [animCls, setAnimCls] = useState("");
@@ -382,12 +425,10 @@ export default function SpellingBagGame() {
   const isLastCard = idx === WORDS.length - 1;
   const pct = Math.round(((idx + 1) / WORDS.length) * 100);
 
-  // Auto-enable speech on component mount (browser may still require user interaction, but we try)
   useEffect(() => {
     if (!speechUnlocked.current) {
       speechUnlocked.current = true;
       unlockSpeech();
-      // Small delay to let voices load, then auto-play first word audio
       setTimeout(() => {
         speakWordAndSyllables(WORDS[0]);
         setPlaying(true);
@@ -434,7 +475,6 @@ export default function SpellingBagGame() {
     setAnimCls("");
     setStars(0);
     setChallengeStats(null);
-    // re-speak first word after restart
     setTimeout(() => {
       speakWordAndSyllables(WORDS[0]);
       setPlaying(true);
@@ -443,14 +483,13 @@ export default function SpellingBagGame() {
   };
 
   const goToParentDashboard = () => {
-    navigate("/parent-dashboard"); // adjust route as needed
+    navigate("/parent-dashboard");
   };
 
   return (
     <div className="sy-app">
       <header className="sy-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* DS Logo - only logo, no text */}
           <div style={{ 
             width: 36, 
             height: 36, 
@@ -509,7 +548,7 @@ export default function SpellingBagGame() {
       )}
 
       {phase === "summary" && challengeStats && (
-        <FinalSummary stats={challengeStats} wordsCount={WORDS.length} onRestart={restartGame} />
+        <FinalSummary stats={challengeStats} activityId={activityId} wordsCount={WORDS.length} onRestart={restartGame} />
       )}
     </div>
   );

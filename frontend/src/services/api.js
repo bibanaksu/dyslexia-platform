@@ -1,4 +1,3 @@
-// frontend/src/services/api.js
 const BASE_URL = 'http://localhost:5000';
 
 // ─────────────────────────────────────────────────────────────
@@ -396,27 +395,43 @@ export async function submitQuiz(quizData) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// MESSAGES
+// MESSAGES – FIXED sendMessage parameter name
 // ─────────────────────────────────────────────────────────────
 export async function fetchMessages(parentId = null) {
     let url = '/api/messages';
     if (parentId) url += `?parentId=${parentId}`;
     const res = await apiFetch(url);
-    if (!res.ok) { if (res.status === 404) return []; const data = await res.json(); throw new Error(data.error || 'Failed to fetch messages'); }
+    if (!res.ok) {
+        if (res.status === 404) return [];
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to fetch messages');
+    }
     const data = await res.json();
     return data.messages || [];
 }
 
-export async function sendMessage(content, therapistId = null, childId = null) {
-    const res = await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify({ content, therapistId, child_id: childId }) });
-    if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'Failed to send message'); }
+// ✅ FIX: Renamed therapistId → parentId (parameter now correctly named)
+export async function sendMessage(content, parentId = null, childId = null) {
+    const userRole = localStorage.getItem('userRole');
+    let body;
+    if (userRole === 'parent') {
+        body = { content, child_id: childId };
+    } else if (userRole === 'therapist') {
+        if (!parentId) throw new Error('parentId required for therapist messages');
+        body = { parentId: parentId, content, child_id: childId };
+    } else {
+        throw new Error('Invalid user role');
+    }
+    const res = await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify(body) });
+    if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to send message');
+    }
     return (await res.json()).message;
 }
 
 export async function sendTherapistMessage(parentId, content, childId = null) {
-    const res = await apiFetch('/api/messages', { method: 'POST', body: JSON.stringify({ parentId, content, child_id: childId }) });
-    if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'Failed to send message'); }
-    return (await res.json()).message;
+    return sendMessage(content, parentId, childId);
 }
 
 export async function fetchUnreadCount() {
@@ -433,34 +448,21 @@ export async function markMessageRead(messageId) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// THERAPIST DASHBOARD ENDPOINTS (with localStorage fallbacks)
+// THERAPIST DASHBOARD: Patients, Notes, Activities, Assignments
 // ─────────────────────────────────────────────────────────────
 export async function fetchPatients() {
     try {
         const res = await apiFetch('/api/therapist/patients');
         if (!res.ok) {
-            if (res.status === 404) return [{ child_id: 1, child_name: 'Demo Child', grade: 3, parent_id: 1, parent_name: 'Demo Parent' }];
+            if (res.status === 404) return [];
             throw new Error('Failed to fetch patients');
         }
         const data = await res.json();
-        return Array.isArray(data) ? data : [];
+        // ✅ FIX: handle both array and { patients: [...] } response
+        return Array.isArray(data) ? data : (data.patients || []);
     } catch (err) {
         console.error('fetchPatients error:', err);
-        return [{ child_id: 1, child_name: 'Demo Child', grade: 3, parent_id: 1, parent_name: 'Demo Parent' }];
-    }
-}
-
-export async function fetchChildTaskDetails(childSessionId) {
-    try {
-        const res = await apiFetch(`/api/therapist/child-task-details/${childSessionId}`);
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || 'Failed to fetch task details');
-        }
-        return await res.json();
-    } catch (err) {
-        console.error('fetchChildTaskDetails error:', err);
-        throw err;
+        return [];
     }
 }
 
@@ -469,13 +471,22 @@ export async function fetchTherapistNotes(childId = null) {
         let url = '/api/therapist/notes';
         if (childId) url += `?childId=${childId}`;
         const res = await apiFetch(url);
-        if (!res.ok) { if (res.status === 404) return []; throw new Error('Failed to fetch notes'); }
+        if (!res.ok) {
+            if (res.status === 404) return [];
+            throw new Error('Failed to fetch notes');
+        }
         return await res.json();
-    } catch (err) { console.error(err); return []; }
+    } catch (err) {
+        console.error(err);
+        return [];
+    }
 }
 
 export async function addTherapistNote(childId, noteText) {
-    const res = await apiFetch('/api/therapist/notes', { method: 'POST', body: JSON.stringify({ child_id: childId, note_text: noteText }) });
+    const res = await apiFetch('/api/therapist/notes', {
+        method: 'POST',
+        body: JSON.stringify({ child_id: childId, note_text: noteText }),
+    });
     if (!res.ok) throw new Error('Failed to add note');
     return res.json();
 }
@@ -486,37 +497,42 @@ export async function deleteTherapistNote(noteId) {
     return res.json();
 }
 
+// ─────────────────────────────────────────────────────────────
+// ACTIVITIES & ASSIGNMENTS
+// ─────────────────────────────────────────────────────────────
 export async function fetchActivities() {
     try {
         const res = await apiFetch('/api/activities');
-        if (!res.ok) { if (res.status === 404) return { activities: [] }; throw new Error('Failed to fetch activities'); }
+        if (!res.ok) {
+            if (res.status === 404) return { activities: [] };
+            throw new Error('Failed to fetch activities');
+        }
         const data = await res.json();
         if (data.activities && Array.isArray(data.activities)) return data;
         if (Array.isArray(data)) return { activities: data };
         return { activities: [] };
-    } catch (err) { console.error(err); return { activities: [] }; }
+    } catch (err) {
+        console.error('fetchActivities error:', err);
+        return { activities: [] };
+    }
 }
 
-// ─────────────────────────────────────────────────────────────
-// ASSIGNMENTS (Therapist & Parent) – Fixed for syllable support
-// ─────────────────────────────────────────────────────────────
 const ASSIGNMENTS_STORAGE_KEY = 'lexicare_assignments';
 
-// Default activities with proper configs for both types
 const DEFAULT_ACTIVITIES = {
-    1: { 
-        id: 1, 
-        name: 'Alphabet Swiping', 
-        type: 'letter_sound', 
+    1: {
+        id: 1,
+        name: 'Alphabet Swiping',
+        type: 'letter_sound',
         difficulty_level: 1,
-        config: { letters: ['E','B','G','O','C'], words: ['Elephant','Butterfly','Giraffe','Owl','Cow'] } 
+        config: { letters: ['E','B','G','O','C'], words: ['Elephant','Butterfly','Giraffe','Owl','Cow'] }
     },
-    2: { 
-        id: 2, 
-        name: 'Syllable Breaking', 
-        type: 'syllable', 
+    2: {
+        id: 2,
+        name: 'Syllable Breaking',
+        type: 'syllable',
         difficulty_level: 1,
-        config: { words: ['Banana','Apple','Tiger','Robot','Elephant'] } 
+        config: { words: ['Banana','Apple','Tiger','Robot','Elephant'] }
     },
 };
 
@@ -529,7 +545,6 @@ function saveStoredAssignments(assignments) {
     localStorage.setItem(ASSIGNMENTS_STORAGE_KEY, JSON.stringify(assignments));
 }
 
-// For therapist dashboard: get all assignments
 export async function fetchAssignments() {
     try {
         const res = await apiFetch('/api/therapist/assignments');
@@ -545,7 +560,6 @@ export async function fetchAssignments() {
     }
 }
 
-// For therapist dashboard: assign an activity to a child
 export async function assignActivity(childId, activityId, difficulty = 1) {
     try {
         const res = await apiFetch('/api/therapist/assignments', {
@@ -588,23 +602,17 @@ export async function assignActivity(childId, activityId, difficulty = 1) {
     }
 }
 
-// For parent dashboard: get assignments for a specific child
 export async function fetchAssignmentsForChild(childId) {
     if (!childId) return [];
-
-    // First try: backend endpoint (must be added in your server)
     let backendAssignments = [];
     try {
-        // ✅ CORRECTED PATH: includes /therapist/
         const res = await apiFetch(`/api/therapist/assignments/child/${childId}`);
         if (res.ok) {
             const data = await res.json();
             backendAssignments = data.assignments || [];
-            // If we got assignments from the backend, return them with the type field
             if (backendAssignments.length > 0) {
                 return backendAssignments.map(assign => ({
                     ...assign,
-                    // Ensure type field exists (it should because we SELECT a.type)
                     type: assign.type || DEFAULT_ACTIVITIES[assign.activity_id]?.type || 'syllable',
                 }));
             }
@@ -612,13 +620,10 @@ export async function fetchAssignmentsForChild(childId) {
     } catch (err) {
         console.warn('Backend assignments endpoint not available, using localStorage fallback', err);
     }
-
-    // Fallback to localStorage
     const localAssignments = getLocalAssignmentsForChild(childId);
     return localAssignments;
 }
 
-// Helper to get assignments from localStorage and merge default configs
 function getLocalAssignmentsForChild(childId) {
     const all = getStoredAssignments();
     const numericChildId = parseInt(childId);
@@ -634,13 +639,12 @@ function getLocalAssignmentsForChild(childId) {
         });
 }
 
-// Alias for parent dashboard
 export const fetchAssignedActivities = fetchAssignmentsForChild;
 
-export async function completeAssignment(assignmentId, score, resultData = null) {
-    const res = await apiFetch(`/api/assignments/${assignmentId}/complete`, {
-        method: 'POST',
-        body: JSON.stringify({ score, result_data: resultData }),
+export async function completeAssignment(childId, activityId, score) {
+    const res = await apiFetch('/api/activities/complete', {
+        method: 'PUT',
+        body: JSON.stringify({ child_id: childId, activity_id: activityId, score }),
     });
     if (!res.ok) throw new Error('Failed to complete assignment');
     return res.json();
@@ -664,8 +668,6 @@ export async function fetchTaskDetails(childSessionId) {
             }
             throw new Error(data.error || `HTTP ${res.status}`);
         }
-        
-        // 🛡️ SAFE JSON WITH RAW FALLBACK
         const text = await res.text();
         let data;
         try {
@@ -674,7 +676,6 @@ export async function fetchTaskDetails(childSessionId) {
             console.error('🚨 Invalid JSON from backend (raw):', text.substring(0, 500));
             throw new Error('Backend returned invalid JSON response');
         }
-        
         console.log('✅ Fetched task details:', data);
         return data.details || data;
     } catch (err) {

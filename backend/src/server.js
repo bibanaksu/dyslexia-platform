@@ -22,6 +22,7 @@ const task1Routes             = require('./routes/Task1routes');
 const task2Routes             = require('./routes/Task2routes');
 const assessmentSummaryRoutes = require('./routes/assessmentSummaryRoutes.js');
 const authRouter              = require('./routes/auth');
+const authGoogleRouter        = require('./routes/auth_google');
 const messagesRouter          = require('./routes/messages');
 const taskDetailsRouter       = require('./routes/taskDetails'); // ✅ ADDED
 
@@ -55,6 +56,8 @@ app.use((req,res,next)=>{ console.log(`${req.method} ${req.url}`); next(); });
 // AUTH ROUTES
 // ─────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
+app.use('/api/auth', authGoogleRouter);
+
 
 // ─────────────────────────────────────────────────────────────
 // HEALTH CHECK

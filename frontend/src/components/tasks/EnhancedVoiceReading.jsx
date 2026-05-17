@@ -8,7 +8,7 @@ import { getChildInfo, getUserInfo, getCurrentChildSessionId } from "../../utils
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TASK2_URL = `${API}/api/assessments/task2/submit`;
 
-// ===== UPDATED READING PASSAGE =====
+// ===== READING PASSAGE =====
 const READING_PASSAGE = {
   title: "Lina's Morning",
   text: `Lina wakes up in the morning. She eats bread and drinks milk then goes outside to play with her friend Sara in the yard. They run, laugh, and play hide and seek near the trees. Lina finds Sara and they are very happy. After playing, they sit under a tree and rest together. 
@@ -20,14 +20,44 @@ const allWords = READING_PASSAGE.text.split(/\s+/).filter(w => w.length > 0);
 
 const cleanText = t => t.toLowerCase().replace(/[.,!?;:'"()\[\]{}]/g, '').replace(/\s+/g, ' ').trim();
 
-const isDyslexiaSwap = (spoken, expected) => {
+// ─────────────────────────────────────────────────────────────
+// 🔥 IMPROVED SIMILARITY FUNCTION (Levenshtein distance)
+// ─────────────────────────────────────────────────────────────
+const levenshteinDistance = (a, b) => {
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+};
+
+const isDyslexiaSwap = (cleanSpoken, cleanExpected) => {
   const swaps = { 'b':'d','d':'b','p':'q','q':'p','was':'saw','saw':'was','their':'there','there':'their','from':'form','form':'from','no':'on','on':'no' };
-  const cs = cleanText(spoken); const ce = cleanText(expected);
-  if (swaps[cs] === ce || swaps[ce] === cs) return true;
-  if (cs.length === ce.length && cs.length <= 5) {
+  if (swaps[cleanSpoken] === cleanExpected || swaps[cleanExpected] === cleanSpoken) return true;
+  if (cleanSpoken.length === cleanExpected.length && cleanSpoken.length <= 5) {
     let diff = 0;
-    for (let i = 0; i < cs.length; i++) {
-      if (cs[i] !== ce[i]) { const pair = cs[i]+ce[i]; if (pair==='bd'||pair==='db'||pair==='pq'||pair==='qp') diff++; else return false; }
+    for (let i = 0; i < cleanSpoken.length; i++) {
+      if (cleanSpoken[i] !== cleanExpected[i]) {
+        const pair = cleanSpoken[i] + cleanExpected[i];
+        if (pair === 'bd' || pair === 'db' || pair === 'pq' || pair === 'qp') diff++;
+        else return false;
+      }
     }
     return diff <= 2;
   }
@@ -35,13 +65,15 @@ const isDyslexiaSwap = (spoken, expected) => {
 };
 
 const calcSimilarity = (spoken, expected) => {
-  const cs = cleanText(spoken); const ce = cleanText(expected);
+  const cs = cleanText(spoken);
+  const ce = cleanText(expected);
+  if (!cs || !ce) return 0;
   if (cs === ce) return 1.0;
-  if (isDyslexiaSwap(spoken, expected)) return 0.85;
-  if (cs.includes(ce) || ce.includes(cs)) return 0.8;
-  let m = 0; const min = Math.min(cs.length, ce.length);
-  for (let i = 0; i < min; i++) { if (cs[i] === ce[i]) m++; }
-  return m / Math.max(cs.length, ce.length);
+  if (isDyslexiaSwap(cs, ce)) return 0.9; // dyslexia‑friendly boost
+
+  const distance = levenshteinDistance(cs, ce);
+  const maxLength = Math.max(cs.length, ce.length);
+  return 1 - distance / maxLength;
 };
 
 const markQuestCompleted = () => {
@@ -70,25 +102,28 @@ export default function EnhancedVoiceReading() {
   const [saving,               setSaving]               = useState(false);
   const [resultsData,          setResultsData]          = useState(null);
   const [saveError,            setSaveError]            = useState('');
+  const [hasStarted,           setHasStarted]           = useState(false);
 
-  const recognitionRef      = useRef(null);
-  const currentWordRef      = useRef(null);
-  const timerIntervalRef    = useRef(null);
-  const isPausedRef         = useRef(false);
-  const isCompleteRef       = useRef(false);
-  const isTimeUpRef         = useRef(false);
-  const isListeningRef      = useRef(false);
-  const startTimeRef        = useRef(null);
-  const pausedAtRef         = useRef(null);
-  const totalPausedMsRef    = useRef(0);
-  const isMountedRef        = useRef(true);
-  const currentWordIndexRef = useRef(0);
-  const wordResultsRef      = useRef({});
-  const errorWordsRef       = useRef([]);
-  const finalTranscriptRef  = useRef('');
-  const lastProcessedRef    = useRef(0);
-  const timeRemainingRef    = useRef(180);
-  const markedCompletedRef  = useRef(false);
+  const recognitionRef           = useRef(null);
+  const currentWordRef           = useRef(null);
+  const timerIntervalRef         = useRef(null);
+  const isPausedRef              = useRef(false);
+  const isCompleteRef            = useRef(false);
+  const isTimeUpRef              = useRef(false);
+  const isListeningRef           = useRef(false);
+  const startTimeRef             = useRef(null);
+  const pausedAtRef              = useRef(null);
+  const totalPausedMsRef         = useRef(0);
+  const isMountedRef             = useRef(true);
+  const currentWordIndexRef      = useRef(0);
+  const wordResultsRef           = useRef({});
+  const errorWordsRef            = useRef([]);
+  const finalTranscriptRef       = useRef('');
+  const lastProcessedRef         = useRef(0);
+  const timeRemainingRef         = useRef(180);
+  const markedCompletedRef       = useRef(false);
+  const buildRecognitionRef      = useRef(null);
+  const finishAssessmentInternalRef = useRef(null);
 
   useEffect(() => { currentWordIndexRef.current = currentWordIndex; }, [currentWordIndex]);
   useEffect(() => { wordResultsRef.current      = wordResults;      }, [wordResults]);
@@ -99,10 +134,10 @@ export default function EnhancedVoiceReading() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) { setRecognitionSupported(false); return; }
-    startListening();
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      setRecognitionSupported(false);
+    }
     return () => { isMountedRef.current = false; stopRecognition(); stopTimer(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -130,7 +165,6 @@ export default function EnhancedVoiceReading() {
 
   const formatTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
-  // Build payload for task2_results (unchanged)
   const buildPayload = useCallback((resultsObj, isPartial = false) => {
     const childSessionId = getCurrentChildSessionId();
     if (!childSessionId) throw new Error('No active child session ID found');
@@ -161,7 +195,6 @@ export default function EnhancedVoiceReading() {
     return payload;
   }, []);
 
-  // Save results to database
   const saveResultsToDB = useCallback(async (results, isPartial = false) => {
     if (!isMountedRef.current) return;
     setSaving(true); setSaveError('');
@@ -185,7 +218,6 @@ export default function EnhancedVoiceReading() {
     }
   }, [buildPayload]);
 
-  // Process speech (same as before)
   const processSpeech = useCallback(newAccumulated => {
     if (isCompleteRef.current || isPausedRef.current || isTimeUpRef.current) return;
     const cleanFull   = cleanText(newAccumulated);
@@ -216,7 +248,7 @@ export default function EnhancedVoiceReading() {
     }
     currentWordIndexRef.current = pos;
     setCurrentWordIndex(pos);
-    if (pos >= allWords.length) finishAssessmentInternal();
+    if (pos >= allWords.length) finishAssessmentInternalRef.current?.();
   }, []);
 
   const buildRecognition = useCallback(() => {
@@ -226,36 +258,74 @@ export default function EnhancedVoiceReading() {
     rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US'; rec.maxAlternatives = 1;
     let acc = finalTranscriptRef.current;
     rec.onstart = () => { if(!isMountedRef.current) return; isListeningRef.current=true; setIsListening(true); setTranscript(''); };
-    rec.onend   = () => {
-      if(!isMountedRef.current) return;
-      isListeningRef.current=false; setIsListening(false);
-      if (!isPausedRef.current && !isCompleteRef.current && !isTimeUpRef.current && timeRemainingRef.current>0 && currentWordIndexRef.current<allWords.length) {
-        setTimeout(() => { if(isMountedRef.current&&!isPausedRef.current&&!isCompleteRef.current&&!isTimeUpRef.current&&!isListeningRef.current) { try{rec.start();}catch(_){} } }, 300);
+
+    rec.onend = () => {
+      if (!isMountedRef.current) return;
+      isListeningRef.current = false; setIsListening(false);
+      if (!isPausedRef.current && !isCompleteRef.current && !isTimeUpRef.current
+          && timeRemainingRef.current > 0 && currentWordIndexRef.current < allWords.length) {
+        setTimeout(() => {
+          if (isMountedRef.current && !isPausedRef.current && !isCompleteRef.current
+              && !isTimeUpRef.current && !isListeningRef.current) {
+            const newRec = buildRecognitionRef.current?.();
+            if (newRec && isMountedRef.current) {
+              recognitionRef.current = newRec;
+              try { newRec.start(); } catch (e) { console.error('SR restart failed:', e); }
+            }
+          }
+        }, 300);
       }
     };
-    rec.onerror = e => { if(e.error==='not-allowed'&&isMountedRef.current) setMicAllowed(false); };
-    rec.onresult = e => {
-      if (isPausedRef.current||isCompleteRef.current||isTimeUpRef.current) return;
-      let interim='', finalSeg='';
-      for (let i=e.resultIndex; i<e.results.length; i++) {
-        const t=e.results[i][0].transcript;
-        if(e.results[i].isFinal) finalSeg+=t; else interim+=t;
+
+    rec.onerror = e => {
+      if (!isMountedRef.current) return;
+      if (e.error === 'not-allowed') { setMicAllowed(false); return; }
+      if (['no-speech', 'audio-capture', 'network', 'aborted'].includes(e.error)) {
+        isListeningRef.current = false;
+        if (!isPausedRef.current && !isCompleteRef.current && !isTimeUpRef.current) {
+          setTimeout(() => {
+            if (isMountedRef.current && !isPausedRef.current && !isCompleteRef.current
+                && !isTimeUpRef.current && !isListeningRef.current) {
+              stopRecognition();
+              const newRec = buildRecognitionRef.current?.();
+              if (newRec && isMountedRef.current) {
+                recognitionRef.current = newRec;
+                try { newRec.start(); } catch (err) { console.error('SR error-restart failed:', err); }
+              }
+            }
+          }, 500);
+        }
       }
-      if (finalSeg) { acc+=' '+finalSeg; finalTranscriptRef.current=acc; processSpeech(acc); }
-      if (isMountedRef.current) setTranscript(interim);
+    };
+
+    rec.onresult = e => {
+      if (isPausedRef.current || isCompleteRef.current || isTimeUpRef.current) return;
+      let interim = '', finalSeg = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalSeg += t; else interim += t;
+      }
+      if (finalSeg) {
+        acc += ' ' + finalSeg;
+        finalTranscriptRef.current = acc;
+        processSpeech(acc);
+      } else if (interim) {
+        processSpeech(acc + ' ' + interim);
+      }
+      if (isMountedRef.current) setTranscript(interim || finalSeg);
     };
     return rec;
   }, [processSpeech]);
 
-  const startListening = useCallback(async () => {
+  buildRecognitionRef.current = buildRecognition;
+
+  const startListening = useCallback(() => {
     if (!isMountedRef.current) return;
-    try { const s=await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); }
-    catch { if(isMountedRef.current) setMicAllowed(false); return; }
     isPausedRef.current = false;
     if (!startTimeRef.current) startTimeRef.current = Date.now();
+    stopRecognition();
     const rec = buildRecognition();
     if (!rec || !isMountedRef.current) return;
-    stopRecognition();
     recognitionRef.current = rec;
     try { rec.start(); startTimer(); setMicAllowed(true); } catch(e) { console.error(e); }
   }, [buildRecognition]);
@@ -311,6 +381,7 @@ export default function EnhancedVoiceReading() {
   }, [saveResultsToDB]);
 
   const finishAssessment = useCallback(() => finishAssessmentInternal(), [finishAssessmentInternal]);
+  finishAssessmentInternalRef.current = finishAssessmentInternal;
 
   const resetAssessment = useCallback(() => {
     stopRecognition(); stopTimer();
@@ -322,18 +393,72 @@ export default function EnhancedVoiceReading() {
 
     setCurrentWordIndex(0); setWordResults({}); setErrorWords([]); setIsComplete(false);
     setIsTimeUp(false); setTranscript(''); setTimeRemaining(180); setShowTimeWarning(false);
-    setSaveError(''); setResultsData(null); setIsListening(false);
-    setTimeout(() => { if(isMountedRef.current) startListening(); }, 200);
-  }, [startListening]);
+    setSaveError(''); setResultsData(null); setIsListening(false); setHasStarted(false);
+  }, []);
 
   const handleBack = useCallback(() => { stopRecognition(); stopTimer(); navigate('/adventure'); }, [navigate]);
 
-  // ==================== CATEGORIES SCREEN (if needed) ====================
-  // This component currently starts the reading directly. However for consistency we can keep the categories screen.
-  // But the original EnhancedVoiceReading starts reading immediately. To keep the flow, we'll skip categories.
-  // If you want a start screen similar to Task1, we can add it. For now, the reading starts on load.
+  const handleStart = useCallback(async () => {
+    setHasStarted(true);
+    await startListening();
+  }, [startListening]);
 
-  // ==================== RESULTS SCREEN ====================
+  // ─────────────────── START SCREEN ───────────────────
+  if (!hasStarted && !isComplete) {
+    return (
+      <div className="enhanced-voice-container reading-active">
+        <div className="enhanced-bg" />
+        <div className="enhanced-overlay" />
+
+        <div className="assessment-header-bar">
+          <div className="header-left">
+            <div className="task-logo-icon">DS</div>
+            <span className="category-name">Story Reader</span>
+          </div>
+          <div className="header-center" />
+          <div className="header-right" />
+        </div>
+
+        <div className="enhanced-reading-content" style={{ justifyContent: 'center', alignItems: 'center', display: 'flex', flexDirection: 'column' }}>
+          <div className="enhanced-word-card" style={{ maxWidth: '450px', textAlign: 'center' }}>
+            <div className="enhanced-word-text" style={{ fontSize: '2rem', marginBottom: '1rem' }}>
+              📖 Ready to Read?
+            </div>
+            <p style={{ marginBottom: '1rem', color: '#3D5A4C' }}>
+              You will read the passage aloud. Click the button below and allow microphone access.
+            </p>
+            <button
+              onClick={handleStart}
+              style={{
+                background: '#3D5A4C',
+                color: 'white',
+                border: 'none',
+                padding: '1rem 2rem',
+                borderRadius: '3rem',
+                fontSize: '1.2rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+              }}
+            >
+              🎙️ Start Reading
+            </button>
+            {!recognitionSupported && (
+              <p style={{ color: 'red', marginTop: '1rem' }}>
+                Your browser does not support speech recognition. Please use Chrome, Edge, or Safari.
+              </p>
+            )}
+            {!micAllowed && recognitionSupported && (
+              <p style={{ color: '#D64545', marginTop: '1rem' }}>
+                Microphone access is blocked. Please allow microphone permissions and try again.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────── RESULTS SCREEN ───────────────────
   if (isComplete) {
     const r = resultsData || JSON.parse(localStorage.getItem('enhanced_voice_results') || '{}');
     const pct = r.percentage || 0;
@@ -341,7 +466,6 @@ export default function EnhancedVoiceReading() {
       <div className="enhanced-voice-container results-screen">
         <div className="task-bg" />
         <div className="dark-overlay" />
-        {/* DS logo – full brand */}
         <div className="task-brand">
           <div className="task-logo-icon">DS</div>
           <span className="task-logo-text">Dyslexia Support</span>
@@ -361,7 +485,6 @@ export default function EnhancedVoiceReading() {
           </div>
         </div>
 
-        {/* Results breakdown – same card style as Task One */}
         <div className="category-breakdown-area">
           <h2>Your Performance</h2>
           <div className="breakdown-grid-area">
@@ -396,7 +519,7 @@ export default function EnhancedVoiceReading() {
     );
   }
 
-  // ==================== MAIN READING SCREEN ====================
+  // ─────────────────── MAIN READING SCREEN ───────────────────
   const totalWords = allWords.length;
   const completedWords = currentWordIndex;
   const progressPercent = totalWords ? (completedWords / totalWords) * 100 : 0;
@@ -406,7 +529,6 @@ export default function EnhancedVoiceReading() {
       <div className="enhanced-bg" />
       <div className="enhanced-overlay" />
 
-      {/* Header bar with only DS badge (no text) */}
       <div className="assessment-header-bar">
         <div className="header-left">
           <div className="task-logo-icon">DS</div>
@@ -427,7 +549,6 @@ export default function EnhancedVoiceReading() {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="assessment-progress-bar">
         <div className="assessment-progress-fill" style={{ width: `${progressPercent}%` }} />
       </div>

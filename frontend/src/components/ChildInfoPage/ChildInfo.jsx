@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { linkPendingQuiz } from '../QuizPage/QuizPage';
 
 const BASE_URL = 'http://localhost:5000';
 
-// Simple ID generator
+// Simple ID generator (only used as fallback / frontend identifier)
 const generateSessionId = () => {
   return Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
 };
@@ -74,7 +75,7 @@ export default function ChildInfo() {
 
     const sessionId = generateSessionId();
     const gradeNum = parseInt(grade, 10);
-    const childAge = isNaN(gradeNum) ? null : gradeNum + 5; // Grade 1 = age 6, consistent with 6-12 range
+    const childAge = isNaN(gradeNum) ? null : gradeNum + 5; // Grade 1 = age 6
 
     // Save to localStorage for frontend access
     localStorage.setItem('child_session_id', sessionId);
@@ -99,14 +100,20 @@ export default function ChildInfo() {
     progressKeys.forEach(k => localStorage.removeItem(k));
 
     try {
-      await saveChildSession({
+      const savedData = await saveChildSession({
         sessionUUID: sessionId,
         childName: name,
         childGrade: grade,
         childAge: childAge
       });
       
-      console.log('Child session successfully saved to database!');
+      // 🔥 LINK ANY PENDING QUIZ (if parent took quiz before this form)
+      const numericSessionId = savedData.sessionId; // the numeric DB id
+      if (numericSessionId) {
+        await linkPendingQuiz(numericSessionId);
+      }
+      
+      console.log('Child session successfully saved to database and quiz linked!');
       setIsLoading(false);
       navigate('/start');
       

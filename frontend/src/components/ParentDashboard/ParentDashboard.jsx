@@ -333,7 +333,6 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange, addToast }) 
         <div className="card">
           <div className="card-header">
             <span className="card-title">Registered children {children.length > 0 ? `(${children.length})` : ''}</span>
-            <button className="btn btn-primary btn-sm" onClick={() => setShowModal(true)}><AddIcon /> Add child</button>
           </div>
           {children.length === 0 ? (
             <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--ink-soft)', fontSize: '13px' }}>No children registered yet.</div>
@@ -365,16 +364,13 @@ function ProfileTab({ user, parentInfo, children, onChildrenChange, addToast }) 
   );
 }
 
-// =========================== RESULTS TAB ===========================
 // =========================== RESULTS TAB (FIXED) ===========================
 function ResultsTab({ allResults, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState([]);
   const [expanded, setExpanded] = useState(null);
 
-  // Helper to extract a subtask score from a result object
   const getSubtaskScore = (result, taskKey) => {
-    // Try multiple possible field names
     const fieldMap = {
       wordExplore: ['letter_score', 'task1_score', 'word_explorer', 'word_explorer_score'],
       storyReader: ['word_score', 'task2_score', 'story_reader', 'story_reader_score'],
@@ -387,7 +383,6 @@ function ResultsTab({ allResults, onNavigate }) {
         return result[key];
       }
     }
-    // Also check nested `tasks` object if present
     if (result.tasks) {
       const nestedMap = {
         wordExplore: 'task1',
@@ -404,10 +399,6 @@ function ResultsTab({ allResults, onNavigate }) {
   useEffect(() => {
     fetchMyResults()
       .then(data => {
-        // Log the first result to see what fields exist (remove after debugging)
-        if (data && data.length > 0) {
-          console.log('Sample assessment result:', data[0]);
-        }
         setResults(data);
         localStorage.setItem('lastResultsView', Date.now().toString());
       })
@@ -417,7 +408,6 @@ function ResultsTab({ allResults, onNavigate }) {
 
   if (loading) return <div className="loading-state"><div className="spinner"></div><div>Loading results...</div></div>;
 
-  // Compute stats
   const latestResult = results.length > 0
     ? results.sort((a, b) => new Date(b.completed_at) - new Date(a.completed_at))[0]
     : null;
@@ -433,7 +423,6 @@ function ResultsTab({ allResults, onNavigate }) {
       <h1 className="page-title">Assessment <em>Results</em></h1>
       <p className="page-sub">View your child's reading assessment scores and progress over time.</p>
 
-      {/* Stats cards */}
       <div className="three-col" style={{ marginBottom: '24px' }}>
         <div className="stat-card">
           <div className="stat-val">{results.length}</div>
@@ -467,7 +456,6 @@ function ResultsTab({ allResults, onNavigate }) {
         results.map((r, i) => {
           const risk = RISK_CONFIG[r.risk_level] || RISK_CONFIG[r.riskLevel] || RISK_CONFIG.Normal;
           const isOpen = expanded === i;
-          // Get subtask scores using our helper
           const wordExploreScore = getSubtaskScore(r, 'wordExplore');
           const storyReaderScore = getSubtaskScore(r, 'storyReader');
           const letterDetectiveScore = getSubtaskScore(r, 'letterDetective');
@@ -571,7 +559,6 @@ function AssignmentProgressModal({ child, onClose }) {
 }
 
 // =========================== ACTIVITIES TAB ===========================
-
 function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, onRefresh, onNavigate, addToast }) {
   const navigate = useNavigate();
   const [localAssignments, setLocalAssignments] = useState(assignments || []);
@@ -581,12 +568,10 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
     setLocalAssignments(assignments);
   }, [assignments]);
 
-  // Helper to get a default one‑line description based on activity type
   const getActivityDescription = (assignment) => {
     if (assignment.description && assignment.description.trim() !== '') {
-      return assignment.description; // use therapist's description if provided
+      return assignment.description;
     }
-    // Fallback descriptions
     if (assignment.type === 'letter_sound') {
       return 'Match each letter to its animal picture – a fun phonics game.';
     }
@@ -597,7 +582,7 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
   };
 
   const handleStart = (assignment) => {
-    const { id, child_id, type, config } = assignment;
+    const { id, child_id, activity_id, type, config } = assignment;
     let path = '';
     if (type === 'letter_sound') path = '/activity/letter-sound';
     else if (type === 'syllable') path = '/activity/syllable-breaking';
@@ -605,7 +590,9 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
       addToast('Unknown activity type. Please contact your therapist.', 'error');
       return;
     }
-    navigate(path, { state: { assignmentId: id, childId: child_id, config } });
+    // ✅ FIX: store currentChildId so activity components can call the completion API
+    localStorage.setItem('currentChildId', String(child_id));
+    navigate(path, { state: { assignmentId: id, activityId: activity_id, childId: child_id, config } });
   };
 
   const handleChildChange = (childId) => {
@@ -654,25 +641,40 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
             else if (assign.type === 'syllable') typeLabel = 'Syllable Breaking';
             else typeLabel = 'Activity';
 
+            // ✅ FIX: check completed flag (backend returns 0/1 or true/false)
+            const isCompleted = assign.completed === 1 || assign.completed === true;
             return (
               <div key={assign.id} className="activity-card activity-card--forest">
                 <div className="ac-top">
-                  <div className="ac-badge-row"><span className="ac-badge ac-badge--forest">Assigned</span></div>
+                  <div className="ac-badge-row">
+                    <span className="ac-badge ac-badge--forest">Assigned</span>
+                    {isCompleted && (
+                      <span className="ac-badge" style={{ background: '#e6f5ee', color: '#1a6b40', marginLeft: 6 }}>
+                        ✅ Completed
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="ac-body">
                   <div className="ac-tag">{typeLabel}</div>
                   <h3 className="ac-title">{assign.name}</h3>
-                  {/* One‑line description – either custom or default */}
                   <p className="ac-desc">{getActivityDescription(assign)}</p>
-                  <div className="ac-meta-row"><span className="ac-meta-item">Level {assign.difficulty_level}</span></div>
+                  <div className="ac-meta-row">
+                    <span className="ac-meta-item">Level {assign.difficulty_level}</span>
+                    {assign.score != null && (
+                      <span className="ac-meta-item" style={{ color: '#1a6b40', fontWeight: 700 }}>
+                        Score: {assign.score}%
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="ac-footer" style={{ display: 'flex', gap: '10px', padding: '0 28px 24px' }}>
                   <button
                     className="ac-cta ac-cta--forest"
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, opacity: isCompleted ? 0.6 : 1 }}
                     onClick={(e) => { e.stopPropagation(); handleStart(assign); }}
                   >
-                    Start Activity →
+                    {isCompleted ? '🔁 Play Again →' : 'Start Activity →'}
                   </button>
                 </div>
               </div>
@@ -689,7 +691,6 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
 }
 
 // =========================== CHAT TAB ===========================
-// =========================== CHAT TAB (WIDER, DARKER BORDERS, NO SIDEBAR) ===========================
 function ChatTab({ user, addToast }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -757,33 +758,19 @@ function ChatTab({ user, addToast }) {
 
       {error && <div className="error-msg show" style={{ marginBottom: '16px' }}>{error}</div>}
 
-      {/* Full-width chat window, no sidebar */}
-      <div className="chat-window" style={{
-  width: '100%',
-  border: '2px solid #2D453A',
-  borderRadius: 'var(--radius-xl)',
-  boxShadow: '0 6px 20px rgba(61,90,76,0.15)'
-}}>
-        <div className="chat-topbar" style={{
-          borderBottom: '1.5px solid rgba(61,90,76,0.3)', // darker separator
-          background: 'var(--bg-beige)'
-        }}>
+      <div className="chat-window" style={{ width: '100%', border: '2px solid #2D453A', borderRadius: 'var(--radius-xl)', boxShadow: '0 6px 20px rgba(61,90,76,0.15)' }}>
+        <div className="chat-topbar" style={{ borderBottom: '1.5px solid rgba(61,90,76,0.3)', background: 'var(--bg-beige)' }}>
           <div className="therapist-av">Dr</div>
           <div>
             <div className="therapist-name">Dr. Acheb Kenza</div>
-            <div className="therapist-role">Speech Therapist
-
-            </div>
+            <div className="therapist-role">Speech Therapist</div>
           </div>
-          <div className="online-badge">
-            
-          </div>
+          <div className="online-badge"></div>
         </div>
 
         <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {messages.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--ink-soft)' }}>
-              
               <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '8px' }}>No messages yet</div>
               <p style={{ fontSize: '14px' }}>Discuss your child’s progress with your therapist.</p>
             </div>
@@ -794,11 +781,7 @@ function ChatTab({ user, addToast }) {
                 <div key={m.id} className={`msg-wrap ${isParent ? 'right' : ''}`} style={{ marginBottom: '16px' }}>
                   {!isParent && <div className="msg-av">Dr</div>}
                   <div>
-                    <div className={`bubble ${isParent ? 'p' : 't'}`} style={{
-                      fontSize: '14px',
-                      padding: '10px 16px',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                    }}>
+                    <div className={`bubble ${isParent ? 'p' : 't'}`} style={{ fontSize: '14px', padding: '10px 16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                       {m.content}
                     </div>
                     <div className={`msg-time ${isParent ? 'r' : ''}`} style={{ fontSize: '11px', marginTop: '4px' }}>
@@ -812,11 +795,7 @@ function ChatTab({ user, addToast }) {
           <div ref={bottomRef} />
         </div>
 
-        <div className="chat-footer" style={{
-          borderTop: '1.5px solid rgba(61,90,76,0.3)',
-          padding: '16px 24px',
-          gap: '12px'
-        }}>
+        <div className="chat-footer" style={{ borderTop: '1.5px solid rgba(61,90,76,0.3)', padding: '16px 24px', gap: '12px' }}>
           <textarea
             className="chat-inp"
             placeholder="Write a message to your therapist..."
@@ -825,22 +804,13 @@ function ChatTab({ user, addToast }) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
             disabled={sending}
-            style={{
-              border: '1.5px solid rgba(61,90,76,0.3)',
-              fontSize: '14px',
-              padding: '12px 16px'
-            }}
+            style={{ border: '1.5px solid rgba(61,90,76,0.3)', fontSize: '14px', padding: '12px 16px' }}
           />
           <button
             className="send-btn"
             onClick={handleSend}
             disabled={!input.trim() || sending}
-            style={{
-              width: '48px',
-              height: '48px',
-              background: 'var(--forest)',
-              borderRadius: 'var(--radius-md)'
-            }}
+            style={{ width: '48px', height: '48px', background: 'var(--forest)', borderRadius: 'var(--radius-md)' }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
@@ -898,9 +868,7 @@ function GamesTab({ selectedChildId, children, onNavigate, addToast }) {
             <div className="ac-tag">Picture Spelling</div>
             <h3 className="ac-title">Spelling words</h3>
             <p className="ac-desc">Look at the picture, listen to the word, and drag the letters into the correct order.</p>
-            <div className="ac-meta-row">
-        
-            </div>
+            <div className="ac-meta-row"></div>
           </div>
           <div className="ac-footer">
             <button
@@ -912,16 +880,12 @@ function GamesTab({ selectedChildId, children, onNavigate, addToast }) {
             </button>
           </div>
         </div>
-
-        
       </div>
     </div>
   );
 }
 
-
 // =========================== ACTIVITIES PROGRESS TAB ===========================
-// =========================== ACTIVITIES PROGRESS TAB (Grouped Bar Chart) ===========================
 function ActivitiesProgressTab({ children, selectedChildId, assignments, allResults }) {
   const selectedChild = children.find(c => c.id === selectedChildId);
 
@@ -1033,8 +997,8 @@ function ActivitiesProgressTab({ children, selectedChildId, assignments, allResu
     </div>
   );
 }
-// =========================== HOME TAB ===========================
 
+// =========================== HOME TAB ===========================
 function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResults, selectedChildId, onNavigate, refreshAssignments }) {
   const selectedChild = children.find(c => c.id === selectedChildId);
   const childResults = allResults.filter(r => r.child_id === selectedChildId);
@@ -1055,7 +1019,6 @@ function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResu
       <h1 className="page-title">{getGreeting()}, <em>{firstName}</em></h1>
       <p className="page-sub">Here's an overview of {selectedChild ? `${selectedChild.full_name}'s` : 'your child\'s'} journey.</p>
 
-      {/* Treatment Plan Banner */}
       <div className="plan-banner">
         <div className="pb-icon"><CheckIcon /></div>
         <div style={{ flex: 1 }}>
@@ -1064,12 +1027,9 @@ function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResu
           <div className="pb-bar"><div className="pb-fill" style={{ width: `${progressPercent}%` }} /></div>
           <div className="pb-prog">{progressPercent}% of programme completed</div>
         </div>
-        <div className="pb-actions">
-          {/* Buttons removed as per your existing code */}
-        </div>
+        <div className="pb-actions"></div>
       </div>
 
-      {/* Quick Action Cards (unchanged) */}
       <div className="quick-actions">
         <div className="qa-card" onClick={() => onNavigate('activities')}>
           <div className="qa-icon" style={{ background: 'var(--forest-faint)' }}><ActivitiesIcon /></div>
@@ -1090,7 +1050,6 @@ function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResu
         </div>
       </div>
 
-      {/* TODAY'S PLAN CARD (with refresh button) */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="card-header">
           <span className="card-title">Today's Plan for {selectedChild?.full_name || 'your child'}</span>
@@ -1098,7 +1057,6 @@ function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResu
             {assignmentsList && assignmentsList.length > 0 && (
               <button className="btn btn-outline btn-sm" onClick={() => onNavigate('activities')}>See all →</button>
             )}
-          
           </div>
         </div>
 
@@ -1119,20 +1077,17 @@ function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResu
                   <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>{assign.name}</div>
                   <div style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>{typeLabel} · Level {assign.difficulty_level}</div>
                 </div>
-                <span style={{ fontSize: '10px', padding: '3px 9px', borderRadius: '20px', background: 'var(--lavender-light)', color: 'var(--forest)', fontWeight: 800 }}>Not started</span>
+
               </div>
             );
           })
         ) : (
           <div style={{ textAlign: 'center', padding: '28px 0' }}>
             <div style={{ marginBottom: '12px', color: 'var(--ink-soft)' }}>No activities assigned yet.</div>
-            {/* Optional: add a button to message therapist – uncomment if needed */}
-            {/* <button className="btn btn-outline btn-sm" onClick={() => onNavigate('chat')}>Message Therapist</button> */}
           </div>
         )}
       </div>
 
-      {/* No children CTA (unchanged) */}
       {children.length === 0 && (
         <div className="journey-banner">
           <div className="jb-icon" style={{ background: 'var(--gold-dark)' }}>
@@ -1149,7 +1104,7 @@ function HomeTab({ parentInfo, children, assignedCount, assignmentsList, allResu
   );
 }
 
-// =========================== MAIN DASHBOARD ===========================
+// =========================== MAIN DASHBOARD (with notification fixes) ===========================
 const ParentDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
@@ -1160,6 +1115,7 @@ const ParentDashboard = () => {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [newResults, setNewResults] = useState(0);
   const [assignedActivitiesCount, setAssignedActivitiesCount] = useState(0);
+  const [newActivitiesCount, setNewActivitiesCount] = useState(0);
   const [assignmentsList, setAssignmentsList] = useState([]);
   const [selectedChildId, setSelectedChildId] = useState(null);
   const [allResults, setAllResults] = useState([]);
@@ -1198,31 +1154,58 @@ const ParentDashboard = () => {
     if (!loadingInit) loadResults();
   }, [loadingInit]);
 
-const loadAssignments = useCallback(async (childId) => {
-  if (!childId) {
-    setAssignmentsList([]);
-    setAssignedActivitiesCount(0);
-    return;
-  }
-  try {
-   
-    const res = await apiFetch(`/api/child-assignments/${childId}`);
-    if (res.ok) {
-      const data = await res.json();
-      const filtered = (data.assignments || [])
-        .filter(a => a.type === 'letter_sound' || a.type === 'syllable')
-        .map(a => ({ ...a, name: a.name || a.activity_name }));
-      setAssignmentsList(filtered);
-      setAssignedActivitiesCount(filtered.length);
-    } else {
-      console.error('Failed to load assignments');
+  const loadAssignments = useCallback(async (childId) => {
+    if (!childId) {
       setAssignmentsList([]);
+      setAssignedActivitiesCount(0);
+      setNewActivitiesCount(0);
+      return;
     }
-  } catch (err) {
-    console.error('Error loading assignments:', err);
-    setAssignmentsList([]);
-  }
-}, []);
+    try {
+      const res = await apiFetch(`/api/child-assignments/${childId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const filtered = (data.assignments || [])
+          .filter(a => a.type === 'letter_sound' || a.type === 'syllable')
+          .map(a => ({ ...a, name: a.name || a.activity_name }));
+        setAssignmentsList(filtered);
+        setAssignedActivitiesCount(filtered.length);
+
+        const lastViewKey = `lastActivitiesView_${childId}`;
+        const lastView = localStorage.getItem(lastViewKey);
+        let unseen = 0;
+        if (!lastView) {
+          unseen = filtered.length;
+        } else {
+          const lastViewTime = parseInt(lastView, 10);
+          unseen = filtered.filter(assign => {
+            const assignDate = assign.assigned_at || assign.created_at;
+            if (!assignDate) return false;
+            return new Date(assignDate).getTime() > lastViewTime;
+          }).length;
+        }
+        setNewActivitiesCount(unseen);
+      } else {
+        console.error('Failed to load assignments');
+        setAssignmentsList([]);
+        setAssignedActivitiesCount(0);
+        setNewActivitiesCount(0);
+      }
+    } catch (err) {
+      console.error('Error loading assignments:', err);
+      setAssignmentsList([]);
+      setNewActivitiesCount(0);
+    }
+  }, []);
+
+  const markActivitiesAsSeen = useCallback(() => {
+    if (!selectedChildId) return;
+    const key = `lastActivitiesView_${selectedChildId}`;
+    localStorage.setItem(key, Date.now().toString());
+    setNewActivitiesCount(0);
+    loadAssignments(selectedChildId);
+  }, [selectedChildId, loadAssignments]);
+
   useEffect(() => {
     if (selectedChildId) loadAssignments(selectedChildId);
   }, [selectedChildId, loadAssignments]);
@@ -1254,20 +1237,26 @@ const loadAssignments = useCallback(async (childId) => {
     if (!loadingInit) {
       updateUnreadMessages();
       updateNewResults();
-      const interval = setInterval(() => { updateUnreadMessages(); updateNewResults(); }, 10000);
+      const interval = setInterval(() => {
+        updateUnreadMessages();
+        updateNewResults();
+        if (selectedChildId) loadAssignments(selectedChildId);
+      }, 15000);
       return () => clearInterval(interval);
     }
-  }, [loadingInit, updateUnreadMessages, updateNewResults]);
+  }, [loadingInit, updateUnreadMessages, updateNewResults, selectedChildId, loadAssignments]);
 
   useEffect(() => {
     if (activeTab === 'results') {
-      localStorage.setItem('lastResultsView', Date.now());
+      localStorage.setItem('lastResultsView', Date.now().toString());
       setNewResults(0);
     } else if (activeTab === 'chat') {
-      localStorage.setItem('lastMessagesRead', Date.now());
+      localStorage.setItem('lastMessagesRead', Date.now().toString());
       setUnreadMessages(0);
+    } else if (activeTab === 'activities') {
+      markActivitiesAsSeen();
     }
-  }, [activeTab]);
+  }, [activeTab, markActivitiesAsSeen]);
 
   useEffect(() => {
     fetchAll();
@@ -1283,8 +1272,12 @@ const loadAssignments = useCallback(async (childId) => {
   };
 
   const handleNotificationClick = () => {
-    localStorage.setItem('lastMessagesRead', Date.now());
-    localStorage.setItem('lastResultsView', Date.now());
+    localStorage.setItem('lastMessagesRead', Date.now().toString());
+    localStorage.setItem('lastResultsView', Date.now().toString());
+    if (selectedChildId) {
+      localStorage.setItem(`lastActivitiesView_${selectedChildId}`, Date.now().toString());
+      setNewActivitiesCount(0);
+    }
     setUnreadMessages(0);
     setNewResults(0);
     addToast('All notifications cleared', 'success');
@@ -1294,28 +1287,26 @@ const loadAssignments = useCallback(async (childId) => {
 
   const displayName = parentInfo?.full_name || user?.name || 'Parent';
   const initial = displayName.charAt(0).toUpperCase();
-  const totalNotifications = unreadMessages + newResults;
+  const totalNotifications = unreadMessages + newResults + newActivitiesCount;
   const selectedChild = children.find(c => c.id === selectedChildId);
   const activeChildProgress = selectedChild ? getChildProgress(selectedChild.id) : 0;
 
-  // Sidebar nav items
   const SIDEBAR_ITEMS = [
     { section: 'Main' },
     { key: 'home', label: 'Home', icon: HomeIcon },
     { key: 'profile', label: 'Profile', icon: ProfileIcon },
     { section: 'Progress' },
     { key: 'results', label: 'Assessment Results', icon: ResultsIcon, badge: newResults > 0 ? newResults : null },
-    { key: 'activities', label: 'Activities', icon: ActivitiesIcon, badge: assignedActivitiesCount > 0 ? assignedActivitiesCount : null, badgeType: 'gold' },
+    { key: 'activities', label: 'Activities', icon: ActivitiesIcon, badge: newActivitiesCount > 0 ? newActivitiesCount : null, badgeType: 'gold' },
     { key: 'games', label: 'Games', icon: GamesIcon },
     { key: 'progress', label: 'Progress', icon: ProgressTabIcon },
     { section: 'Care' },
     { key: 'chat', label: 'Messages', icon: ChatIcon, badge: unreadMessages > 0 ? unreadMessages : null },
   ];
 
-  // Mobile bottom nav (5 key tabs)
   const MOBILE_TABS = [
     { key: 'home', label: 'Home', icon: HomeIcon },
-    { key: 'activities', label: 'Activities', icon: ActivitiesIcon, badge: assignedActivitiesCount },
+    { key: 'activities', label: 'Activities', icon: ActivitiesIcon, badge: newActivitiesCount },
     { key: 'results', label: 'Results', icon: ResultsIcon, badge: newResults },
     { key: 'chat', label: 'Messages', icon: ChatIcon, badge: unreadMessages },
     { key: 'profile', label: 'Profile', icon: ProfileIcon },
@@ -1325,17 +1316,12 @@ const loadAssignments = useCallback(async (childId) => {
     <div className="pd">
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      {/* TOP NAV — brand + user only, NO tab buttons */}
       <nav className="topnav">
         <div className="brand">
           <div className="brand-icon">DS</div>
           <span className="brand-name">Dyslexia<span style={{ fontStyle: 'italic' }}>Support</span></span>
         </div>
-
         <div className="nav-right">
-         
-          
-         
           <button className="user-chip logout-chip" onClick={handleLogout}>
             <LogoutIcon />
             <span>Sign out</span>
@@ -1343,7 +1329,6 @@ const loadAssignments = useCallback(async (childId) => {
         </div>
       </nav>
 
-      {/* JOURNEY STRIP — steps are now clickable */}
       <div className="journey-strip">
         <div className="journey-step">
           <div className="jstep done" onClick={() => setActiveTab('profile')} title="Go to Profile">
@@ -1382,7 +1367,6 @@ const loadAssignments = useCallback(async (childId) => {
       </div>
 
       <div className="layout">
-        {/* SIDEBAR */}
         <aside className="sidebar">
           {SIDEBAR_ITEMS.map((item, i) => {
             if (item.section) return <div key={i} className="sidebar-section">{item.section}</div>;
@@ -1401,30 +1385,27 @@ const loadAssignments = useCallback(async (childId) => {
               </button>
             );
           })}
-
           {selectedChild && (
             <div className="child-summary">
               <div className="cs-label">Active child</div>
               <div className="cs-name">{selectedChild.full_name}</div>
               <div className="cs-meta">Year {selectedChild.grade}</div>
-            
             </div>
           )}
         </aside>
 
-        {/* MAIN CONTENT */}
         <main className="main">
-       {activeTab === 'home' && (
-  <HomeTab
-    parentInfo={parentInfo}
-    children={children}
-    assignedCount={assignedActivitiesCount}
-    assignmentsList={assignmentsList}   
-    allResults={allResults}
-    selectedChildId={selectedChildId}
-    onNavigate={setActiveTab}
-  />
-)}
+          {activeTab === 'home' && (
+            <HomeTab
+              parentInfo={parentInfo}
+              children={children}
+              assignedCount={assignedActivitiesCount}
+              assignmentsList={assignmentsList}
+              allResults={allResults}
+              selectedChildId={selectedChildId}
+              onNavigate={setActiveTab}
+            />
+          )}
           {activeTab === 'profile' && (
             <ProfileTab
               user={user}
@@ -1470,7 +1451,6 @@ const loadAssignments = useCallback(async (childId) => {
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAV */}
       <nav className="mobile-nav">
         {MOBILE_TABS.map(tab => {
           const TabIcon = tab.icon;

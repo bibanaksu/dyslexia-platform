@@ -39,13 +39,12 @@ export default function SpellingBagGame() {
     const currentWord = words[currentIdx];
     const wordLength = currentWord?.letters.length || 0;
 
-    // Get childId from URL
     const getChildIdFromUrl = () => {
         const params = new URLSearchParams(window.location.search);
         return params.get('childId');
     };
 
-    // Fetch words from backend
+    // Fetch words
     useEffect(() => {
         const fetchWords = async () => {
             try {
@@ -66,44 +65,36 @@ export default function SpellingBagGame() {
         fetchWords();
     }, []);
 
-    // Save final score to backend with wrong words
-   const saveFinalScore = async (finalStars, wrongWordsArray) => {
-    const childId = getChildIdFromUrl();
-    if (!childId) {
-        console.warn('No childId found, cannot save result');
-        return;
-    }
-    // Get child_session_id from localStorage (like the other tasks)
-    const childSessionId = localStorage.getItem('child_session_id');
-
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/spelling/save', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                childId,
-                score: finalStars,
-                totalWords: words.length,
-                wrongWords: wrongWordsArray,
-                childSessionId: childSessionId || null
-            })
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Failed to save result:', errorData);
-        } else {
-            console.log('Result saved successfully');
+    // Save final score (called after game finishes)
+    const saveFinalScore = useCallback(async (finalStars, wrongWordsArray) => {
+        const childId = getChildIdFromUrl();
+        if (!childId) return;
+        const childSessionId = localStorage.getItem('child_session_id');
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/api/spelling/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({
+                    childId,
+                    score: finalStars,
+                    totalWords: words.length,
+                    wrongWords: wrongWordsArray,
+                    childSessionId: childSessionId || null
+                })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Failed to save result:', errorData);
+            } else {
+                console.log('Result saved successfully');
+            }
+        } catch (err) {
+            console.error('Error saving result:', err);
         }
-    } catch (err) {
-        console.error('Error saving result:', err);
-    }
-};
+    }, [words.length]);
 
-    // Sound helpers
+    // Audio helpers
     const playSound = useCallback((text) => {
         if (!soundEnabled) return;
         if (window.speechSynthesis) {
@@ -115,7 +106,7 @@ export default function SpellingBagGame() {
         }
     }, [soundEnabled]);
 
-    const playErrorSound = () => {
+    const playErrorSound = useCallback(() => {
         if (!soundEnabled) return;
         try {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -130,7 +121,7 @@ export default function SpellingBagGame() {
             gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
             osc.stop(ctx.currentTime + 0.3);
         } catch(e) {}
-    };
+    }, [soundEnabled]);
 
     const launchConfetti = () => {
         const colors = ["#FFB84D", "#3D5A4C", "#FF6B6B", "#4ECDC4", "#FFE66D"];
@@ -145,7 +136,6 @@ export default function SpellingBagGame() {
         setTimeout(() => setConfetti([]), 2500);
     };
 
-    // Initialize current word
     const initWord = useCallback(() => {
         if (!currentWord) return;
         const newBank = generateLetterBank(currentWord.letters);
@@ -206,7 +196,6 @@ export default function SpellingBagGame() {
             playSound(currentWord.name + "! Excellent!");
 
             if (currentIdx + 1 >= words.length) {
-                // Game finished – save final score after celebration
                 setTimeout(() => {
                     setShowCelebration(true);
                     setCompletedAll(true);
@@ -221,7 +210,6 @@ export default function SpellingBagGame() {
         } else {
             setFeedback("incorrect");
             playErrorSound();
-            // Record the wrong word (only once per word? but we store each miss)
             if (!wrongWords.includes(currentWord.name)) {
                 setWrongWords(prev => [...prev, currentWord.name]);
             }
@@ -271,7 +259,6 @@ export default function SpellingBagGame() {
     if (words.length === 0) {
         return <div className="error-state">No words found. Please contact support.</div>;
     }
-
     if (completedAll && showCelebration) {
         return (
             <div className="spelling-game-container">
@@ -307,7 +294,6 @@ export default function SpellingBagGame() {
                 }} />
             ))}
 
-            {/* Top bar */}
             <div className="spelling-top-bar">
                 <div className="nav-left-group">
                     <button className="spelling-icon-btn home-btn" onClick={() => navigate('/parent-dashboard')} title="Exit Game">🏠</button>
@@ -344,7 +330,6 @@ export default function SpellingBagGame() {
                 </div>
             )}
 
-            {/* Image card */}
             <div className="spelling-image-area">
                 <div className={`spelling-image-card ${feedback === "correct" ? "feedback-correct" : ""} ${feedback === "incorrect" ? "feedback-incorrect" : ""}`}>
                     <img 
@@ -358,7 +343,6 @@ export default function SpellingBagGame() {
                 </div>
             </div>
 
-            {/* Slots */}
             <div className="spelling-slots-area">
                 <div className="slots-label">📝 Spell the word</div>
                 <div className="slots-row">
@@ -374,7 +358,6 @@ export default function SpellingBagGame() {
                 </div>
             </div>
 
-            {/* Letters grid */}
             <div className="spelling-letters-area">
                 <div className="letters-label">✨ Choose letters ✨</div>
                 <div className="letters-grid">
@@ -393,7 +376,6 @@ export default function SpellingBagGame() {
                 </div>
             </div>
 
-            {/* Check button */}
             <div className="spelling-check-area">
                 <button
                     className={`spelling-check-btn ${allSlotsFilled && !correctMessage ? "check-active" : ""}`}
@@ -404,20 +386,12 @@ export default function SpellingBagGame() {
                 </button>
             </div>
 
-            {/* Monkey helper */}
             <div className="spelling-monkey">
                 <div className="monkey-face">🐵</div>
                 <div className="monkey-bubble">
                     {feedback === "correct" ? "🎉 Great job!" : feedback === "incorrect" ? "😅 Try again!" : "Tap the letters to spell!"}
                 </div>
             </div>
-
-            {/* Correct next overlay */}
-            {correctMessage && !showCelebration && currentIdx + 1 < words.length && (
-                <div className="correct-next-overlay">
-                    <div className="correct-next-box">🎉 Correct! → Next word</div>
-                </div>
-            )}
         </div>
     );
 }

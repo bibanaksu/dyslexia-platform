@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import "./AlphabetSwipe.css";
 
 /* ================================================================
@@ -13,6 +14,49 @@ const CARDS = [
 ];
 
 const CONFETTI_COLORS = ["#3DBFB8","#F5A623","#4CAF82","#8B6FD4","#FF6B6B","#FFD700"];
+
+/* ================================================================
+   Helper: get current child ID from localStorage
+   — reads 'currentChildId' which must be set when a child is
+     selected in the parent/child selection screen:
+       localStorage.setItem('currentChildId', String(child.id))
+================================================================ */
+function getCurrentChildId() {
+  const id = localStorage.getItem('currentChildId');
+  return id ? parseInt(id, 10) : null;
+}
+
+/* ================================================================
+   Helper: mark activity as completed in backend
+================================================================ */
+async function markActivityCompleted(activityId, score = 100) {
+  const childId = getCurrentChildId();
+  if (!childId) {
+    console.warn('⚠️ Cannot mark completion: currentChildId not set in localStorage. Make sure to call localStorage.setItem("currentChildId", child.id) when a child is selected.');
+    return;
+  }
+  const token = localStorage.getItem('token');
+  // ✅ FIX: use full URL to avoid proxy issues; keep relative as fallback
+  const BASE = 'http://localhost:5000';
+  try {
+    const res = await fetch(`${BASE}/api/activities/complete`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ child_id: childId, activity_id: activityId, score })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('❌ markActivityCompleted failed:', data);
+    } else {
+      console.log('✅ Activity marked complete:', data);
+    }
+  } catch (err) {
+    console.error('❌ Error completing activity:', err);
+  }
+}
 
 /* ================================================================
    AUDIO
@@ -103,7 +147,7 @@ function Confetti({ active }) {
 }
 
 /* ================================================================
-   MATCHING PHASE – only shake/red flash (no toast messages)
+   MATCHING PHASE
 ================================================================ */
 function MatchingPhase({ cards, onComplete }) {
   const [selectedLetter, setSelectedLetter] = useState(null);
@@ -205,15 +249,17 @@ function MatchingPhase({ cards, onComplete }) {
 }
 
 /* ================================================================
-   CELEBRATION – with Home button
+   CELEBRATION – with Home button and completion API call
 ================================================================ */
-function Celebration({ total, onRestart, onHome }) {
+function Celebration({ total, activityId, onRestart, onHome }) {
   const [confetti, setConfetti] = useState(true);
   useEffect(() => {
     speak("Congratulations! You are a superstar!");
     const t = setTimeout(() => setConfetti(false), 3800);
+    // ✅ FIX: use activityId from router state instead of hardcoded 1
+    markActivityCompleted(activityId || 1, 100);
     return () => clearTimeout(t);
-  }, []);
+  }, [activityId]);
   return (
     <>
       <Confetti active={confetti} />
@@ -238,6 +284,10 @@ function Celebration({ total, onRestart, onHome }) {
    MAIN COMPONENT
 ================================================================ */
 export default function AlphabetSwipe() {
+  const location = useLocation();
+  // ✅ FIX: read activityId passed from ParentDashboard handleStart via router state
+  const activityId = location.state?.activityId || 1;
+
   const [phase,   setPhase]   = useState("cards");
   const [idx,     setIdx]     = useState(0);
   const [animCls, setAnimCls] = useState("");
@@ -294,7 +344,6 @@ export default function AlphabetSwipe() {
   };
 
   const goHome = () => {
-    // Navigate to parent dashboard (adjust path as needed)
     window.location.href = '/parent-dashboard';
   };
 
@@ -312,7 +361,6 @@ export default function AlphabetSwipe() {
     <div className="as-app" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="as-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* DS Logo - only logo, no text */}
           <div style={{ 
             width: 36, 
             height: 36, 
@@ -328,9 +376,7 @@ export default function AlphabetSwipe() {
           }}>
             DS
           </div>
-          <button className="as-home-top-btn" onClick={goHome}>
-            🏠 Home
-          </button>
+          <button className="as-home-top-btn" onClick={goHome}>🏠 Home</button>
         </div>
         <div className="as-hcenter">
           <span className="as-htitle">Alphabet Swiping Adventure</span>
@@ -338,7 +384,6 @@ export default function AlphabetSwipe() {
             <div className="as-bar-fill" style={{ width: `${phase === "done" ? 100 : pct}%` }} />
           </div>
         </div>
-        {/* No extra spacer – header uses justify-content: space-between */}
       </header>
 
       {phase === "cards" && (
@@ -374,7 +419,7 @@ export default function AlphabetSwipe() {
       )}
 
       {phase === "done" && (
-        <Celebration total={CARDS.length} onRestart={restart} onHome={goHome} />
+        <Celebration total={CARDS.length} activityId={activityId} onRestart={restart} onHome={goHome} />
       )}
     </div>
   );

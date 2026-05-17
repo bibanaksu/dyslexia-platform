@@ -6,6 +6,22 @@ const { generateToken, verifyToken, requireParent, requireAuth } = require('../m
 
 const router = express.Router();
 
+// Helper: get the first available therapist ID (or create a default one)
+async function getDefaultTherapistId(connection = null) {
+    const db = connection || pool;
+    // Try to fetch any existing therapist
+    const [[therapist]] = await db.query('SELECT id FROM therapist LIMIT 1');
+    if (therapist) return therapist.id;
+    
+    // No therapist exists – create a system therapist as fallback
+    const defaultHash = await bcrypt.hash('system123', 12);
+    const [result] = await db.query(
+        'INSERT INTO therapist (username, email, password_hash) VALUES (?, ?, ?)',
+        ['System', 'system@dyslexiasupport.com', defaultHash]
+    );
+    return result.insertId;
+}
+
 // POST /api/parents/register
 router.post('/register', async (req, res) => {
     try {
@@ -44,6 +60,19 @@ router.post('/register', async (req, res) => {
             let parent_id;
             if (existingParent.length > 0) {
                 parent_id = existingParent[0].id;
+                // Ensure this parent has a therapist assigned (fix for existing parents)
+                const [[parentCheck]] = await connection.query(
+                    'SELECT assigned_therapist_id FROM parent WHERE id = ?',
+                    [parent_id]
+                );
+                if (!parentCheck.assigned_therapist_id) {
+                    const defaultTherapistId = await getDefaultTherapistId(connection);
+                    await connection.query(
+                        'UPDATE parent SET assigned_therapist_id = ? WHERE id = ?',
+                        [defaultTherapistId, parent_id]
+                    );
+                }
+                // Check duplicate child name
                 const [existingChild] = await connection.query(
                     'SELECT id FROM child WHERE parent_id = ? AND LOWER(full_name) = LOWER(?)',
                     [parent_id, child_name.trim()]
@@ -53,9 +82,11 @@ router.post('/register', async (req, res) => {
                     return res.status(400).json({ error: 'You already have a child with that name. Please use a different name.' });
                 }
             } else {
+                // New parent – assign default therapist
+                const defaultTherapistId = await getDefaultTherapistId(connection);
                 const [parentResult] = await connection.query(
-                    'INSERT INTO parent (full_name, email, phone, password_hash) VALUES (?, ?, ?, ?)',
-                    [full_name.trim(), normalEmail, phone?.trim() || null, password_hash]
+                    'INSERT INTO parent (full_name, email, phone, password_hash, assigned_therapist_id) VALUES (?, ?, ?, ?, ?)',
+                    [full_name.trim(), normalEmail, phone?.trim() || null, password_hash, defaultTherapistId]
                 );
                 parent_id = parentResult.insertId;
             }
@@ -141,6 +172,19 @@ router.post('/add-child', verifyToken, requireParent, async (req, res) => {
         await connection.beginTransaction();
 
         try {
+            // Ensure parent has a therapist assigned (fix for existing parents without one)
+            const [[parentCheck]] = await connection.query(
+                'SELECT assigned_therapist_id FROM parent WHERE id = ?',
+                [parent_id]
+            );
+            if (!parentCheck.assigned_therapist_id) {
+                const defaultTherapistId = await getDefaultTherapistId(connection);
+                await connection.query(
+                    'UPDATE parent SET assigned_therapist_id = ? WHERE id = ?',
+                    [defaultTherapistId, parent_id]
+                );
+            }
+
             const [sessionResult] = await connection.query(
                 'INSERT INTO child_session (child_name, child_grade) VALUES (?, ?)',
                 [child_name.trim(), parseInt(child_grade)]

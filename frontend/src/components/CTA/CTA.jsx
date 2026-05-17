@@ -1,4 +1,5 @@
 import { useScrollReveal } from '../../hooks/useScrollReveal';
+import { useNavigate } from 'react-router-dom';
 import './CTA.css';
 
 // Clock icon for time indicator
@@ -11,6 +12,11 @@ const ClockIcon = () => (
 
 export function CTA() {
   const [ref, revealed] = useScrollReveal();
+  const navigate = useNavigate();
+
+  const handleStartAssessment = () => {
+    navigate('/child-info');
+  };
 
   return (
     <section className={`CTA ${revealed}`} ref={ref}>
@@ -25,13 +31,13 @@ export function CTA() {
         </p>
 
         <div className="CTA__button-group">
-          <button className="CTA__button CTA__button--primary">
+          <button 
+            className="CTA__button CTA__button--primary"
+            onClick={handleStartAssessment}
+          >
             Start Assessment Now
           </button>
-          
         </div>
-
-        
       </div>
     </section>
   );

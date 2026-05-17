@@ -32,6 +32,8 @@ import { PrivateRoute, RoleRoute, PublicRoute } from './components/RouteGuards';
 import SpellingBagGame from './components/ParentDashboard/SpellingBagGame';
 import AlphabetSwipe from "./components/Activities/AlphabetSwipe";
 import SyllableBreaking from "./components/Activities/SyllableBreaking";
+import GoogleCallback from './pages/GoogleCallback';
+
 
 function App() {
   const [scrollY, setScrollY] = useState(0);
@@ -89,6 +91,8 @@ function App() {
               <Auth />
             </PublicRoute>
           } />
+
+          <Route path="/auth/google/callback" element={<GoogleCallback />} />
           
           <Route path="/forgot-password" element={
             <PublicRoute>

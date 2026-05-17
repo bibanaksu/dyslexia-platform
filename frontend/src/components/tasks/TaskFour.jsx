@@ -8,17 +8,16 @@ import { getChildInfo, getUserInfo, getCurrentChildSessionId } from "../../utils
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const TASK4_URL = `${API_URL}/api/task4/submit`;
 
+// ─────────────────────────────────────────────────────────────
+// Only sequences of length 2 or 3 (max 3 numbers)
+// ─────────────────────────────────────────────────────────────
 const NUMBER_SEQUENCES = [
-  { id:1,  numbers:[4,7],          length:2, responseTime:10 },
-  { id:2,  numbers:[3,8,1],        length:3, responseTime:15 },
-  { id:3,  numbers:[6,2,9,5],      length:4, responseTime:20 },
-  { id:4,  numbers:[1,4,7,2,8],    length:5, responseTime:25 },
-  { id:5,  numbers:[5,0,9,3,6,1],  length:6, responseTime:30 },
-  { id:6,  numbers:[2,6,4,8,0,7,3],length:7, responseTime:35 },
-  { id:7,  numbers:[9,2],          length:2, responseTime:10 },
-  { id:8,  numbers:[1,5,3],        length:3, responseTime:15 },
-  { id:9,  numbers:[7,0,6,2,4],    length:5, responseTime:25 },
-  { id:10, numbers:[8,3,1,9,5,2],  length:6, responseTime:30 },
+  { id: 1,  numbers: [4, 7],       length: 2, responseTime: 10 },
+  { id: 2,  numbers: [3, 8],       length: 2, responseTime: 10 },
+  { id: 3,  numbers: [9, 2],       length: 2, responseTime: 10 },
+  { id: 4,  numbers: [1, 5, 3],    length: 3, responseTime: 15 },
+  { id: 5,  numbers: [2, 6, 4],    length: 3, responseTime: 15 },
+  { id: 6,  numbers: [7, 0, 9],    length: 3, responseTime: 15 },
 ];
 
 const PROGRESS_KEY = 'task4_progress';
@@ -191,26 +190,25 @@ export default function TaskFour() {
     else if (pct >= 60) perf = 'Good Start!';
     else if (pct >= 40) perf = 'Keep Going!';
     const elapsed = Math.floor((Date.now() - startTimeRef.current - totalPausedMs.current) / 1000);
-    return {
-      child_session_id:   parseInt(childSessionId, 10),
-      child_id:           user?.childId ? parseInt(user.childId, 10) : null,
-      seq_total:          20,
-      seq_correct:        res.reduce((sum, r) => sum + (r.forward_correct ? 1 : 0), 0),
-      seq_incorrect:      res.reduce((sum, r) => sum + (r.forward_correct === false ? 1 : 0), 0),
-      seq_timeout:        0,
-      seq_percentage:     res.length > 0 ? Math.round((res.reduce((sum,r)=>sum+(r.forward_correct?1:0),0) / res.length) * 100) : 0,
-      seq_time_seconds:   Math.round(elapsed / (res.length || 1)),
-      seq_details:        JSON.stringify(res.map(r => ({ forward: { correct: r.forward_correct, input: r.forward_user_input, expected: r.original_numbers } }))),
-      rev_total:          10,
-      rev_correct:        res.reduce((sum, r) => sum + (r.reverse_correct ? 1 : 0), 0),
-      rev_incorrect:      res.reduce((sum, r) => sum + (r.reverse_correct === false ? 1 : 0), 0),
-      rev_timeout:        0,
-      rev_percentage:     res.length > 0 ? Math.round((res.reduce((sum,r)=>sum+(r.reverse_correct?1:0),0) / res.length) * 100) : 0,
-      rev_time_seconds:   Math.round(elapsed / (res.length || 1)),
-      rev_details:        JSON.stringify(res.map(r => ({ reverse: { correct: r.reverse_correct, input: r.reverse_user_input, expected: [...r.original_numbers].reverse() } }))),
-      overall_percentage: pct,
-      performance_level:  perf,
-    };
+   return {
+  child_session_id:   parseInt(childSessionId, 10),
+  child_id:           user?.childId ? parseInt(user.childId, 10) : null,
+  seq_total:          20,
+  seq_correct:        res.reduce((sum, r) => sum + (r.forward_correct ? 1 : 0), 0),
+  seq_incorrect:      res.reduce((sum, r) => sum + (r.forward_correct === false ? 1 : 0), 0),
+  seq_timeout:        0,
+  seq_percentage:     res.length > 0 ? Math.round((res.reduce((sum,r)=>sum+(r.forward_correct?1:0),0) / res.length) * 100) : 0,
+  seq_time_seconds:   Math.round(elapsed / (res.length || 1)),
+  seq_details:        JSON.stringify(res.map(r => ({ forward: { correct: r.forward_correct, input: r.forward_user_input, expected: r.original_numbers } }))),
+  rev_total:          10,
+  rev_correct:        res.reduce((sum, r) => sum + (r.reverse_correct ? 1 : 0), 0),
+  rev_incorrect:      res.reduce((sum, r) => sum + (r.reverse_correct === false ? 1 : 0), 0),
+  rev_timeout:        0,
+  rev_percentage:     res.length > 0 ? Math.round((res.reduce((sum,r)=>sum+(r.reverse_correct?1:0),0) / res.length) * 100) : 0,
+  rev_time_seconds:   Math.round(elapsed / (res.length || 1)),
+  rev_details:        JSON.stringify(res.map(r => ({ reverse: { correct: r.reverse_correct, input: r.reverse_user_input, expected: [...r.original_numbers].reverse() } }))),
+  overall_percentage: pct,
+};
   }, [sequences]);
 
   const saveResultsToDB = useCallback(async (res, isPartial = false) => {
@@ -223,9 +221,10 @@ export default function TaskFour() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
       });
     } catch (err) {
-      setSaveError('Progress saved locally.');
-      localStorage.setItem('task4_results_backup', JSON.stringify({ ...res, savedAt: new Date().toISOString() }));
-    } finally { setSaving(false); }
+ 
+  console.warn('Task4 save failed, but progress backed up locally:', err.message);
+  localStorage.setItem('task4_results_backup', JSON.stringify({ ...res, savedAt: new Date().toISOString() }));
+}
   }, [buildPayload]);
 
   const handleNext = useCallback(async () => {
@@ -289,19 +288,41 @@ export default function TaskFour() {
     await finishAndRedirect(finalResults);
   };
 
+  // ─────────────────────────────────────────────────────────
+  // PAUSE HANDLER – exactly same structure as TaskOne
+  // ─────────────────────────────────────────────────────────
   const handlePause = async () => {
     if (isPaused) {
-      if(pausedAtRef.current){totalPausedMs.current+=Date.now()-pausedAtRef.current;pausedAtRef.current=null;}
+      // RESUME
+      if(pausedAtRef.current){
+        totalPausedMs.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = null;
+      }
       setIsPaused(false);
     } else {
-      stopSpeech(); pausedAtRef.current=Date.now(); setIsPaused(true);
+      // PAUSE
+      stopSpeech();
+      pausedAtRef.current = Date.now();
+      setIsPaused(true);
       saveLocal(currentIndex, results, forwardInput, reverseInput, forwardSubmitted, reverseSubmitted, forwardCorrect, reverseCorrect);
       if (results.length > 0) await saveResultsToDB(results, true);
     }
   };
 
+  // Save & Quit – saves current progress then goes to adventure
+  const handleSaveAndQuit = async () => {
+    stopSpeech();
+    // Save current progress (including current sequence if any input)
+    saveLocal(currentIndex, results, forwardInput, reverseInput, forwardSubmitted, reverseSubmitted, forwardCorrect, reverseCorrect);
+    if (results.length > 0 || forwardSubmitted) {
+      await saveResultsToDB(results, true);
+    }
+    navigate('/adventure');
+  };
+
   const handleBack = () => { stopSpeech(); navigate('/adventure'); };
 
+  // Resume prompt screen (unchanged)
   if (showResumePrompt) return (
     <div className="t4-shell">
       <div className="t4-bg"/><div className="t4-overlay"/>
@@ -337,14 +358,13 @@ export default function TaskFour() {
     </div>
   );
 
-  // MAIN ASSESSMENT SCREEN with DS logo exactly like TaskOne
+  // MAIN ASSESSMENT SCREEN with TaskOne‑style pause overlay
   return (
     <div className="t4-shell">
       <div className="t4-bg"/><div className="t4-overlay"/>
 
       <div className="assessment-header-bar">
         <div className="header-left">
-          {/* DS logo exactly like TaskOne */}
           <div className="task-logo-icon">DS</div>
           <button className="btn-pause" onClick={handlePause}>
             {isPaused ? '▶ Resume' : '⏸ Pause'}
@@ -476,14 +496,20 @@ export default function TaskFour() {
         {saveError && !saving && <div className="t4-notice t4-notice--error">{saveError}</div>}
       </div>
 
+      {/* ────────────────────────────────────────────────────────────── */}
+      {/* TASK‑ONE STYLE PAUSE OVERLAY (same classes, same layout)       */}
+      {/* ────────────────────────────────────────────────────────────── */}
       {isPaused && (
-        <div className="t4-pause-overlay">
-          <div className="t4-pause-card">
-            <div className="t4-pause-icon">⏸</div>
-            <h2>Paused</h2>
-            <p>Your progress has been saved.</p>
-            <button className="t4-btn t4-btn--green t4-btn--wide" onClick={handlePause}>Resume</button>
-            <button className="t4-btn t4-btn--ghost t4-btn--wide" onClick={handleBack}>Save & Quit</button>
+        <div className="pause-overlay-full">
+          <div className="pause-content-card">
+            <h2>⏸️ Game Paused</h2>
+            <p>Your progress has been saved!</p>
+            <button className="btn-resume-game" onClick={handlePause}>
+              ▶️ Resume Challenge
+            </button>
+            <button className="btn-quit-game" onClick={handleSaveAndQuit}>
+              🏠 Save & Quit
+            </button>
           </div>
         </div>
       )}

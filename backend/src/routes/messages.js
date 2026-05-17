@@ -1,4 +1,3 @@
-// backend/routes/messages.js
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
@@ -10,32 +9,26 @@ router.get('/', verifyToken, async (req, res) => {
         let query, params;
 
         if (req.user.role === 'parent') {
-            // Parent sees all messages they are part of
             query = `
                 SELECT m.*, 
                        p.full_name as parent_name,
-                       t.username as therapist_name,
-                       c.full_name as child_name
+                       t.username as therapist_name
                 FROM message m
                 LEFT JOIN parent p ON m.parent_id = p.id
                 LEFT JOIN therapist t ON m.therapist_id = t.id
-                LEFT JOIN child c ON m.child_id = c.id
                 WHERE m.parent_id = ?
                 ORDER BY m.created_at ASC
             `;
             params = [req.user.id];
         } else if (req.user.role === 'therapist') {
-            // Therapist can filter by parentId if provided
             const parentId = req.query.parentId;
             query = `
                 SELECT m.*, 
                        p.full_name as parent_name,
-                       t.username as therapist_name,
-                       c.full_name as child_name
+                       t.username as therapist_name
                 FROM message m
                 LEFT JOIN parent p ON m.parent_id = p.id
                 LEFT JOIN therapist t ON m.therapist_id = t.id
-                LEFT JOIN child c ON m.child_id = c.id
                 WHERE m.therapist_id = ?
                 ${parentId ? 'AND m.parent_id = ?' : ''}
                 ORDER BY m.created_at ASC
@@ -65,7 +58,6 @@ router.post('/', verifyToken, async (req, res) => {
 
         if (req.user.role === 'parent') {
             parent_id = req.user.id;
-            // Get assigned therapist for this parent
             const [[parent]] = await pool.query(
                 'SELECT assigned_therapist_id FROM parent WHERE id = ?',
                 [parent_id]
@@ -76,7 +68,7 @@ router.post('/', verifyToken, async (req, res) => {
             }
         } else if (req.user.role === 'therapist') {
             therapist_id = req.user.id;
-            parent_id = parentId;   // Therapist must provide parentId in request body
+            parent_id = parentId;
             if (!parent_id) {
                 return res.status(400).json({ error: 'parentId is required for therapist messages' });
             }
@@ -89,20 +81,18 @@ router.post('/', verifyToken, async (req, res) => {
         }
 
         const [result] = await pool.query(
-            `INSERT INTO message (parent_id, therapist_id, child_id, sender_role, content)
-             VALUES (?, ?, ?, ?, ?)`,
-            [parent_id, therapist_id, child_id || null, req.user.role, content.trim()]
+            `INSERT INTO message (parent_id, therapist_id, sender_role, content)
+             VALUES (?, ?, ?, ?)`,
+            [parent_id, therapist_id, req.user.role, content.trim()]
         );
 
         const [[message]] = await pool.query(
             `SELECT m.*, 
                     p.full_name as parent_name,
-                    t.username as therapist_name,
-                    c.full_name as child_name
+                    t.username as therapist_name
              FROM message m
              LEFT JOIN parent p ON m.parent_id = p.id
              LEFT JOIN therapist t ON m.therapist_id = t.id
-             LEFT JOIN child c ON m.child_id = c.id
              WHERE m.id = ?`,
             [result.insertId]
         );
@@ -114,7 +104,7 @@ router.post('/', verifyToken, async (req, res) => {
     }
 });
 
-// GET /api/messages/unread-count
+// GET /api/messages/unread-count – MOVED ABOVE wildcard route
 router.get('/unread-count', verifyToken, async (req, res) => {
     try {
         let query, params;
@@ -135,7 +125,7 @@ router.get('/unread-count', verifyToken, async (req, res) => {
     }
 });
 
-// PUT /api/messages/:id/read
+// PUT /api/messages/:id/read – wildcard route LAST
 router.put('/:id/read', verifyToken, async (req, res) => {
     try {
         const messageId = req.params.id;

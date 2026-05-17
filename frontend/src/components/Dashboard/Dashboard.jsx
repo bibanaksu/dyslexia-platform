@@ -710,8 +710,6 @@ const styles = {
 // ══════════════════════════════════════════════════════════════
 // PATIENT DETAIL PANEL
 // ══════════════════════════════════════════════════════════════
-// INSIDE Dashboard.jsx – replace the existing PatientDetail component with this:
-
 function PatientDetail({ patient, onClose, onAssignActivity, onOpenChat }) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
@@ -1434,6 +1432,19 @@ const assignActivityHandler = async (childId, activityId) => {
           {activeTab === 'notes' && <NotesTab patients={patients} />}
           {activeTab === 'activities' && <ActivitiesTab patients={patients} />}
         </main>
+      </div>
+
+      {/* Mobile bottom nav – only visible under 900px */}
+      <div className="td-mobile-nav">
+        <div className="td-mobile-nav-inner">
+          {TABS.map(t => (
+            <button key={t.key} className={`td-mobile-nav-btn ${activeTab === t.key ? 'active' : ''}`}
+                    onClick={() => setActiveTab(t.key)}>
+              <Ico d={t.icon} size={18} />
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {selectedPatient && <PatientDetail patient={selectedPatient} onClose={() => setSelectedPatient(null)} onAssignActivity={assignActivityHandler} onOpenChat={openChat} />}

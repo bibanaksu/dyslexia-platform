@@ -1280,3 +1280,169 @@ body {
   border-bottom-right-radius: 4px;
   margin-left: auto;  /* Add this */
 }
+/* ============================================================
+   MOBILE & TABLET RESPONSIVE STYLES
+   ============================================================ */
+
+/* Tablet landscape / small desktop */
+@media (max-width: 1200px) {
+  .td-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet portrait / large phone */
+@media (max-width: 900px) {
+  /* Hide sidebar, show bottom mobile nav */
+  .td-sidebar {
+    display: none;
+  }
+  .td-mobile-nav {
+    display: block;
+  }
+  .td-main {
+    padding-bottom: 80px;
+  }
+
+  /* Stack patient cards vertically */
+  .td-patient-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Notes & activities layouts become column */
+  .td-notes-layout,
+  .td-act-layout {
+    flex-direction: column;
+  }
+  .td-note-editor {
+    width: 100%;
+    flex: none;
+  }
+
+  /* Chat layout: list above chat panel */
+  .td-chat-layout {
+    flex-direction: column;
+    height: auto;
+  }
+  .td-conv-list {
+    width: 100%;
+    height: 160px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding: 12px;
+  }
+  .td-conv-item {
+    flex-shrink: 0;
+    width: 200px;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+  }
+  .td-chat-panel {
+    height: 420px;
+  }
+
+  /* Topnav adjustments */
+  .td-global-search-wrap {
+    max-width: 200px;
+  }
+}
+
+/* Small phones (<=600px) */
+@media (max-width: 600px) {
+  /* Stats grid becomes 2 columns (was 4) */
+  .td-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Hide keyboard shortcut hint in search */
+  .td-global-search-kbd {
+    display: none;
+  }
+
+  /* Hide therapist name/role in topnav to save space */
+  .td-therapist-name,
+  .td-therapist-role {
+    display: none;
+  }
+
+  /* Reduce padding on main content */
+  .td-main {
+    padding: 16px;
+  }
+
+  /* Larger touch targets for patient cards */
+  .td-patient-card {
+    padding: 16px;
+  }
+  .td-pc-score-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .td-pc-gauge {
+    align-self: center;
+  }
+
+  /* Activity assign panel */
+  .td-act-layout .td-card:first-child {
+    flex: auto;
+  }
+
+  /* Chat bubbles take more width */
+  .td-bubble {
+    max-width: 85%;
+  }
+  .td-msg-content {
+    max-width: 85%;
+  }
+
+  /* Reduce font sizes for compactness */
+  .td-page-title {
+    font-size: 24px;
+  }
+  .td-stat-val {
+    font-size: 24px;
+  }
+}
+
+/* Extra small devices (<=480px) */
+@media (max-width: 480px) {
+  /* Stack topnav elements vertically if needed */
+  .td-topnav {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 12px;
+    gap: 10px;
+  }
+  .td-brand {
+    margin-right: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .td-global-search-wrap {
+    max-width: 100%;
+    order: 3;
+    width: 100%;
+  }
+  .td-nav-right {
+    margin-left: auto;
+  }
+  .td-therapist-chip {
+    display: none; /* hide therapist info on very small screens */
+  }
+
+  /* Stats grid becomes single column */
+  .td-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Patient card mini task labels */
+  .td-mini-task {
+    grid-template-columns: 50px 1fr 30px;
+  }
+  .td-mini-label {
+    font-size: 9px;
+  }
+}
