@@ -16,8 +16,8 @@
   font-family: 'Nunito', sans-serif;
 }
 
-/* Background (same as TaskOne) */
-.task-bg {
+/* Scoped background for SpellingBagGame only */
+.spelling-game-container .task-bg {
   position: fixed;
   top: 0;
   left: 0;
@@ -30,7 +30,7 @@
   z-index: 0;
 }
 
-.dark-overlay {
+.spelling-game-container .dark-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -505,16 +505,4 @@
   .nav-left-group, .nav-right-group { gap: 8px; }
   .spelling-stars { padding: 4px 10px; }
   .stars-count { font-size: 1rem; }
-}
-.task-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url('/assets/levels2.png') !important;
-  background-size: cover;
-  background-position: center;
-  background-color: red !important; /* temporary test */
-  z-index: 0;
 }

@@ -650,7 +650,7 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
                     <span className="ac-badge ac-badge--forest">Assigned</span>
                     {isCompleted && (
                       <span className="ac-badge" style={{ background: '#e6f5ee', color: '#1a6b40', marginLeft: 6 }}>
-                        ✅ Completed
+                        Completed
                       </span>
                     )}
                   </div>
@@ -674,7 +674,7 @@ function ActivitiesTab({ children, assignments, selectedChildId, onSelectChild, 
                     style={{ flex: 1, opacity: isCompleted ? 0.6 : 1 }}
                     onClick={(e) => { e.stopPropagation(); handleStart(assign); }}
                   >
-                    {isCompleted ? '🔁 Play Again →' : 'Start Activity →'}
+                    {isCompleted ? ' Play Again →' : 'Start Activity →'}
                   </button>
                 </div>
               </div>
