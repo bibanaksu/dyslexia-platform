@@ -1,4 +1,3 @@
-// frontend/src/components/tasks/EnhancedVoiceReading.jsx
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -165,6 +164,7 @@ export default function EnhancedVoiceReading() {
 
   const formatTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
+  // ✅ FIXED: removed performance_level from payload
   const buildPayload = useCallback((resultsObj, isPartial = false) => {
     const childSessionId = getCurrentChildSessionId();
     if (!childSessionId) throw new Error('No active child session ID found');
@@ -175,10 +175,8 @@ export default function EnhancedVoiceReading() {
     const elapsed = startTimeRef.current
       ? Math.round((Date.now() - startTimeRef.current - totalPausedMsRef.current) / 1000) : 0;
     const percentage = totalWordsRead > 0 ? Math.round((correctCount / totalWordsRead) * 100) : 0;
-    let performanceLevel = 'Building';
-    if (percentage >= 95) performanceLevel = 'Advanced';
-    else if (percentage >= 85) performanceLevel = 'Proficient';
-    else if (percentage >= 70) performanceLevel = 'Basic';
+    
+    // ❌ performance_level removed completely
     const payload = {
       child_session_id:   parseInt(childSessionId, 10),
       child_id:           user?.childId ? parseInt(user.childId, 10) : null,
@@ -187,7 +185,6 @@ export default function EnhancedVoiceReading() {
       incorrect_count:    incorrectCount,
       timeout_count:      0,
       percentage:         percentage,
-      performance_level:  performanceLevel,
       total_time_seconds: elapsed,
       avg_time_per_word:  totalWordsRead > 0 ? Math.round(elapsed / totalWordsRead) : 0,
       word_details:       JSON.stringify(resultsObj.error_details || errorWordsRef.current),

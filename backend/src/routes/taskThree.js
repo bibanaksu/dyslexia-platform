@@ -10,6 +10,7 @@ router.get('/exercises', async (req, res) => {
     );
     return res.json({ success: true, exercises: rows });
   } catch (err) {
+    console.error('task3/exercises error:', err);
     return res.status(500).json({ success: false, error: 'Database error.' });
   }
 });
@@ -17,6 +18,7 @@ router.get('/exercises', async (req, res) => {
 router.post('/submit', async (req, res) => {
   const {
     child_session_id,
+    child_id,
     total_comparisons,
     correct_count,
     incorrect_count,
@@ -35,14 +37,23 @@ router.post('/submit', async (req, res) => {
     });
   }
 
+  // Guard child_id: must be a positive integer or null (never 0/empty — FK will reject it)
+  const _childId = (child_id && parseInt(child_id, 10) > 0) ? parseInt(child_id, 10) : null;
+
+  // Serialize comparison_details to JSON string if it's an object/array
+  const _comparisonDetails = comparison_details
+    ? (typeof comparison_details === 'string' ? comparison_details : JSON.stringify(comparison_details))
+    : null;
+
   try {
     const [result] = await db.execute(
       `INSERT INTO task3_letter_similarity_results 
-       (child_session_id, total_comparisons, correct_count, 
+       (child_session_id, child_id, total_comparisons, correct_count, 
         incorrect_count, timeout_count, percentage, performance_level,
         total_time_seconds, avg_time_per_item, comparison_details)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
+         child_id = VALUES(child_id),
          total_comparisons = VALUES(total_comparisons),
          correct_count = VALUES(correct_count),
          incorrect_count = VALUES(incorrect_count),
@@ -54,6 +65,7 @@ router.post('/submit', async (req, res) => {
          comparison_details = VALUES(comparison_details)`,
       [
         child_session_id,
+        _childId,
         total_comparisons || 20,
         correct_count || 0,
         incorrect_count || 0,
@@ -62,7 +74,7 @@ router.post('/submit', async (req, res) => {
         performance_level || null,
         total_time_seconds || 0,
         avg_time_per_item || 0,
-        comparison_details || null,
+        _comparisonDetails,
       ]
     );
 
@@ -78,7 +90,7 @@ router.post('/submit', async (req, res) => {
     return res.json({ success: true, resultId });
   } catch (err) {
     console.error('task3/submit error:', err);
-    return res.status(500).json({ success: false, error: 'Database error.' });
+    return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
   }
 });
 
@@ -104,6 +116,7 @@ router.get('/results', async (req, res) => {
     const [rows] = await db.execute(sql, params);
     return res.json({ success: true, results: rows });
   } catch (err) {
+    console.error('task3/results error:', err);
     return res.status(500).json({ success: false, error: 'Database error.' });
   }
 });

@@ -33,7 +33,7 @@ const EXERCISES = [
 ];
 
 const STORAGE_KEY = 'task_one_progress';
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const playSwipeSound = () => {
   try {
@@ -187,57 +187,58 @@ export default function TaskOne() {
   }, [categoryProgress, currentScreen]);
 
   // Save to backend
-  const saveResultsToBackend = async (isPartial = false, latestProgress = null) => {
-    const childSessionId = getCurrentChildSessionId();
-    if (!childSessionId) {
-      setSaveError('Cannot save: no active child session.');
-      return false;
-    }
-    const user = getUserInfo();
-    const prog = latestProgress || categoryProgress;
-    const totalCorrect   = Object.values(prog).reduce((s, c) => s + c.correct, 0);
-    const totalCompleted = Object.values(prog).reduce((s, c) => s + c.completed, 0);
-    const percentage     = totalCompleted > 0 ? Math.round((totalCorrect / totalCompleted) * 100) : 0;
-    let performanceLevel = 'Needs Improvement';
-    if (percentage >= 90) performanceLevel = 'Excellent';
-    else if (percentage >= 75) performanceLevel = 'Good';
-    else if (percentage >= 60) performanceLevel = 'Satisfactory';
-    const totalTimeSeconds = prog.similarWords.timeSpent + prog.nonSimilarWords.timeSpent + prog.nonWords.timeSpent;
-    const avgTimePerWord   = totalCompleted > 0 ? Math.round(totalTimeSeconds / totalCompleted) : 0;
-    const allErrors        = [...prog.similarWords.errors, ...prog.nonSimilarWords.errors, ...prog.nonWords.errors];
-    const payload = {
-      child_session_id:         parseInt(childSessionId, 10),
-      child_id:                 user?.childId ? parseInt(user.childId, 10) : null,
-      similar_words_score:      prog.similarWords.correct,
-      non_similar_words_score:  prog.nonSimilarWords.correct,
-      pseudo_words_score:       prog.nonWords.correct,
-      total_score:              totalCorrect,
-      total_words:              60,
-      percentage,
-      performance_level:        performanceLevel,
-      total_time_seconds:       totalTimeSeconds,
-      avg_time_per_word:        avgTimePerWord,
-      error_patterns:           allErrors.length > 0 ? JSON.stringify(allErrors) : null,
-    };
-    const token = localStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-    setIsSaving(true);
-    setSaveError('');
-    try {
-      const res = await axios.post(`${API_URL}/api/task1/submit`, payload, { headers });
-      if (res.data?.resultId) console.log('✅ Task1 saved, id:', res.data.resultId);
-      return true;
-    } catch (error) {
-      console.error('❌ Save error:', error.response?.data || error.message);
-      setSaveError(error.response?.data?.error || 'Network error – progress saved locally only.');
-      return false;
-    } finally {
-      setTimeout(() => setIsSaving(false), 800);
-    }
+ const saveResultsToBackend = async (isPartial = false, latestProgress = null) => {
+  const childSessionId = getCurrentChildSessionId();
+  if (!childSessionId) {
+    setSaveError('Cannot save: no active child session.');
+    return false;
+  }
+  const user = getUserInfo();
+  const prog = latestProgress || categoryProgress;
+  const totalCorrect   = Object.values(prog).reduce((s, c) => s + c.correct, 0);
+  const totalCompleted = Object.values(prog).reduce((s, c) => s + c.completed, 0);
+  const percentage     = totalCompleted > 0 ? Math.round((totalCorrect / totalCompleted) * 100) : 0;
+  let performanceLevel = 'Needs Improvement';
+  if (percentage >= 90) performanceLevel = 'Excellent';
+  else if (percentage >= 75) performanceLevel = 'Good';
+  else if (percentage >= 60) performanceLevel = 'Satisfactory';
+  const totalTimeSeconds = prog.similarWords.timeSpent + prog.nonSimilarWords.timeSpent + prog.nonWords.timeSpent;
+  const avgTimePerWord   = totalCompleted > 0 ? Math.round(totalTimeSeconds / totalCompleted) : 0;
+  const allErrors        = [...prog.similarWords.errors, ...prog.nonSimilarWords.errors, ...prog.nonWords.errors];
+  const payload = {
+    child_session_id:         parseInt(childSessionId, 10),
+    child_id:                 user?.childId ? parseInt(user.childId, 10) : null,
+    similar_words_score:      prog.similarWords.correct,
+    non_similar_words_score:  prog.nonSimilarWords.correct,
+    pseudo_words_score:       prog.nonWords.correct,
+    total_score:              totalCorrect,
+    total_words:              60,
+    percentage,
+    performance_level:        performanceLevel,
+    total_time_seconds:       totalTimeSeconds,
+    avg_time_per_word:        avgTimePerWord,
+    error_patterns:           allErrors.length > 0 ? JSON.stringify(allErrors) : null,
   };
+  const token = localStorage.getItem('token');
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  setIsSaving(true);
+  setSaveError('');
+  try {
+    // ✅ FIX: use relative URL
+    const res = await axios.post(`/api/task1/submit`, payload, { headers });
+    if (res.data?.resultId) console.log('✅ Task1 saved, id:', res.data.resultId);
+    return true;
+  } catch (error) {
+    console.error('❌ Save error:', error.response?.data || error.message);
+    setSaveError(error.response?.data?.error || 'Network error – progress saved locally only.');
+    return false;
+  } finally {
+    setTimeout(() => setIsSaving(false), 800);
+  }
+};
 
   const startCategory = (categoryKey) => {
     const category = EXERCISES.find(ex => ex.key === categoryKey);

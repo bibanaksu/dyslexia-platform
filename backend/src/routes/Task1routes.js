@@ -16,7 +16,6 @@ router.post('/submit', async (req, res) => {
     total_time_seconds,
     avg_time_per_word,
     error_patterns,
-    is_partial,
   } = req.body;
 
   if (!child_session_id) {
@@ -26,16 +25,20 @@ router.post('/submit', async (req, res) => {
     });
   }
 
-  const _childId = child_id || null;
-  const _similarWordsScore = similar_words_score ?? 0;
+  // Guard child_id: must be a positive integer or null (never 0/empty — FK will reject it)
+  const _childId = (child_id && parseInt(child_id, 10) > 0) ? parseInt(child_id, 10) : null;
+  const _similarWordsScore    = similar_words_score    ?? 0;
   const _nonSimilarWordsScore = non_similar_words_score ?? 0;
-  const _pseudoWordsScore = pseudo_words_score ?? 0;
-  const _totalScore = total_score ?? 0;
-  const _percentage = percentage ?? 0;
-  const _performanceLevel = performance_level || null;
-  const _totalTimeSeconds = total_time_seconds ?? 0;
-  const _avgTimePerWord = avg_time_per_word ?? 0;
-  const _errorPatterns = error_patterns || null;
+  const _pseudoWordsScore     = pseudo_words_score     ?? 0;
+  const _totalScore           = total_score            ?? 0;
+  const _percentage           = percentage             ?? 0;
+  const _performanceLevel     = performance_level      || null;
+  const _totalTimeSeconds     = total_time_seconds     ?? 0;
+  const _avgTimePerWord       = avg_time_per_word      ?? 0;
+  // Serialize error_patterns to JSON string if it's an object/array
+  const _errorPatterns = error_patterns
+    ? (typeof error_patterns === 'string' ? error_patterns : JSON.stringify(error_patterns))
+    : null;
   const totalWords = 60;
 
   try {

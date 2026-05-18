@@ -6,6 +6,7 @@ const db = require('../db');
 router.post('/submit', async (req, res) => {
   const {
     child_session_id,
+    child_id,
     total_words,
     correct_count,
     incorrect_count,
@@ -24,14 +25,17 @@ router.post('/submit', async (req, res) => {
     });
   }
 
+  // Guard child_id: must be a positive integer or null (never 0/empty — FK will reject it)
+  const _childId = (child_id && parseInt(child_id, 10) > 0) ? parseInt(child_id, 10) : null;
+
   try {
     const [result] = await db.execute(
       `INSERT INTO task2_results 
-       (child_session_id, total_words, correct_count, incorrect_count, 
-        timeout_count, percentage, performance_level, 
-        total_time_seconds, avg_time_per_word, word_details)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       (child_session_id, child_id, total_words, correct_count, incorrect_count, 
+        timeout_count, percentage, performance_level, total_time_seconds, avg_time_per_word, word_details)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
+         child_id = VALUES(child_id),
          total_words = VALUES(total_words),
          correct_count = VALUES(correct_count),
          incorrect_count = VALUES(incorrect_count),
@@ -43,6 +47,7 @@ router.post('/submit', async (req, res) => {
          word_details = VALUES(word_details)`,
       [
         child_session_id,
+        _childId,
         total_words || 0,
         correct_count || 0,
         incorrect_count || 0,
@@ -51,7 +56,7 @@ router.post('/submit', async (req, res) => {
         performance_level || null,
         total_time_seconds || 0,
         avg_time_per_word || 0,
-        word_details || null,
+        word_details ? (typeof word_details === 'string' ? word_details : JSON.stringify(word_details)) : null,
       ]
     );
 
@@ -67,7 +72,7 @@ router.post('/submit', async (req, res) => {
     return res.json({ success: true, resultId });
   } catch (err) {
     console.error('task2/submit error:', err);
-    return res.status(500).json({ success: false, error: 'Database error.' });
+    return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
   }
 });
 
@@ -93,6 +98,7 @@ router.get('/results', async (req, res) => {
     const [rows] = await db.execute(sql, params);
     return res.json({ success: true, results: rows });
   } catch (err) {
+    console.error('task2/results error:', err);
     return res.status(500).json({ success: false, error: 'Database error.' });
   }
 });
